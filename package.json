@@ -11,9 +11,9 @@
     ],
     "testEnvironment": "jsdom",
     "transform": {
-      "^.+\\.tsx?$": "ts-jest"
+      "^.+\.tsx?$": "ts-jest"
     },
-    "testRegex": "(/__tests__/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$",
+    "testRegex": "(/__tests__/.*|(\.|/)(test|spec))\.(jsx?|tsx?)$",
     "testPathIgnorePatterns": [
       "/node_modules/",
       "/playwright/"
@@ -23,8 +23,8 @@
       "src/utilities/test-utils.ts"
     ],
     "moduleNameMapper": {
-      "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$": "<rootDir>/__mocks__/fileMock.js",
-      "\\.(css|less|sass|scss)$": "identity-obj-proxy"
+      "\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$": "<rootDir>/__mocks__/fileMock.js",
+      "\.(css|less|sass|scss)$": "identity-obj-proxy"
     },
     "moduleFileExtensions": [
       "ts",
@@ -84,8 +84,8 @@
     "@testing-library/react": "^16.2.0",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.13.9",
-    "@types/react": "^19.0.12",
-    "@types/react-dom": "^19.0.4",
+    "@types-react": "^19.0.12",
+    "@types-react-dom": "^19.0.4",
     "@typescript-eslint/eslint-plugin": "^8.26.1",
     "@typescript-eslint/parser": "^8.26.1",
     "autoprefixer": "^10.4.21",
@@ -134,8 +134,8 @@
     "iframe-phone": "^1.3.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "tslib": "^2.8.1"
+    "tslib": "^2.8.1",
     "@modelcontextprotocol/sdk": "^1.12.1",
-    "express": "^4.18.2",
+    "express": "^4.18.2"
   }
 }
