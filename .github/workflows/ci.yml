@@ -34,11 +34,11 @@ jobs:
         id: s3-deploy
         with:
           bucket: models-resources
-          prefix: codap-plugin-starter-project
+          prefix: CODAP-mcp
           awsAccessKeyId: ${{ secrets.AWS_ACCESS_KEY_ID }}
           awsSecretAccessKey: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           githubToken: ${{ secrets.GITHUB_TOKEN }}
-          deployRunUrl: https://codap3.concord.org/branch/main/?di=https://models-resources.concord.org/codap-plugin-starter-project/__deployPath__/index.html
+          deployRunUrl: https://codap3.concord.org/branch/main/?di=https://models-resources.concord.org/CODAP-mcp/__deployPath__/index.html
           # Parameters to GHActions have to be strings, so a regular yaml array cannot
           # be used. Instead the `|` turns the following lines into a string
           topBranches: |

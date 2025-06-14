@@ -25,7 +25,7 @@ There are two ways to create a new repository from this template:
 1. Create a new public repository for your project (e.g. `new-repository`)
 2. Create a clone of the starter repo
     ```
-    git clone --single-branch https://github.com/concord-consortium/codap-plugin-starter-project.git new-repository
+    git clone --single-branch https://github.com/concord-consortium/CODAP-mcp.git new-repository
     cd new-repository
     ```
 3. Next, re-initialize the repo to create a new history
@@ -41,7 +41,7 @@ There are two ways to create a new repository from this template:
 ## Initialize new repository
 
 1. Run `npm install` to install dependencies
-2. Optionally Run: `npm update` to update the dependencies. If you can, it is best to do this in the `codap-plugin-starter-project` first before making your new repository.
+2. Optionally Run: `npm update` to update the dependencies. If you can, it is best to do this in the `CODAP-mcp` first before making your new repository.
 3. Run `npm start` to start the `webpack-dev-server` in development mode with hot module replacement
 4. Open [localhost:8080](http://localhost:8080) (or use port 8081 if you are already using 8080). You should see a basic plugin with a heading of "CODAP Starter Plugin".
 
@@ -49,7 +49,7 @@ There are two ways to create a new repository from this template:
 5. Run `npm test` to verify that the test suite still passes.
 6. Run `npx playwright install` to install the playwright browsers
 7. Run `npm run test:playwright` to verify the playwright tests still pass. The Playwright tests verify that the plugin works correctly inside CODAP.
-8. Search and replace instances of `codap-plugin-starter-project` with `new-repository`.
+8. Search and replace instances of `CODAP-mcp` with `new-repository`.
 9. Search and replace instances of `CODAP Starter Plugin` and `CODAP Plugin Starter Project` with `New Plugin`.
 10. Update the general description of the project in the first section above.
 11. [Setup AWS keys for S3 Deployment](https://docs.google.com/document/d/1VqEwnHcmv5EnGq4fQI7l6zur_rV4F-BdKYEy4LdDjY4/edit?pli=1&tab=t.0). This is so the GitHub actions can deploy to S3 and save the Playwright results.
