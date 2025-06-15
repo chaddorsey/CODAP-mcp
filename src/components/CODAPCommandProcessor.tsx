@@ -34,7 +34,25 @@ export const CODAPCommandProcessor: React.FC = () => {
         const { createItems } = await import("@concord-consortium/codap-plugin-api");
         result = await createItems(command.values.dataContext, command.values.items);
       } else if (command.action === "create" && command.resource === "component") {
-        result = await sendMessage("create", "component", command.values);
+        // Handle graph component creation with configuration
+        if (command.values.type === "graph" && command.values.configuration) {
+          console.log("Creating graph with configuration:", command.values.configuration);
+          
+          // Create the graph with xAttributeName and yAttributeName directly in the graph object
+          const config = command.values.configuration;
+          const graphValues = { 
+            ...command.values,
+            xAttributeName: config.xAttributeName,
+            yAttributeName: config.yAttributeName
+          };
+          delete graphValues.configuration;
+          
+          result = await sendMessage("create", "component", graphValues);
+          console.log("Graph creation with direct axis attributes result:", result);
+        } else {
+          // Regular component creation
+          result = await sendMessage("create", "component", command.values);
+        }
       } else if (command.action === "get" && command.resource === "dataContextList") {
         result = await sendMessage("get", "dataContextList");
       } else if (command.action === "get" && command.resource === "componentList") {

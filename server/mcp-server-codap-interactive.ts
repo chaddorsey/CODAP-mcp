@@ -220,10 +220,10 @@ async function main() {
             
             // Handle case where SuperAssistant sends customData as a JSON string
             let parsedCustomData = customData;
-            if (typeof customData === 'string') {
+            if (typeof customData === "string") {
               try {
                 parsedCustomData = JSON.parse(customData);
-                console.error('DEBUG: Successfully parsed customData string to array');
+                console.error("DEBUG: Successfully parsed customData string to array");
               } catch (error) {
                 throw new Error(`customData is a string but not valid JSON: ${error instanceof Error ? error.message : String(error)}`);
               }

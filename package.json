@@ -38,7 +38,7 @@
     "start": "webpack serve --server-type http",
     "start:mcp": "node dist/server/mcp-server.js",
     "start:mcp-interactive": "node dist/server/mcp-server-codap-interactive.js",
-    "start:api": "node dist/api-server.js",
+    "start:api": "node dist/src/api-server.js",
     "start:secure": "webpack serve",
     "start:secure:no-certs": "webpack serve --server-options-cert-reset --server-options-key-reset",
     "build": "npm-run-all lint:build build:webpack",

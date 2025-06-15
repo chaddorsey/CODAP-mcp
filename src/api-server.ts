@@ -335,10 +335,12 @@ app.post("/api/codap/addCases", async (req, res) => {
 app.post("/api/codap/createGraph", async (req, res) => {
   try {
     const { datasetName, graphType, xAttribute, yAttribute, title } = req.body;
+    console.log(`Creating graph: ${graphType}, dataset: ${datasetName}, x: ${xAttribute}, y: ${yAttribute}`);
     
     // Map graph types to CODAP component types
     const componentTypeMap: Record<string, string> = {
       scatterplot: "graph",
+      scatter: "graph", // Handle both "scatter" and "scatterplot"
       histogram: "graph",
       bar_chart: "graph",
       line_graph: "graph"
@@ -369,6 +371,7 @@ app.post("/api/codap/createGraph", async (req, res) => {
       if (yAttribute) command.values.configuration.yAttributeName = yAttribute;
     }
     
+    console.log("Graph command being queued:", JSON.stringify(command, null, 2));
     commandQueue.push(command);
     completedCommands.set(commandId, command);
     
