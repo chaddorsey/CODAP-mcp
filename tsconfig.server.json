@@ -12,6 +12,7 @@
     "server/**/*",
     "src/codap-interface.ts",
     "src/types.ts",
-    "src/codap-helper.ts"
+    "src/codap-helper.ts",
+    "src/api-server.ts"
   ]
 }

@@ -11,6 +11,7 @@ import {
   testCodapDatasetTool,
   createMcpDataInCodap
 } from "../mcp-client";
+import { CODAPCommandProcessor } from "./CODAPCommandProcessor";
 import "./App.css";
 
 export const App = () => {
@@ -253,6 +254,8 @@ export const App = () => {
           { listenerNotification && listenerNotification }
         </output>
       </div>
+
+      <CODAPCommandProcessor />
     </div>
   );
 };

@@ -1,0 +1,78 @@
+Initializing MCP SuperAssistant proxy...
+Connecting to codap-interactive (stdio - inferred)...
+CODAP Interactive MCP Server started successfully
+Connected to codap-interactive: 6 tools, 0 resources, 0 prompts
+Successfully initialized mcpsuperassistantproxy with 1 servers
+MCP SuperAssistant Proxy running with backwards compatibility at:
+  - Modern Streamable HTTP: http://localhost:3007/mcp
+  - Legacy SSE: http://localhost:3007/sse
+  - Legacy messages: http://localhost:3007/messages
+
+Clients should connect to http://localhost:3007/mcp for automatic backwards compatibility.
+New SSE connection from ::1
+SSE session created: 1b23a116-5e7c-40a7-8afc-c1edd38655b6
+POST to SSE transport (session 1b23a116-5e7c-40a7-8afc-c1edd38655b6)
+POST to SSE transport (session 1b23a116-5e7c-40a7-8afc-c1edd38655b6)
+POST to SSE transport (session 1b23a116-5e7c-40a7-8afc-c1edd38655b6)
+POST to SSE transport (session 1b23a116-5e7c-40a7-8afc-c1edd38655b6)
+POST to SSE transport (session 1b23a116-5e7c-40a7-8afc-c1edd38655b6)
+POST to SSE transport (session 1b23a116-5e7c-40a7-8afc-c1edd38655b6)
+POST to SSE transport (session 1b23a116-5e7c-40a7-8afc-c1edd38655b6)
+POST to SSE transport (session 1b23a116-5e7c-40a7-8afc-c1edd38655b6)
+SSE transport closed (session 1b23a116-5e7c-40a7-8afc-c1edd38655b6)
+Cleaning up SSE session: 1b23a116-5e7c-40a7-8afc-c1edd38655b6
+SSE transport closed (session 1b23a116-5e7c-40a7-8afc-c1edd38655b6)
+SSE transport closed (session 1b23a116-5e7c-40a7-8afc-c1edd38655b6)
+SSE client disconnected (session 1b23a116-5e7c-40a7-8afc-c1edd38655b6)
+New SSE connection from ::1
+SSE session created: 4b90b21e-0763-4bd2-be4a-b9b998ca12d3
+POST to SSE transport (session 4b90b21e-0763-4bd2-be4a-b9b998ca12d3)
+POST to SSE transport (session 4b90b21e-0763-4bd2-be4a-b9b998ca12d3)
+POST to SSE transport (session 4b90b21e-0763-4bd2-be4a-b9b998ca12d3)
+POST to SSE transport (session 4b90b21e-0763-4bd2-be4a-b9b998ca12d3)
+POST to SSE transport (session 4b90b21e-0763-4bd2-be4a-b9b998ca12d3)
+POST to SSE transport (session 4b90b21e-0763-4bd2-be4a-b9b998ca12d3)
+POST to SSE transport (session 4b90b21e-0763-4bd2-be4a-b9b998ca12d3)
+POST to SSE transport (session 4b90b21e-0763-4bd2-be4a-b9b998ca12d3)
+SSE transport closed (session 4b90b21e-0763-4bd2-be4a-b9b998ca12d3)
+Cleaning up SSE session: 4b90b21e-0763-4bd2-be4a-b9b998ca12d3
+SSE transport closed (session 4b90b21e-0763-4bd2-be4a-b9b998ca12d3)
+SSE transport closed (session 4b90b21e-0763-4bd2-be4a-b9b998ca12d3)
+SSE client disconnected (session 4b90b21e-0763-4bd2-be4a-b9b998ca12d3)
+New SSE connection from ::1
+SSE session created: 45bda83c-d1b0-4f82-aec2-a682a6968cf0
+POST to SSE transport (session 45bda83c-d1b0-4f82-aec2-a682a6968cf0)
+POST to SSE transport (session 45bda83c-d1b0-4f82-aec2-a682a6968cf0)
+POST to SSE transport (session 45bda83c-d1b0-4f82-aec2-a682a6968cf0)
+POST to SSE transport (session 45bda83c-d1b0-4f82-aec2-a682a6968cf0)
+POST to SSE transport (session 45bda83c-d1b0-4f82-aec2-a682a6968cf0)
+POST to SSE transport (session 45bda83c-d1b0-4f82-aec2-a682a6968cf0)
+POST to SSE transport (session 45bda83c-d1b0-4f82-aec2-a682a6968cf0)
+POST to SSE transport (session 45bda83c-d1b0-4f82-aec2-a682a6968cf0)
+SSE transport closed (session 45bda83c-d1b0-4f82-aec2-a682a6968cf0)
+Cleaning up SSE session: 45bda83c-d1b0-4f82-aec2-a682a6968cf0
+SSE transport closed (session 45bda83c-d1b0-4f82-aec2-a682a6968cf0)
+SSE transport closed (session 45bda83c-d1b0-4f82-aec2-a682a6968cf0)
+SSE client disconnected (session 45bda83c-d1b0-4f82-aec2-a682a6968cf0)
+New SSE connection from ::1
+SSE session created: 251b3215-a124-44cc-82e5-95adef0511b5
+POST to SSE transport (session 251b3215-a124-44cc-82e5-95adef0511b5)
+POST to SSE transport (session 251b3215-a124-44cc-82e5-95adef0511b5)
+POST to SSE transport (session 251b3215-a124-44cc-82e5-95adef0511b5)
+POST to SSE transport (session 251b3215-a124-44cc-82e5-95adef0511b5)
+POST to SSE transport (session 251b3215-a124-44cc-82e5-95adef0511b5)
+POST to SSE transport (session 251b3215-a124-44cc-82e5-95adef0511b5)
+POST to SSE transport (session 251b3215-a124-44cc-82e5-95adef0511b5)
+POST to SSE transport (session 251b3215-a124-44cc-82e5-95adef0511b5)
+SSE transport closed (session 251b3215-a124-44cc-82e5-95adef0511b5)
+Cleaning up SSE session: 251b3215-a124-44cc-82e5-95adef0511b5
+SSE transport closed (session 251b3215-a124-44cc-82e5-95adef0511b5)
+SSE transport closed (session 251b3215-a124-44cc-82e5-95adef0511b5)
+SSE client disconnected (session 251b3215-a124-44cc-82e5-95adef0511b5)
+
+Received SIGTERM, shutting down MCP SuperAssistant proxy gracefully...
+Starting graceful shutdown...
+Disconnected from codap-interactive
+HTTP server closed successfully
+MCP SuperAssistant Proxy stopped
+Graceful shutdown completed
