@@ -1,14 +1,36 @@
 import typescriptEslint from "typescript-eslint";
 import baseConfig from "./eslint.config.mjs";
 
-// build/production configuration extends default/development configuration
-export default typescriptEslint.config(
+/** @type {import("eslint").Linter.FlatConfig[]} */
+export default [
   ...baseConfig,
+
   {
+    files: ["**/*.js", "**/*.ts"],
     rules: {
-      "@eslint-community/eslint-comments/no-unused-disable": "warn",
-      "no-console": ["warn", { allow: ["warn", "error"] }],
-      "no-debugger": "error"      
+      "@typescript-eslint/no-require-imports": "off",
+      "@typescript-eslint/no-empty-object-type": "off",
+      "import/no-unresolved": "off",
+      "prefer-rest-params": "off",
+      "no-console": "off",
+      "no-debugger": "error",
+      "@typescript-eslint/no-empty-function": "off",
+      "@typescript-eslint/no-this-alias": "off",
+      "prefer-const": "off",
+      "max-len": "off"
+    }
+  },
+
+  {
+    files: ["*.js", "**/*.js"],
+    languageOptions: {
+      globals: {
+        module: "readonly",
+        exports: "readonly",
+        require: "readonly"
+      },
+      sourceType: "commonjs"
     }
   }
-);
+];
+

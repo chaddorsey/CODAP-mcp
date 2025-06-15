@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "CommonJS",
+    "rootDir": ".",
+    "outDir": "dist",
+    "esModuleInterop": true,
+    "strict": true,
+    "types": ["node"]
+  },
+  "include": [
+    "server/**/*",
+    "src/codap-interface.ts",
+    "src/types.ts",
+    "src/codap-helper.ts"
+  ]
+}

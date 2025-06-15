@@ -1,11 +1,12 @@
- {
+{
   "compilerOptions": {
-    "outDir": "./dist/",
+    "outDir": "build",
     "sourceMap": true,
     "noImplicitAny": true,
     "module": "esnext",
     "moduleResolution": "node",
     "target": "es2018",
+    "declaration": true,
     "allowJs": true,
     "esModuleInterop": true,
     "resolveJsonModule": true,
@@ -13,12 +14,10 @@
     "importHelpers": true,
     "strict": true,
     "types": [],
-    "typeRoots": ["node_modules/@types", "node_modules"],
     "jsx": "react",
     "lib": ["dom", "dom.iterable", "es2018"]
   },
   "include": [
-    "./src/**/*",
-    "server"
+    "./src/**/*"
   ]
 }

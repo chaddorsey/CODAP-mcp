@@ -1,0 +1,15 @@
+coverage
+coverage-cypress
+build/
+/*.js
+/*.js.map
+src/*.d.ts
+node_modules
+npm-error.log
+top-test
+.DS_Store
+.nyc_output
+
+# Editors
+.idea
+

@@ -1,105 +1,233 @@
-import React, { useEffect, useId, useState } from "react";
-import {
-  createDataContext,
-  createItems,
-  createNewCollection,
-  createTable,
-  getAllItems,
-  getDataContext,
-  initializePlugin,
-  addDataContextChangeListener,
-  ClientNotification,
-} from "@concord-consortium/codap-plugin-api";
+import React, { useEffect, useState } from "react";
+import { codapInterface } from "../codap-interface";
+import { 
+  createMcpClient, 
+  testEchoTool, 
+  testAddNumbersTool, 
+  testGetTimeTool, 
+  listMcpTools, 
+  testMcpDirectly, 
+  testEchoDirectly 
+} from "../mcp-client";
 import "./App.css";
 
-const kPluginName = "Sample Plugin";
-const kVersion = "0.0.1";
-const kInitialDimensions = {
-  width: 380,
-  height: 680
-};
-const kDataContextName = "SamplePluginData";
-
 export const App = () => {
-  const [codapResponse, setCodapResponse] = useState<any>(undefined);
-  const [listenerNotification, setListenerNotification] = useState<string>();
-  const [dataContext, setDataContext] = useState<any>(null);
-  const responseId = useId();
-  const notificationId = useId();
+  const [dataContext, setDataContext] = useState<unknown>(null);
+  const [codapResponse, setCodapResponse] = useState<unknown>(null);
+  const [listenerNotification] = useState<string>("");
+  const [mcpResponse, setMcpResponse] = useState<string>("");
+  const [mcpConnected, setMcpConnected] = useState<boolean>(false);
+
+  const responseId = "response";
+  const notificationId = "notification";
 
   useEffect(() => {
-    initializePlugin({ pluginName: kPluginName, version: kVersion, dimensions: kInitialDimensions });
-
-    // this is an example of how to add a notification listener to a CODAP component
-    // for more information on listeners and notifications, see
-    // https://github.com/concord-consortium/codap/wiki/CODAP-Data-Interactive-Plugin-API#documentchangenotice
-    const casesUpdatedListener = (listenerRes: ClientNotification) => {
-      if (listenerRes.values.operation === "updateCases") {
-        setListenerNotification(JSON.stringify(listenerRes.values.result));
+    const initializePlugin = async () => {
+      try {
+        await codapInterface.init({
+          name: "Sample Plugin",
+          version: "0.0.1",
+          dimensions: { width: 380, height: 680 }
+        });
+        console.log("CODAP interface initialized");
+      } catch (error) {
+        console.error("CODAP initialization failed:", error);
       }
     };
-    addDataContextChangeListener(kDataContextName, casesUpdatedListener);
+
+    const initializeMcp = async () => {
+      try {
+        await createMcpClient();
+        console.log("MCP client initialized successfully");
+        setMcpConnected(true);
+      } catch (error) {
+        console.error("MCP initialization failed:", error);
+        console.log("App will continue to work without MCP client");
+      }
+    };
+
+    initializePlugin();
+    initializeMcp();
   }, []);
 
-  const handleOpenTable = async () => {
-    const res = await createTable(kDataContextName);
-    setCodapResponse(res);
+  const handleCreateData = async () => {
+    try {
+      const result = await codapInterface.sendRequest({
+        action: "create",
+        resource: "dataContext",
+        values: {
+          name: "Sample Data",
+          collections: [
+            {
+              name: "Cases",
+              attrs: [
+                { name: "x", type: "numeric" },
+                { name: "y", type: "numeric" }
+              ]
+            }
+          ]
+        }
+      });
+      setDataContext(result);
+      setCodapResponse(result);
+    } catch (error) {
+      console.error("Error creating data context:", error);
+      setCodapResponse({ error });
+    }
   };
 
-  const handleCreateData = async() => {
-    const existingDataContext = await getDataContext(kDataContextName);
-    let createDC, createNC, createI;
-    if (!existingDataContext.success) {
-      createDC = await createDataContext(kDataContextName);
-      setDataContext(createDC.values);
+  const handleOpenTable = async () => {
+    try {
+      const result = await codapInterface.sendRequest({
+        action: "create",
+        resource: "component",
+        values: {
+          type: "caseTable",
+          dataContext: "Sample Data"
+        }
+      });
+      setCodapResponse(result);
+    } catch (error) {
+      console.error("Error opening table:", error);
+      setCodapResponse({ error });
     }
-    if (existingDataContext?.success || createDC?.success) {
-      createNC = await createNewCollection(kDataContextName, "Pets", [
-        { name: "animal", type: "categorical" },
-        { name: "count", type: "numeric" }
-      ]);
-      createI = await createItems(kDataContextName, [
-        { animal: "dog", count: 5 },
-        { animal: "cat", count: 4 },
-        { animal: "fish", count: 20 },
-        { animal: "horse", count: 1 },
-        { animal: "bird", count: 2 },
-        { animal: "snake", count: 1 }
-      ]);
-    }
-
-    setCodapResponse(`
-      Data context created: ${JSON.stringify(createDC)}
-      New collection created: ${JSON.stringify(createNC)}
-      New items created: ${JSON.stringify(createI)}
-    `);
   };
 
   const handleGetResponse = async () => {
-    const result = await getAllItems(kDataContextName);
-    setCodapResponse(result);
+    try {
+      const result = await codapInterface.sendRequest({
+        action: "get",
+        resource: "dataContext[Sample Data].allItems"
+      });
+      setCodapResponse(result);
+    } catch (error) {
+      console.error("Error getting all items:", error);
+      setCodapResponse({ error });
+    }
+  };
+
+  // MCP Tool Test Functions (SDK-based)
+  const handleTestEcho = async () => {
+    try {
+      const result = await testEchoTool("Hello from CODAP MCP Plugin!");
+      setMcpResponse(result);
+    } catch (error) {
+      setMcpResponse(`Error: ${error}`);
+    }
+  };
+
+  const handleTestAddNumbers = async () => {
+    try {
+      const result = await testAddNumbersTool(42, 58);
+      setMcpResponse(result);
+    } catch (error) {
+      setMcpResponse(`Error: ${error}`);
+    }
+  };
+
+  const handleTestGetTime = async () => {
+    try {
+      const result = await testGetTimeTool();
+      setMcpResponse(result);
+    } catch (error) {
+      setMcpResponse(`Error: ${error}`);
+    }
+  };
+
+  const handleListTools = async () => {
+    try {
+      const result = await listMcpTools();
+      setMcpResponse(result);
+    } catch (error) {
+      setMcpResponse(`Error: ${error}`);
+    }
+  };
+
+  // Direct HTTP Test Functions (bypass SDK)
+  const handleTestMcpDirectly = async () => {
+    console.log("handleTestMcpDirectly called");
+    try {
+      const result = await testMcpDirectly();
+      console.log("testMcpDirectly result:", result);
+      setMcpResponse(result);
+    } catch (error) {
+      console.error("testMcpDirectly error:", error);
+      setMcpResponse(`Error: ${error}`);
+    }
+  };
+
+  const handleTestEchoDirectly = async () => {
+    try {
+      const result = await testEchoDirectly("Hello via Direct HTTP!");
+      setMcpResponse(result);
+    } catch (error) {
+      setMcpResponse(`Error: ${error}`);
+    }
   };
 
   return (
     <div className="App">
-      CODAP Starter Plugin
-      <div className="buttons">
-        <button onClick={handleCreateData}>
-          Create some data
-        </button>
-        <button onClick={handleOpenTable} disabled={!dataContext}>
-          Open Table
-        </button>
-        <button onClick={handleGetResponse}>
-          See getAllItems response
-        </button>
-        <div className="response-area">
-          <label htmlFor={responseId}>Response:</label>
-          <output id={responseId} className="response">
-            { codapResponse && `${JSON.stringify(codapResponse, null, "  ")}` }
-          </output>
+      <div className="title">CODAP MCP Plugin</div>
+      
+      <div className="section">
+        <h3>CODAP Functions</h3>
+        <div className="buttons">
+          <button onClick={handleCreateData}>
+            Create some data
+          </button>
+          <button onClick={handleOpenTable} disabled={!dataContext}>
+            Open Table
+          </button>
+          <button onClick={handleGetResponse}>
+            See getAllItems response
+          </button>
         </div>
       </div>
+
+      <div className="section">
+        <h3>MCP Tools (SDK) {mcpConnected ? "✅" : "❌"}</h3>
+        <div className="buttons">
+          <button onClick={handleListTools} disabled={!mcpConnected}>
+            List MCP Tools
+          </button>
+          <button onClick={handleTestEcho} disabled={!mcpConnected}>
+            Test Echo Tool
+          </button>
+          <button onClick={handleTestAddNumbers} disabled={!mcpConnected}>
+            Test Add Numbers (42 + 58)
+          </button>
+          <button onClick={handleTestGetTime} disabled={!mcpConnected}>
+            Get Server Time
+          </button>
+        </div>
+      </div>
+
+      <div className="section">
+        <h3>MCP Tools (Direct HTTP) 🔧</h3>
+        <div className="buttons">
+          <button onClick={handleTestMcpDirectly}>
+            Test List Tools (Direct)
+          </button>
+          <button onClick={handleTestEchoDirectly}>
+            Test Echo Tool (Direct)
+          </button>
+        </div>
+      </div>
+
+      <div className="response-area">
+        <label htmlFor={responseId}>CODAP Response:</label>
+        <output id={responseId} className="response">
+          { codapResponse ? JSON.stringify(codapResponse, null, 2) : "" }
+        </output>
+      </div>
+
+      <div className="response-area">
+        <label htmlFor="mcp-response">MCP Response:</label>
+        <output id="mcp-response" className="response">
+          { mcpResponse }
+        </output>
+      </div>
+
       <div className="response-area">
         <label htmlFor={notificationId}>Listener Notification:</label>
         <output id={notificationId} className="response">
