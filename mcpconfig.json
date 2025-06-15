@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "codap-mcp": {
+      "name": "CODAP MCP Server",
+      "url": "http://localhost:8083/mcp"
+    },
+    "codap-sse": {
+      "name": "CODAP SSE Server",
+      "url": "http://localhost:8083/sse",
+      "type": "sse"
+    }
+  }
+} 

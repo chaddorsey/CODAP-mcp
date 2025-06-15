@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "simple": {
+      "name": "Simple Tools",
+      "command": "node",
+      "args": ["dist/server/simple-mcp-server.js"]
+    }
+  }
+} 
