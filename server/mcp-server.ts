@@ -184,13 +184,63 @@ async function main() {
                 required: ["a", "b"]
               }
             },
+                      {
+            name: "get_current_time",
+            description: "Get the current server time",
+            inputSchema: {
+              type: "object",
+              properties: {},
+              additionalProperties: false
+            }
+          },
+          {
+            name: "create_codap_dataset",
+            description: "Create a dataset in CODAP with sample data",
+            inputSchema: {
+              type: "object",
+              properties: {
+                datasetName: {
+                  type: "string",
+                  description: "Name for the dataset"
+                },
+                dataType: {
+                  type: "string",
+                  enum: ["random_numbers", "sample_students", "time_series"],
+                  description: "Type of sample data to generate"
+                },
+                recordCount: {
+                  type: "number",
+                  minimum: 1,
+                  maximum: 1000,
+                  description: "Number of records to generate (1-1000)"
+                }
+              },
+              required: ["datasetName", "dataType", "recordCount"]
+            }
+          },
             {
-              name: "get_current_time",
-              description: "Get the current server time",
+              name: "create_codap_dataset",
+              description: "Create a dataset in CODAP with sample data",
               inputSchema: {
                 type: "object",
-                properties: {},
-                additionalProperties: false
+                properties: {
+                  datasetName: {
+                    type: "string",
+                    description: "Name for the dataset"
+                  },
+                  dataType: {
+                    type: "string",
+                    enum: ["random_numbers", "sample_students", "time_series"],
+                    description: "Type of sample data to generate"
+                  },
+                  recordCount: {
+                    type: "number",
+                    minimum: 1,
+                    maximum: 1000,
+                    description: "Number of records to generate (1-1000)"
+                  }
+                },
+                required: ["datasetName", "dataType", "recordCount"]
               }
             }
           ]
@@ -215,7 +265,7 @@ async function main() {
               ]
             };
             
-          case "add_numbers":
+          case "add_numbers": {
             const a = (args as any).a as number;
             const b = (args as any).b as number;
             const result = a + b;
@@ -227,8 +277,9 @@ async function main() {
                 }
               ]
             };
+          }
             
-          case "get_current_time":
+          case "get_current_time": {
             return {
               content: [
                 {
@@ -237,6 +288,95 @@ async function main() {
                 }
               ]
             };
+          }
+            
+          case "create_codap_dataset": {
+            const datasetName = (args as any).datasetName as string;
+            const dataType = (args as any).dataType as string;
+            const recordCount = (args as any).recordCount as number;
+            
+            // Generate sample data based on type
+            let sampleData: any[] = [];
+            let attributes: any[] = [];
+            
+            switch (dataType) {
+              case "random_numbers": {
+                attributes = [
+                  { name: "x", type: "numeric" },
+                  { name: "y", type: "numeric" },
+                  { name: "category", type: "categorical" }
+                ];
+                for (let i = 0; i < recordCount; i++) {
+                  sampleData.push({
+                    x: Math.round(Math.random() * 100),
+                    y: Math.round(Math.random() * 100),
+                    category: ["A", "B", "C"][Math.floor(Math.random() * 3)]
+                  });
+                }
+                break;
+              }
+                
+              case "sample_students": {
+                attributes = [
+                  { name: "name", type: "categorical" },
+                  { name: "grade", type: "numeric" },
+                  { name: "subject", type: "categorical" },
+                  { name: "score", type: "numeric" }
+                ];
+                const names = ["Alice", "Bob", "Charlie", "Diana", "Eve", "Frank"];
+                const subjects = ["Math", "Science", "English", "History"];
+                for (let i = 0; i < recordCount; i++) {
+                  sampleData.push({
+                    name: names[Math.floor(Math.random() * names.length)],
+                    grade: Math.floor(Math.random() * 4) + 9, // grades 9-12
+                    subject: subjects[Math.floor(Math.random() * subjects.length)],
+                    score: Math.round(Math.random() * 40 + 60) // scores 60-100
+                  });
+                }
+                break;
+              }
+                
+              case "time_series": {
+                attributes = [
+                  { name: "date", type: "categorical" },
+                  { name: "value", type: "numeric" },
+                  { name: "trend", type: "numeric" }
+                ];
+                const startDate = new Date();
+                for (let i = 0; i < recordCount; i++) {
+                  const date = new Date(startDate);
+                  date.setDate(date.getDate() + i);
+                  sampleData.push({
+                    date: date.toISOString().split("T")[0],
+                    value: Math.round(Math.random() * 50 + 25),
+                    trend: Math.round((i * 0.5) + Math.random() * 10)
+                  });
+                }
+                break;
+              }
+            }
+            
+            // Return CODAP-compatible dataset structure
+            const codapDataset = {
+              name: datasetName,
+              collections: [
+                {
+                  name: "Cases",
+                  attrs: attributes
+                }
+              ],
+              records: sampleData
+            };
+            
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: `Created CODAP dataset "${datasetName}" with ${recordCount} ${dataType} records.\n\nDataset structure:\n${JSON.stringify(codapDataset, null, 2)}`
+                }
+              ]
+            };
+          }
             
           default:
             throw new Error(`Unknown tool: ${name}`);
@@ -358,7 +498,7 @@ async function main() {
       }
       
       switch (name) {
-        case "echo":
+        case "echo": {
           return {
             content: [
               {
@@ -367,8 +507,9 @@ async function main() {
               }
             ]
           };
+        }
           
-        case "add_numbers":
+        case "add_numbers": {
           const a = (args as any).a as number;
           const b = (args as any).b as number;
           const result = a + b;
@@ -380,8 +521,9 @@ async function main() {
               }
             ]
           };
+        }
           
-        case "get_current_time":
+        case "get_current_time": {
           return {
             content: [
               {
@@ -390,6 +532,7 @@ async function main() {
               }
             ]
           };
+        }
           
         default:
           throw new Error(`Unknown tool: ${name}`);

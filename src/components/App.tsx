@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { codapInterface } from "../codap-interface";
+import { initializePlugin, sendMessage } from "@concord-consortium/codap-plugin-api";
 import { 
   createMcpClient, 
   testEchoTool, 
@@ -7,7 +7,9 @@ import {
   testGetTimeTool, 
   listMcpTools, 
   testMcpDirectly, 
-  testEchoDirectly 
+  testEchoDirectly,
+  testCodapDatasetTool,
+  createMcpDataInCodap
 } from "../mcp-client";
 import "./App.css";
 
@@ -22,10 +24,10 @@ export const App = () => {
   const notificationId = "notification";
 
   useEffect(() => {
-    const initializePlugin = async () => {
+    const initializeCodapPlugin = async () => {
       try {
-        await codapInterface.init({
-          name: "Sample Plugin",
+        await initializePlugin({
+          pluginName: "CODAP MCP Plugin",
           version: "0.0.1",
           dimensions: { width: 380, height: 680 }
         });
@@ -46,27 +48,23 @@ export const App = () => {
       }
     };
 
-    initializePlugin();
+    initializeCodapPlugin();
     initializeMcp();
   }, []);
 
   const handleCreateData = async () => {
     try {
-      const result = await codapInterface.sendRequest({
-        action: "create",
-        resource: "dataContext",
-        values: {
-          name: "Sample Data",
-          collections: [
-            {
-              name: "Cases",
-              attrs: [
-                { name: "x", type: "numeric" },
-                { name: "y", type: "numeric" }
-              ]
-            }
-          ]
-        }
+      const result = await sendMessage("create", "dataContext", {
+        name: "Sample Data",
+        collections: [
+          {
+            name: "Cases",
+            attrs: [
+              { name: "x", type: "numeric" },
+              { name: "y", type: "numeric" }
+            ]
+          }
+        ]
       });
       setDataContext(result);
       setCodapResponse(result);
@@ -78,13 +76,9 @@ export const App = () => {
 
   const handleOpenTable = async () => {
     try {
-      const result = await codapInterface.sendRequest({
-        action: "create",
-        resource: "component",
-        values: {
-          type: "caseTable",
-          dataContext: "Sample Data"
-        }
+      const result = await sendMessage("create", "component", {
+        type: "caseTable",
+        dataContext: "Sample Data"
       });
       setCodapResponse(result);
     } catch (error) {
@@ -95,10 +89,7 @@ export const App = () => {
 
   const handleGetResponse = async () => {
     try {
-      const result = await codapInterface.sendRequest({
-        action: "get",
-        resource: "dataContext[Sample Data].allItems"
-      });
+      const result = await sendMessage("get", "dataContext[Sample Data].allItems");
       setCodapResponse(result);
     } catch (error) {
       console.error("Error getting all items:", error);
@@ -165,6 +156,15 @@ export const App = () => {
     }
   };
 
+  const handleTestCodapDataset = async () => {
+    try {
+      const result = await testCodapDatasetTool();
+      setMcpResponse(result);
+    } catch (error) {
+      setMcpResponse(`Error: ${error}`);
+    }
+  };
+
   return (
     <div className="App">
       <div className="title">CODAP MCP Plugin</div>
@@ -210,6 +210,25 @@ export const App = () => {
           </button>
           <button onClick={handleTestEchoDirectly}>
             Test Echo Tool (Direct)
+          </button>
+          <button onClick={handleTestCodapDataset}>
+            Test CODAP Dataset Tool
+          </button>
+        </div>
+      </div>
+
+      <div className="section">
+        <h3>MCP + CODAP Integration 🚀</h3>
+        <div className="buttons">
+          <button onClick={async () => {
+            try {
+              const result = await createMcpDataInCodap();
+              setMcpResponse(result);
+            } catch (error) {
+              setMcpResponse(`Error: ${error}`);
+            }
+          }}>
+            Create MCP Data in CODAP
           </button>
         </div>
       </div>
