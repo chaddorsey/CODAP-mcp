@@ -212,13 +212,50 @@ async function main() {
           let attributes: any[] = [];
           
           if (dataType === "custom" && customData) {
-            data = customData;
+            // Debug logging
+            console.error(`DEBUG: customData type: ${typeof customData}`);
+            console.error(`DEBUG: customData isArray: ${Array.isArray(customData)}`);
+            console.error(`DEBUG: customData length: ${customData?.length}`);
+            console.error(`DEBUG: customData first item: ${JSON.stringify(customData?.[0])}`);
+            
+            // Handle case where SuperAssistant sends customData as a JSON string
+            let parsedCustomData = customData;
+            if (typeof customData === 'string') {
+              try {
+                parsedCustomData = JSON.parse(customData);
+                console.error('DEBUG: Successfully parsed customData string to array');
+              } catch (error) {
+                throw new Error(`customData is a string but not valid JSON: ${error instanceof Error ? error.message : String(error)}`);
+              }
+            }
+            
+            // Ensure customData is an array
+            if (Array.isArray(parsedCustomData)) {
+              data = parsedCustomData;
+            } else {
+              throw new Error(`customData must be an array, received: ${typeof parsedCustomData}. Value: ${JSON.stringify(parsedCustomData)}`);
+            }
             // Infer attributes from first data item
             if (data.length > 0) {
-              attributes = Object.keys(data[0]).map(key => ({
-                name: key,
-                type: typeof data[0][key] === "number" ? "numeric" : "categorical"
-              }));
+              const originalKeys = Object.keys(data[0]);
+              attributes = originalKeys.map(key => {
+                // Sanitize field names: replace spaces with underscores, remove special chars
+                const sanitizedName = key.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_]/g, "");
+                return {
+                  name: sanitizedName || key, // fallback to original if sanitization results in empty string
+                  type: typeof data[0][key] === "number" ? "numeric" : "categorical"
+                };
+              });
+              
+              // Transform data to use sanitized field names
+              data = data.map(item => {
+                const newItem: any = {};
+                originalKeys.forEach((originalKey, index) => {
+                  const sanitizedKey = attributes[index].name;
+                  newItem[sanitizedKey] = item[originalKey];
+                });
+                return newItem;
+              });
             }
           } else {
             // Generate sample data
