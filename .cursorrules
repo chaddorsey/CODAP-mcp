@@ -415,7 +415,7 @@ Only one task per PBI should be 'InProgress' at any given time to maintain focus
 3. **Automation**:
    - When a task is marked as `Done`, run:
      ```bash
-     git acp "<task_id> <task_description>"
+     acp "<task_id> <task_description>"
      ```
    - This command should:
      1. Stage all changes
@@ -534,8 +534,9 @@ Only one task per PBI should be 'InProgress' at any given time to maintain focus
 ## 5.4 Test Implementation Guidelines
 
 1.  **Test File Location**:
-    *   **Unit Tests**: Located in `test/unit/` mirroring the source directory structure.
+    *   **Unit Tests**: Located in `src/test` mirroring the source directory structure.
     *   **Integration Tests**: Located in `test/integration/` (or `test/<module>/` e.g., `test/server/` as per existing conventions if more appropriate), reflecting the module or subsystem being tested.
+    *   **Playwright (E2E) Tests**: Located in `playwright/`
 2.  **Test Naming**: Test files and descriptions should be named clearly and descriptively.
 
 # 6 Attribution
