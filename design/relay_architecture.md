@@ -18,6 +18,31 @@ This document specifies the architecture for a Vercel-hosted relay server that b
                                    └──────────────┘
 ```
 
+## CODAP Integration Specifics
+
+The relay server provides 6 core CODAP tools that enable comprehensive data analysis workflows:
+
+### Data Management Tools
+- **`create_codap_dataset`**: Creates new datasets with sample data (students, time series, random numbers) or custom data
+- **`add_codap_cases`**: Adds new rows/cases to existing datasets  
+- **`get_codap_datasets`**: Lists all available datasets in the current CODAP session
+
+### Visualization Tools  
+- **`create_codap_graph`**: Creates interactive visualizations (scatterplots, histograms, bar charts, line graphs)
+
+### Analysis & Export Tools
+- **`get_codap_status`**: Retrieves current CODAP state, datasets, and components
+- **`export_codap_data`**: Exports dataset contents in JSON, CSV, or TSV formats
+
+### Typical Workflow Example
+1. LLM creates a dataset: `create_codap_dataset` with student performance data
+2. LLM visualizes the data: `create_codap_graph` as a scatterplot of grades vs scores  
+3. User sees the graph appear in CODAP browser interface
+4. LLM can add more data: `add_codap_cases` with additional student records
+5. LLM can export results: `export_codap_data` for further analysis
+
+This provides a complete round-trip demonstrating meaningful data science workflows through natural language interaction.
+
 ## Endpoint Specification
 
 ### 1. `POST /api/sessions`
@@ -56,7 +81,7 @@ Cache-Control: no-cache
 Connection: keep-alive
 
 event: tool-request
-data: {"id":"req-123","tool":"createCase","args":{"collection":"People","values":{"name":"Alice"}}}
+data: {"id":"req-123","tool":"create_codap_graph","args":{"datasetName":"students","graphType":"scatterplot","xAttribute":"grade","yAttribute":"score","title":"Student Performance"}}
 
 event: heartbeat
 data: {}
@@ -74,10 +99,13 @@ data: {}
 {
   "code": "ABCD1234",
   "id": "req-123",
-  "tool": "createCase",
+  "tool": "create_codap_graph",
   "args": {
-    "collection": "People",
-    "values": {"name": "Alice", "age": 30}
+    "datasetName": "students",
+    "graphType": "scatterplot", 
+    "xAttribute": "grade",
+    "yAttribute": "score",
+    "title": "Student Performance"
   }
 }
 ```
@@ -104,8 +132,12 @@ data: {}
   "code": "ABCD1234", 
   "id": "req-123",
   "result": {
-    "success": true,
-    "values": {"caseID": 42}
+    "content": [
+      {
+        "type": "text",
+        "text": "📈 Created scatterplot in CODAP!\n\n📊 Graph Details:\n• Dataset: students\n• Type: scatterplot\n• X-Axis: grade\n• Y-Axis: score\n• Title: Student Performance\n\n🎯 CODAP Response: {\"success\":true,\"values\":{\"id\":12345,\"title\":\"Student Performance\"}}\n\nThe visualization is now available in CODAP."
+      }
+    ]
   }
 }
 ```
@@ -127,15 +159,78 @@ data: {}
   "version": "1.0.0",
   "tools": [
     {
-      "name": "createCase",
-      "description": "Create a new case in CODAP",
+      "name": "create_codap_dataset",
+      "description": "Create a new dataset in CODAP with specified data",
       "inputSchema": {
         "type": "object",
         "properties": {
-          "collection": {"type": "string"},
-          "values": {"type": "object"}
+          "datasetName": {"type": "string", "description": "Name for the dataset in CODAP"},
+          "dataType": {"type": "string", "enum": ["random_numbers", "sample_students", "time_series", "custom"], "description": "Type of data to generate"},
+          "recordCount": {"type": "number", "minimum": 1, "maximum": 1000, "description": "Number of records to generate"},
+          "customData": {"type": "array", "description": "Custom data array (only used when dataType is 'custom')", "items": {"type": "object"}}
         },
-        "required": ["collection", "values"]
+        "required": ["datasetName", "dataType", "recordCount"]
+      }
+    },
+    {
+      "name": "create_codap_graph",
+      "description": "Create a graph/visualization in CODAP",
+      "inputSchema": {
+        "type": "object", 
+        "properties": {
+          "datasetName": {"type": "string", "description": "Name of the dataset to visualize"},
+          "graphType": {"type": "string", "enum": ["scatterplot", "histogram", "bar_chart", "line_graph"], "description": "Type of graph to create"},
+          "xAttribute": {"type": "string", "description": "Attribute for X-axis"},
+          "yAttribute": {"type": "string", "description": "Attribute for Y-axis (optional for some graph types)"},
+          "title": {"type": "string", "description": "Title for the graph"}
+        },
+        "required": ["datasetName", "graphType", "xAttribute"]
+      }
+    },
+    {
+      "name": "add_codap_cases",
+      "description": "Add new cases (rows) to an existing CODAP dataset",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "datasetName": {"type": "string", "description": "Name of the existing dataset"},
+          "cases": {"type": "array", "description": "Array of case objects to add", "items": {"type": "object"}}
+        },
+        "required": ["datasetName", "cases"]
+      }
+    },
+    {
+      "name": "get_codap_datasets",
+      "description": "Get list of all datasets currently in CODAP",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "get_codap_status", 
+      "description": "Get current status and information from CODAP",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "includeDatasets": {"type": "boolean", "description": "Whether to include dataset information", "default": true},
+          "includeComponents": {"type": "boolean", "description": "Whether to include component information", "default": true}
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "export_codap_data",
+      "description": "Export data from CODAP in various formats",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "datasetName": {"type": "string", "description": "Name of the dataset to export"},
+          "format": {"type": "string", "enum": ["json", "csv", "tsv"], "description": "Export format", "default": "json"},
+          "includeMetadata": {"type": "boolean", "description": "Whether to include metadata in export", "default": false}
+        },
+        "required": ["datasetName"]
       }
     }
   ]
@@ -168,8 +263,15 @@ data: {}
 **Value**:
 ```json
 {
-  "id": "req-123",
-  "result": {"success": true, "values": {"caseID": 42}},
+  "id": "req-123", 
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "📈 Created scatterplot in CODAP!\n\n📊 Graph Details:\n• Dataset: students\n• Type: scatterplot\n• X-Axis: grade\n• Y-Axis: score\n• Title: Student Performance\n\n🎯 CODAP Response: {\"success\":true,\"values\":{\"id\":12345,\"title\":\"Student Performance\"}}\n\nThe visualization is now available in CODAP."
+      }
+    ]
+  },
   "timestamp": "2025-01-16T15:32:30.000Z"
 }
 ```
