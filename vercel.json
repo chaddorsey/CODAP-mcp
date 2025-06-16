@@ -2,12 +2,19 @@
   "functions": {
     "server/relay/post-session.ts": {
       "runtime": "edge"
+    },
+    "server/relay/get-stream.ts": {
+      "runtime": "edge"
     }
   },
   "rewrites": [
     {
       "source": "/api/sessions",
       "destination": "/server/relay/post-session.ts"
+    },
+    {
+      "source": "/stream",
+      "destination": "/server/relay/get-stream.ts"
     }
   ],
   "headers": [
