@@ -24,6 +24,8 @@ Current MCP prototype assumes a local server or browser extension. Public users 
 4. JSON messages conform to MCP spec; validated with `zod`.  
 5. Rate-limit and validate all inputs.
 
+**Detailed Architecture**: See [Relay Architecture Design](../../design/relay_architecture.md)
+
 ## UX/UI Considerations
 Not applicable – server component.  Status & errors surface via HTTP status codes / JSON bodies for easy debugging.
 
