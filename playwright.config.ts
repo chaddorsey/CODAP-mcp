@@ -141,8 +141,8 @@ export default defineConfig<PlaywrightCoverageOptions>({
 
   /* Run local dev server before starting the tests */
   webServer: {
-    command: "npm run start:secure",
-    url: "https://localhost:8080/",
+    command: "npm run start:secure -- --port 8088",
+    url: "https://localhost:8088/",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     ignoreHTTPSErrors: true,
