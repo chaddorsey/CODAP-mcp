@@ -41,7 +41,7 @@
  *
  */
 
-import { IframePhoneRpcEndpoint } from "iframe-phone";
+import { IframePhoneRpcEndpoint, IFrameEndpoint, getIFrameEndpoint } from "iframe-phone";
 
 /**
  * The CODAP Connection
@@ -240,8 +240,9 @@ export const codapInterface = {
       config = iConfig;
 
       // initialize connection
+      const iframeEndpoint = getIFrameEndpoint();
       connection = new IframePhoneRpcEndpoint(
-          notificationHandler, "data-interactive", window.parent);
+          notificationHandler, "data-interactive", window.parent, "*", iframeEndpoint);
 
       if (!config.customInteractiveStateHandler) {
         this_.on("get", "interactiveState", function () {
