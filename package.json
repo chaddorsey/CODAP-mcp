@@ -24,9 +24,7 @@
     ],
     "moduleNameMapper": {
       "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$": "<rootDir>/codap-plugin-api-main/__mocks__/fileMock.js",
-      "\\.(css|less|sass|scss)$": "identity-obj-proxy",
-      "@modelcontextprotocol/sdk/client/index.js": "<rootDir>/__mocks__/mcp-client.js",
-      "@modelcontextprotocol/sdk/client/streamableHttp.js": "<rootDir>/__mocks__/mcp-client.js"
+      "\\.(css|less|sass|scss)$": "identity-obj-proxy"
     },
     "transformIgnorePatterns": [
       "node_modules/(?!(pkce-challenge|@modelcontextprotocol)/)"

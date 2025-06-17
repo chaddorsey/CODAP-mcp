@@ -13,6 +13,6 @@ This document lists all tasks associated with PBI 2.
 | 2-3     | [Add countdown timer functionality](./2-3.md)  | Review   | Implement timer display with automatic updates                 |
 | 2-4     | [Build copy-to-clipboard features](./2-4.md)   | Done     | Add copy code and copy prompt actions with user feedback       |
 | 2-5     | [Integrate with CODAP plugin system](./2-5.md) | Done     | Connect banner component to CODAP interface and lifecycle      |
-| 2-6     | [Implement accessibility features](./2-6.md)   | Review   | Add ARIA support, keyboard navigation, and WCAG compliance     |
+| 2-6     | [Implement accessibility features](./2-6.md)   | Done     | Add ARIA support, keyboard navigation, and WCAG compliance     |
 | 2-7     | [Add responsive design and styling](./2-7.md)  | Proposed | Style component with CODAP design system and responsive layout |
 | 2-8     | [E2E CoS Test](./2-8.md)                      | Proposed | End-to-end testing to verify all acceptance criteria are met   | 

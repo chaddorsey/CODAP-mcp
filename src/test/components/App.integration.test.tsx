@@ -18,19 +18,6 @@ jest.mock("@concord-consortium/codap-plugin-api", () => ({
   sendMessage: jest.fn().mockResolvedValue({ success: true })
 }));
 
-// Mock the MCP client
-jest.mock("../../mcp-client", () => ({
-  createMcpClient: jest.fn().mockRejectedValue(new Error("MCP not available in tests")),
-  testEchoTool: jest.fn(),
-  testAddNumbersTool: jest.fn(),
-  testGetTimeTool: jest.fn(),
-  listMcpTools: jest.fn(),
-  testMcpDirectly: jest.fn(),
-  testEchoDirectly: jest.fn(),
-  testCodapDatasetTool: jest.fn(),
-  createMcpDataInCodap: jest.fn()
-}));
-
 describe("App Integration with PairingBanner", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -70,8 +57,7 @@ describe("App Integration with PairingBanner", () => {
     // Verify existing sections still exist
     expect(screen.getByText("CODAP MCP Plugin")).toBeInTheDocument();
     expect(screen.getByText("CODAP Functions")).toBeInTheDocument();
-    expect(screen.getByText(/MCP Tools \(SDK\)/)).toBeInTheDocument();
-    expect(screen.getByText(/MCP Tools \(Direct HTTP\)/)).toBeInTheDocument();
-    expect(screen.getByText(/MCP \+ CODAP Integration/)).toBeInTheDocument();
+    expect(screen.getByText("CODAP Response")).toBeInTheDocument();
+    expect(screen.getByText("Listener Notification")).toBeInTheDocument();
   });
 }); 

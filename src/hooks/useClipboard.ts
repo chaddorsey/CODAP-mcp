@@ -120,15 +120,15 @@ export function useClipboard(): UseClipboardReturn {
    */
   const copyToClipboard = useCallback(async (text: string): Promise<ClipboardResult> => {
     if (!text || text.trim() === "") {
-      const result = { success: false, error: "No text provided to copy" };
-      setLastResult(result);
-      return result;
+      const emptyTextResult = { success: false, error: "No text provided to copy" };
+      setLastResult(emptyTextResult);
+      return emptyTextResult;
     }
 
     if (!isSupported) {
-      const result = { success: false, error: "Clipboard operations not supported in this browser" };
-      setLastResult(result);
-      return result;
+      const unsupportedResult = { success: false, error: "Clipboard operations not supported in this browser" };
+      setLastResult(unsupportedResult);
+      return unsupportedResult;
     }
 
     setIsLoading(true);

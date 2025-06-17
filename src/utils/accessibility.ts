@@ -45,7 +45,7 @@ export const CONTRAST_RATIOS = {
 export function generateTimerAnnouncement(
   timeDisplay: string,
   status: string,
-  isImportantMilestone: boolean = false
+  isImportantMilestone = false
 ): string {
   if (status === "expired") {
     return "Session has expired. Please create a new session.";

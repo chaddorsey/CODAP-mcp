@@ -52,7 +52,9 @@ describe("Accessibility Utils", () => {
 
     it("should generate instructions copy description", () => {
       const result = generateCopyActionDescription("instructions");
-      expect(result).toBe("Copy complete setup instructions including session code and connection details to clipboard");
+      expect(result).toBe(
+        "Copy complete setup instructions including session code and connection details to clipboard"
+      );
     });
   });
 

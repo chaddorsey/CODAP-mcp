@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { createSessionService, SessionService, SessionServiceError } from "../services";
 import { PairingBannerProps, BannerState, PairingBannerState } from "./types";
-import { SessionData } from "../services/types";
 import { useCountdown } from "../hooks/useCountdown";
 import { TimerStatus } from "../utils/timeFormat";
 import { useClipboard } from "../hooks/useClipboard";
@@ -12,8 +11,7 @@ import {
   generateCopyActionDescription,
   generateCopyFeedback,
   createAriaId,
-  formatTimeForScreenReader,
-  KEYBOARD_CODES
+  formatTimeForScreenReader
 } from "../utils/accessibility";
 import "./PairingBanner.css";
 
@@ -87,9 +85,9 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
       onStatusChange: (status: TimerStatus) => {
         // Generate accessibility announcements for status changes
         const timeDisplay = countdown.time?.display || "0:00";
-        const announcement = generateTimerAnnouncement(timeDisplay, status, true);
-        if (announcement) {
-          setAnnouncement(announcement);
+        const timerAnnouncement = generateTimerAnnouncement(timeDisplay, status, true);
+        if (timerAnnouncement) {
+          setAnnouncement(timerAnnouncement);
         }
         console.log("Timer status changed:", status);
       },
@@ -197,7 +195,7 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
       // Call error callback if provided
       onError?.(error instanceof Error ? error : new Error(errorMessage));
     }
-  }, [sessionService, onSessionCreated, onError]);
+  }, [sessionService, onSessionCreated, onError, countdown]);
 
   /**
    * Handles retry button click
