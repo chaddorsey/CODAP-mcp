@@ -85,3 +85,4 @@ The system is deployed on Vercel with:
 - **Node.js Runtime**: API endpoints use Node.js functions for stability
 
 For further information on [CODAP Data Interactive Plugin API](https://github.com/concord-consortium/codap/wiki/CODAP-Data-Interactive-Plugin-API).
+# Deployment verification
