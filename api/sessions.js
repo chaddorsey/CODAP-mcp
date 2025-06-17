@@ -1,8 +1,9 @@
 // Session creation endpoint using Node.js runtime
 // This avoids the Edge runtime compilation issues we were experiencing
+const { setSession, SESSION_TTL } = require('./kv-utils');
 
 // Configuration
-const SESSION_TTL_SECONDS = 600; // 10 minutes
+const SESSION_TTL_SECONDS = SESSION_TTL; // 10 minutes (600 seconds)
 const RATE_LIMIT_SESSION_PER_IP = 30;
 
 /**
@@ -79,13 +80,22 @@ export default async function handler(req, res) {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + SESSION_TTL_SECONDS * 1000);
     
-    // For this demo version, we'll return the session without storing in KV
-    // In production, this would store in Vercel KV or similar
+    // Store session in Redis with TTL
+    const sessionData = {
+      code,
+      createdAt: now.toISOString(),
+      expiresAt: expiresAt.toISOString(),
+      ip,
+      active: true
+    };
+    
+    await setSession(code, sessionData);
+    
+    // Return session details
     const response = {
       code,
       ttl: SESSION_TTL_SECONDS,
-      expiresAt: expiresAt.toISOString(),
-      note: "Demo version - session not persisted to KV store"
+      expiresAt: expiresAt.toISOString()
     };
     
     createSuccessResponse(res, response, 201);

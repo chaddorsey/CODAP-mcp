@@ -19,3 +19,6 @@ npm-error.log*
 TESTING-PBI1.md
 test-relay-manual.js
 .vercel
+
+# Local environment variables
+.env.local
