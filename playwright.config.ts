@@ -21,7 +21,7 @@ const coverageReporter: ReporterDescription = [
        break the html report. They have an extra prefix of the project name so they
        look like `CODAP-mcp/CODAP-mcp/src`. They
        have a suffix like `?[random string]` like `App.tsx?c341`. */
-    rewritePath: ({absolutePath}) => {
+    rewritePath: ({ absolutePath }) => {
       // It isn't clear if this is before or after the exclude rule
       return (absolutePath as string)
         .replace("CODAP-mcp/", "")
@@ -74,8 +74,8 @@ export default defineConfig<PlaywrightCoverageOptions>({
   workers: process.env.CI ? 1 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
-    [ "html" ],
-    [ "list" ],
+    ["html"],
+    ["list"],
     ...(collectCoverage ? [coverageReporter] : []),
     ...(reportJson ? [jsonReporter] : []),
   ],

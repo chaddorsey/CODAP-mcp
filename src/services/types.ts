@@ -51,19 +51,19 @@ export class SessionServiceError extends Error {
     public readonly originalError?: Error
   ) {
     super(message);
-    this.name = 'SessionServiceError';
+    this.name = "SessionServiceError";
   }
 }
 
 // Error codes for different failure scenarios
 export const SESSION_ERROR_CODES = {
-  NETWORK_ERROR: 'NETWORK_ERROR',
-  TIMEOUT: 'TIMEOUT',
-  INVALID_RESPONSE: 'INVALID_RESPONSE',
-  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
-  RATE_LIMITED: 'RATE_LIMITED',
-  INVALID_SESSION: 'INVALID_SESSION',
-  CONFIGURATION_ERROR: 'CONFIGURATION_ERROR'
+  NETWORK_ERROR: "NETWORK_ERROR",
+  TIMEOUT: "TIMEOUT",
+  INVALID_RESPONSE: "INVALID_RESPONSE",
+  SERVICE_UNAVAILABLE: "SERVICE_UNAVAILABLE",
+  RATE_LIMITED: "RATE_LIMITED",
+  INVALID_SESSION: "INVALID_SESSION",
+  CONFIGURATION_ERROR: "CONFIGURATION_ERROR"
 } as const;
 
 export type SessionErrorCode = typeof SESSION_ERROR_CODES[keyof typeof SESSION_ERROR_CODES];

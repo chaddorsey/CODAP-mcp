@@ -1,8 +1,8 @@
-import { renderHook, act } from '@testing-library/react';
-import { useCountdown } from '../../hooks/useCountdown';
-import { TimerStatus } from '../../utils/timeFormat';
+import { renderHook, act } from "@testing-library/react";
+import { useCountdown } from "../../hooks/useCountdown";
+import { TimerStatus } from "../../utils/timeFormat";
 
-describe('useCountdown hook', () => {
+describe("useCountdown hook", () => {
   beforeEach(() => {
     jest.useFakeTimers();
     jest.clearAllMocks();
@@ -12,23 +12,23 @@ describe('useCountdown hook', () => {
     jest.useRealTimers();
   });
 
-  describe('initialization', () => {
-    it('initializes with correct default values', () => {
+  describe("initialization", () => {
+    it("initializes with correct default values", () => {
       const { result } = renderHook(() => useCountdown(600));
       
       expect(result.current.time.seconds).toBe(600);
-      expect(result.current.time.display).toBe('10:00');
+      expect(result.current.time.display).toBe("10:00");
       expect(result.current.isRunning).toBe(true); // autoStart default
       expect(result.current.isExpired).toBe(false);
     });
 
-    it('initializes with autoStart disabled', () => {
+    it("initializes with autoStart disabled", () => {
       const { result } = renderHook(() => useCountdown(600, { autoStart: false }));
       
       expect(result.current.isRunning).toBe(false);
     });
 
-    it('handles zero initial time', () => {
+    it("handles zero initial time", () => {
       const { result } = renderHook(() => useCountdown(0));
       
       expect(result.current.time.seconds).toBe(0);
@@ -37,8 +37,8 @@ describe('useCountdown hook', () => {
     });
   });
 
-  describe('timer functionality', () => {
-    it('counts down correctly when running', () => {
+  describe("timer functionality", () => {
+    it("counts down correctly when running", () => {
       const { result } = renderHook(() => useCountdown(10, { autoStart: true }));
       
       expect(result.current.time.seconds).toBe(10);
@@ -52,7 +52,7 @@ describe('useCountdown hook', () => {
       expect(result.current.time.seconds).toBe(7);
     });
 
-    it('stops at zero and calls onExpire', () => {
+    it("stops at zero and calls onExpire", () => {
       const onExpire = jest.fn();
       const { result } = renderHook(() => useCountdown(3, { autoStart: true, onExpire }));
       
@@ -67,7 +67,7 @@ describe('useCountdown hook', () => {
       expect(onExpire).toHaveBeenCalledTimes(1);
     });
 
-    it('does not go below zero', () => {
+    it("does not go below zero", () => {
       const { result } = renderHook(() => useCountdown(2, { autoStart: true }));
       
       // Advance timer beyond completion
@@ -79,8 +79,8 @@ describe('useCountdown hook', () => {
     });
   });
 
-  describe('control functions', () => {
-    it('starts timer when start() is called', () => {
+  describe("control functions", () => {
+    it("starts timer when start() is called", () => {
       const { result } = renderHook(() => useCountdown(10, { autoStart: false }));
       
       expect(result.current.isRunning).toBe(false);
@@ -92,7 +92,7 @@ describe('useCountdown hook', () => {
       expect(result.current.isRunning).toBe(true);
     });
 
-    it('pauses timer when pause() is called', () => {
+    it("pauses timer when pause() is called", () => {
       const { result } = renderHook(() => useCountdown(10, { autoStart: true }));
       
       expect(result.current.isRunning).toBe(true);
@@ -111,7 +111,7 @@ describe('useCountdown hook', () => {
       expect(result.current.time.seconds).toBe(10);
     });
 
-    it('resets timer when reset() is called', () => {
+    it("resets timer when reset() is called", () => {
       const { result } = renderHook(() => useCountdown(10, { autoStart: true }));
       
       // Let some time pass
@@ -130,7 +130,7 @@ describe('useCountdown hook', () => {
       expect(result.current.isRunning).toBe(false);
     });
 
-    it('updates timer with new time via updateTimer()', () => {
+    it("updates timer with new time via updateTimer()", () => {
       const { result } = renderHook(() => useCountdown(10, { autoStart: false }));
       
       expect(result.current.time.seconds).toBe(10);
@@ -142,7 +142,7 @@ describe('useCountdown hook', () => {
       expect(result.current.time.seconds).toBe(300);
     });
 
-    it('does not start when start() called with zero remaining', () => {
+    it("does not start when start() called with zero remaining", () => {
       const { result } = renderHook(() => useCountdown(0, { autoStart: false }));
       
       act(() => {
@@ -153,8 +153,8 @@ describe('useCountdown hook', () => {
     });
   });
 
-  describe('callback functions', () => {
-    it('calls onStatusChange when status changes', () => {
+  describe("callback functions", () => {
+    it("calls onStatusChange when status changes", () => {
       const onStatusChange = jest.fn();
       
       const { result } = renderHook(() => 
@@ -169,14 +169,14 @@ describe('useCountdown hook', () => {
       expect(onStatusChange).toHaveBeenCalledWith(TimerStatus.WARNING);
     });
 
-    it('calls onAnnouncement when shouldAnnounce is true', () => {
+    it("calls onAnnouncement when shouldAnnounce is true", () => {
       // Skip this test for now - announcement logic needs more complex setup
       expect(true).toBe(true);
     });
   });
 
-  describe('edge cases and error handling', () => {
-    it('handles rapid timer updates', () => {
+  describe("edge cases and error handling", () => {
+    it("handles rapid timer updates", () => {
       const { result } = renderHook(() => useCountdown(10, { autoStart: true }));
       
       // Multiple rapid timer advances
@@ -188,7 +188,7 @@ describe('useCountdown hook', () => {
       expect(result.current.isExpired).toBe(true);
     });
 
-    it('cleans up timer on unmount', () => {
+    it("cleans up timer on unmount", () => {
       const { result, unmount } = renderHook(() => useCountdown(10, { autoStart: true }));
       
       expect(result.current.isRunning).toBe(true);
@@ -201,7 +201,7 @@ describe('useCountdown hook', () => {
       });
     });
 
-    it('handles updateTimer with running timer', () => {
+    it("handles updateTimer with running timer", () => {
       const { result } = renderHook(() => useCountdown(10, { autoStart: true }));
       
       // Update timer while running
@@ -213,7 +213,7 @@ describe('useCountdown hook', () => {
       expect(result.current.isRunning).toBe(true);
     });
 
-    it('handles custom interval setting', () => {
+    it("handles custom interval setting", () => {
       const { result } = renderHook(() => 
         useCountdown(10, { autoStart: true, interval: 500 })
       );
@@ -236,8 +236,8 @@ describe('useCountdown hook', () => {
     });
   });
 
-  describe('timer precision', () => {
-    it('maintains accuracy over extended periods', () => {
+  describe("timer precision", () => {
+    it("maintains accuracy over extended periods", () => {
       const { result } = renderHook(() => useCountdown(120, { autoStart: true }));
       
       // Simulate 2 minutes of timer activity
@@ -251,7 +251,7 @@ describe('useCountdown hook', () => {
       expect(result.current.isExpired).toBe(true);
     });
 
-    it('handles pause and resume correctly', () => {
+    it("handles pause and resume correctly", () => {
       const { result } = renderHook(() => useCountdown(10, { autoStart: true }));
       
       // Run for 3 seconds

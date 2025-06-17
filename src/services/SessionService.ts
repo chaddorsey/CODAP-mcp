@@ -7,7 +7,7 @@ import {
   ApiErrorResponse,
   SESSION_ERROR_CODES,
   DEFAULT_SESSION_CONFIG
-} from './types';
+} from "./types";
 
 /**
  * Service class for communicating with the relay API endpoints
@@ -24,7 +24,7 @@ export class SessionService implements SessionServiceInterface {
     // Validate configuration
     if (!config.baseUrl) {
       throw new SessionServiceError(
-        'Base URL is required for SessionService',
+        "Base URL is required for SessionService",
         SESSION_ERROR_CODES.CONFIGURATION_ERROR
       );
     }
@@ -36,7 +36,7 @@ export class SessionService implements SessionServiceInterface {
     };
 
     // Ensure baseUrl doesn't end with slash for consistent URL building
-    this.config.baseUrl = this.config.baseUrl.replace(/\/$/, '');
+    this.config.baseUrl = this.config.baseUrl.replace(/\/$/, "");
   }
 
   /**
@@ -52,9 +52,9 @@ export class SessionService implements SessionServiceInterface {
     for (let attempt = 1; attempt <= this.config.maxRetries; attempt++) {
       try {
         const response = await this.makeRequest(url, {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json'
+            "Content-Type": "application/json"
           },
           body: JSON.stringify({})
         });
@@ -80,7 +80,7 @@ export class SessionService implements SessionServiceInterface {
         // Validate response structure
         if (!this.isValidSessionData(sessionData)) {
           throw new SessionServiceError(
-            'Invalid session data received from server',
+            "Invalid session data received from server",
             SESSION_ERROR_CODES.INVALID_RESPONSE
           );
         }
@@ -88,7 +88,7 @@ export class SessionService implements SessionServiceInterface {
         return sessionData;
 
       } catch (error) {
-        lastError = error instanceof Error ? error : new Error('Unknown error');
+        lastError = error instanceof Error ? error : new Error("Unknown error");
         
         // If this is a SessionServiceError for non-retryable errors, throw immediately
         if (error instanceof SessionServiceError && 
@@ -118,7 +118,7 @@ export class SessionService implements SessionServiceInterface {
    * @returns True if code format is valid
    */
   isValidSession(code: string): boolean {
-    return typeof code === 'string' && /^[A-Z2-7]{8}$/.test(code);
+    return typeof code === "string" && /^[A-Z2-7]{8}$/.test(code);
   }
 
   /**
@@ -135,14 +135,14 @@ export class SessionService implements SessionServiceInterface {
       });
       return response;
     } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
+      if (error instanceof Error && error.name === "AbortError") {
         throw new SessionServiceError(
-          'Request timeout',
+          "Request timeout",
           SESSION_ERROR_CODES.TIMEOUT
         );
       }
       throw new SessionServiceError(
-        'Network request failed',
+        "Network request failed",
         SESSION_ERROR_CODES.NETWORK_ERROR,
         undefined,
         error instanceof Error ? error : undefined
@@ -192,13 +192,13 @@ export class SessionService implements SessionServiceInterface {
    */
   private isValidSessionData(data: any): data is SessionData {
     return (
-      typeof data === 'object' &&
+      typeof data === "object" &&
       data !== null &&
-      typeof data.code === 'string' &&
+      typeof data.code === "string" &&
       this.isValidSession(data.code) &&
-      typeof data.ttl === 'number' &&
+      typeof data.ttl === "number" &&
       data.ttl > 0 &&
-      typeof data.expiresAt === 'string'
+      typeof data.expiresAt === "string"
     );
   }
 

@@ -31,26 +31,26 @@ function createSuccessResponse(res, data, status = 200) {
  */
 export default async function handler(req, res) {
   // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
   try {
     // Handle CORS preflight
-    if (req.method === 'OPTIONS') {
+    if (req.method === "OPTIONS") {
       res.status(200).end();
       return;
     }
     
     // Only allow POST method
-    if (req.method !== 'POST') {
-      createErrorResponse(res, 405, 'method_not_allowed', 'Only POST method is allowed');
+    if (req.method !== "POST") {
+      createErrorResponse(res, 405, "method_not_allowed", "Only POST method is allowed");
       return;
     }
     
     // Validate request body
     if (!req.body) {
-      createErrorResponse(res, 400, 'missing_body', 'Request body is required');
+      createErrorResponse(res, 400, "missing_body", "Request body is required");
       return;
     }
     
@@ -58,22 +58,22 @@ export default async function handler(req, res) {
     
     // Validate required fields
     if (!sessionCode) {
-      createErrorResponse(res, 400, 'missing_session_code', 'Session code is required');
+      createErrorResponse(res, 400, "missing_session_code", "Session code is required");
       return;
     }
     
     if (!isValidSessionCode(sessionCode)) {
-      createErrorResponse(res, 400, 'invalid_session_code', 'Session code must be 8 characters (A-Z, 2-7)');
+      createErrorResponse(res, 400, "invalid_session_code", "Session code must be 8 characters (A-Z, 2-7)");
       return;
     }
     
-    if (!requestId || typeof requestId !== 'string') {
-      createErrorResponse(res, 400, 'missing_request_id', 'Request ID is required');
+    if (!requestId || typeof requestId !== "string") {
+      createErrorResponse(res, 400, "missing_request_id", "Request ID is required");
       return;
     }
     
-    if (!toolName || typeof toolName !== 'string') {
-      createErrorResponse(res, 400, 'missing_tool_name', 'Tool name is required');
+    if (!toolName || typeof toolName !== "string") {
+      createErrorResponse(res, 400, "missing_tool_name", "Tool name is required");
       return;
     }
     
@@ -84,19 +84,19 @@ export default async function handler(req, res) {
       tool: toolName,
       params,
       timestamp: new Date().toISOString(),
-      status: 'queued'
+      status: "queued"
     };
     
     console.log(`Tool request queued for session ${sessionCode}:`, requestData);
     
     createSuccessResponse(res, {
-      message: 'Tool request queued successfully',
+      message: "Tool request queued successfully",
       requestId,
-      note: 'Demo version - request not persisted to queue'
+      note: "Demo version - request not persisted to queue"
     }, 202);
     
   } catch (error) {
-    console.error('Tool request error:', error);
-    createErrorResponse(res, 500, 'internal_server_error', 'Failed to process tool request');
+    console.error("Tool request error:", error);
+    createErrorResponse(res, 500, "internal_server_error", "Failed to process tool request");
   }
 } 

@@ -1,4 +1,4 @@
-import {ClientHandler, codapInterface} from "./codap-interface";
+import { ClientHandler, codapInterface } from "./codap-interface";
 import { Action, Attribute, CodapItemValues, CodapItem } from "./types";
 export interface IDimensions {
   width: number;
@@ -65,7 +65,7 @@ export const selectSelf = () => {
     return codapInterface.sendRequest({
       action: "notify",
       resource:  `component[${id}]`,
-      values: {request: "select"}
+      values: { request: "select" }
     }, (result: IResult) => {
       if (!result.success) {
         // eslint-disable-next-line no-console
@@ -74,7 +74,7 @@ export const selectSelf = () => {
     });
   };
 
-  codapInterface.sendRequest({action: "get", resource: "interactiveFrame"}, (result: IResult) => {
+  codapInterface.sendRequest({ action: "get", resource: "interactiveFrame" }, (result: IResult) => {
     if (result.success) {
       return selectComponent(result.values.id);
     }
@@ -96,11 +96,11 @@ export const getDataContext = (dataContextName: string) => {
 };
 
 export const createDataContext = (dataContextName: string) => {
-  return sendMessage("create", "dataContext", {name: dataContextName});
+  return sendMessage("create", "dataContext", { name: dataContextName });
 };
 
 export const createDataContextFromURL = (url: string) => {
-  return sendMessage("create", "dataContextFromURL", {"URL": url});
+  return sendMessage("create", "dataContextFromURL", { "URL": url });
 };
 
 export const addDataContextsListListener = (callback: ClientHandler) => {

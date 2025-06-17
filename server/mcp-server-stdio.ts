@@ -156,7 +156,7 @@ async function main() {
         const recordCount = (args as any).recordCount as number;
         
         // Generate sample data based on type
-        let sampleData: any[] = [];
+        const sampleData: any[] = [];
         let attributes: any[] = [];
         
         switch (dataType) {

@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { formatTimer, FormattedTime, TimerStatus } from '../utils/timeFormat';
+import { useState, useEffect, useRef, useCallback } from "react";
+import { formatTimer, FormattedTime, TimerStatus } from "../utils/timeFormat";
 
 /**
  * Configuration options for the countdown hook
@@ -57,7 +57,7 @@ export function useCountdown(
 
   const [remainingSeconds, setRemainingSeconds] = useState(initialSeconds);
   const [isRunning, setIsRunning] = useState(autoStart && initialSeconds > 0);
-  const [totalSeconds] = useState(initialSeconds);
+  const [totalSeconds, setTotalSeconds] = useState(initialSeconds);
   
   // Use refs to store timer and previous values
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -96,6 +96,7 @@ export function useCountdown(
   const reset = useCallback(() => {
     setIsRunning(false);
     setRemainingSeconds(initialSeconds);
+    setTotalSeconds(initialSeconds);
     previousSecondsRef.current = initialSeconds;
     clearTimer();
   }, [initialSeconds, clearTimer]);
@@ -106,13 +107,14 @@ export function useCountdown(
   const updateTimer = useCallback((newRemainingSeconds: number) => {
     const prevSeconds = remainingSeconds;
     setRemainingSeconds(newRemainingSeconds);
+    setTotalSeconds(newRemainingSeconds); // Update total seconds to match new session
     previousSecondsRef.current = prevSeconds; // Store previous value for announcement logic
     
-    // Auto-start if timer was running and new time is valid
-    if (newRemainingSeconds > 0 && isRunning) {
+    // Auto-start if new time is valid (regardless of current running state)
+    if (newRemainingSeconds > 0) {
       setIsRunning(true);
     }
-  }, [remainingSeconds, isRunning]);
+  }, [remainingSeconds]);
 
   /**
    * Timer tick effect - handles countdown logic
@@ -154,7 +156,7 @@ export function useCountdown(
     
     // Handle accessibility announcements
     if (currentTime.shouldAnnounce && onAnnouncement) {
-      import('../utils/timeFormat').then(({ getAccessibleTimeMessage }) => {
+      import("../utils/timeFormat").then(({ getAccessibleTimeMessage }) => {
         const message = getAccessibleTimeMessage(currentTime);
         onAnnouncement(message);
       });

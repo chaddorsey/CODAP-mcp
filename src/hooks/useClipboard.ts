@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback } from "react";
 
 /**
  * Clipboard operation result
@@ -39,9 +39,9 @@ export interface UseClipboardReturn {
  */
 function isClipboardApiSupported(): boolean {
   return (
-    typeof navigator !== 'undefined' &&
-    typeof navigator.clipboard !== 'undefined' &&
-    typeof navigator.clipboard.writeText === 'function'
+    typeof navigator !== "undefined" &&
+    typeof navigator.clipboard !== "undefined" &&
+    typeof navigator.clipboard.writeText === "function"
   );
 }
 
@@ -50,8 +50,8 @@ function isClipboardApiSupported(): boolean {
  */
 function isExecCommandSupported(): boolean {
   return (
-    typeof document !== 'undefined' &&
-    typeof document.execCommand === 'function'
+    typeof document !== "undefined" &&
+    typeof document.execCommand === "function"
   );
 }
 
@@ -63,7 +63,7 @@ async function copyWithClipboardApi(text: string): Promise<ClipboardResult> {
     await navigator.clipboard.writeText(text);
     return { success: true };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Clipboard API failed';
+    const errorMessage = error instanceof Error ? error.message : "Clipboard API failed";
     return { success: false, error: errorMessage };
   }
 }
@@ -74,13 +74,13 @@ async function copyWithClipboardApi(text: string): Promise<ClipboardResult> {
 function copyWithExecCommand(text: string): ClipboardResult {
   try {
     // Create a temporary textarea element
-    const textarea = document.createElement('textarea');
+    const textarea = document.createElement("textarea");
     textarea.value = text;
-    textarea.style.position = 'fixed';
-    textarea.style.left = '-999999px';
-    textarea.style.top = '-999999px';
-    textarea.setAttribute('aria-hidden', 'true');
-    textarea.setAttribute('tabindex', '-1');
+    textarea.style.position = "fixed";
+    textarea.style.left = "-999999px";
+    textarea.style.top = "-999999px";
+    textarea.setAttribute("aria-hidden", "true");
+    textarea.setAttribute("tabindex", "-1");
     
     document.body.appendChild(textarea);
     
@@ -88,7 +88,7 @@ function copyWithExecCommand(text: string): ClipboardResult {
     textarea.focus();
     textarea.select();
     
-    const successful = document.execCommand('copy');
+    const successful = document.execCommand("copy");
     
     // Clean up
     document.body.removeChild(textarea);
@@ -96,10 +96,10 @@ function copyWithExecCommand(text: string): ClipboardResult {
     if (successful) {
       return { success: true };
     } else {
-      return { success: false, error: 'execCommand copy failed' };
+      return { success: false, error: "execCommand copy failed" };
     }
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'execCommand copy failed';
+    const errorMessage = error instanceof Error ? error.message : "execCommand copy failed";
     return { success: false, error: errorMessage };
   }
 }
@@ -119,14 +119,14 @@ export function useClipboard(): UseClipboardReturn {
    * Copy text to clipboard using available methods
    */
   const copyToClipboard = useCallback(async (text: string): Promise<ClipboardResult> => {
-    if (!text || text.trim() === '') {
-      const result = { success: false, error: 'No text provided to copy' };
+    if (!text || text.trim() === "") {
+      const result = { success: false, error: "No text provided to copy" };
       setLastResult(result);
       return result;
     }
 
     if (!isSupported) {
-      const result = { success: false, error: 'Clipboard operations not supported in this browser' };
+      const result = { success: false, error: "Clipboard operations not supported in this browser" };
       setLastResult(result);
       return result;
     }
@@ -145,14 +145,14 @@ export function useClipboard(): UseClipboardReturn {
       }
       // No supported methods available
       else {
-        result = { success: false, error: 'No clipboard methods available' };
+        result = { success: false, error: "No clipboard methods available" };
       }
     } catch (error) {
       // If Clipboard API fails, try execCommand as fallback
       if (isExecCommandSupported()) {
         result = copyWithExecCommand(text);
       } else {
-        const errorMessage = error instanceof Error ? error.message : 'Clipboard operation failed';
+        const errorMessage = error instanceof Error ? error.message : "Clipboard operation failed";
         result = { success: false, error: errorMessage };
       }
     } finally {

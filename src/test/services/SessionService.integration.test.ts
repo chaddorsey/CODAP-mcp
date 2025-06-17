@@ -1,8 +1,8 @@
-import { SessionService, SessionServiceError } from '../../services';
+import { SessionService, SessionServiceError } from "../../services";
 
 // Integration tests that verify SessionService API contract compliance
-describe('SessionService Integration Tests', () => {
-  const mockBaseUrl = 'https://test-relay.example.com';
+describe("SessionService Integration Tests", () => {
+  const mockBaseUrl = "https://test-relay.example.com";
   let sessionService: SessionService;
 
   // Mock fetch for controlled integration testing
@@ -14,12 +14,12 @@ describe('SessionService Integration Tests', () => {
     mockFetch.mockClear();
   });
 
-  describe('API Contract Compliance', () => {
-    it('should make correct HTTP request to sessions endpoint', async () => {
+  describe("API Contract Compliance", () => {
+    it("should make correct HTTP request to sessions endpoint", async () => {
       const expectedResponse = {
-        code: 'ABCD1234',
+        code: "ABCD1234",
         ttl: 600,
-        expiresAt: '2025-01-17T16:00:00.000Z'
+        expiresAt: "2025-01-17T16:00:00.000Z"
       };
 
       mockFetch.mockResolvedValueOnce({
@@ -32,9 +32,9 @@ describe('SessionService Integration Tests', () => {
       expect(mockFetch).toHaveBeenCalledWith(
         `${mockBaseUrl}/api/sessions`,
         {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json'
+            "Content-Type": "application/json"
           },
           body: JSON.stringify({}),
           signal: expect.any(AbortSignal)
@@ -42,11 +42,11 @@ describe('SessionService Integration Tests', () => {
       );
     });
 
-    it('should handle relay API response structure correctly', async () => {
+    it("should handle relay API response structure correctly", async () => {
       const relayResponse = {
-        code: 'TEST1234',
+        code: "TEST1234",
         ttl: 600,
-        expiresAt: '2025-01-17T16:00:00.000Z'
+        expiresAt: "2025-01-17T16:00:00.000Z"
       };
 
       mockFetch.mockResolvedValueOnce({
@@ -62,22 +62,22 @@ describe('SessionService Integration Tests', () => {
       expect(result.expiresAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
     });
 
-    it('should handle actual relay error responses', async () => {
+    it("should handle actual relay error responses", async () => {
       const errorScenarios = [
         {
           status: 429,
-          response: { error: 'Rate limit exceeded', code: 'RATE_LIMITED' },
-          expectedErrorType: 'RATE_LIMITED'
+          response: { error: "Rate limit exceeded", code: "RATE_LIMITED" },
+          expectedErrorType: "RATE_LIMITED"
         },
         {
           status: 500,
-          response: { error: 'Internal server error' },
-          expectedErrorType: 'SERVICE_UNAVAILABLE'
+          response: { error: "Internal server error" },
+          expectedErrorType: "SERVICE_UNAVAILABLE"
         },
         {
           status: 400,
-          response: { error: 'Invalid request', code: 'INVALID_REQUEST' },
-          expectedErrorType: 'INVALID_SESSION'
+          response: { error: "Invalid request", code: "INVALID_REQUEST" },
+          expectedErrorType: "INVALID_SESSION"
         }
       ];
 
@@ -94,16 +94,16 @@ describe('SessionService Integration Tests', () => {
     });
   });
 
-  describe('Environment Configuration', () => {
-    it('should work with production-like URLs', async () => {
+  describe("Environment Configuration", () => {
+    it("should work with production-like URLs", async () => {
       const prodService = new SessionService({
-        baseUrl: 'https://codap-mcp.vercel.app'
+        baseUrl: "https://codap-mcp.vercel.app"
       });
 
       const expectedResponse = {
-        code: 'PROD1234',
+        code: "PROD1234",
         ttl: 600,
-        expiresAt: '2025-01-17T16:00:00.000Z'
+        expiresAt: "2025-01-17T16:00:00.000Z"
       };
 
       mockFetch.mockResolvedValueOnce({
@@ -114,22 +114,22 @@ describe('SessionService Integration Tests', () => {
       const result = await prodService.createSession();
       
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://codap-mcp.vercel.app/api/sessions',
+        "https://codap-mcp.vercel.app/api/sessions",
         expect.any(Object)
       );
-      expect(result.code).toBe('PROD1234');
+      expect(result.code).toBe("PROD1234");
     });
 
-    it('should work with development URLs', async () => {
+    it("should work with development URLs", async () => {
       const devService = new SessionService({
-        baseUrl: 'http://localhost:3000',
+        baseUrl: "http://localhost:3000",
         timeout: 5000
       });
 
       const expectedResponse = {
-        code: 'DEV12345',
+        code: "DEV12345",
         ttl: 600,
-        expiresAt: '2025-01-17T16:00:00.000Z'
+        expiresAt: "2025-01-17T16:00:00.000Z"
       };
 
       mockFetch.mockResolvedValueOnce({
@@ -139,28 +139,28 @@ describe('SessionService Integration Tests', () => {
 
       const result = await devService.createSession();
       
-      expect(result.code).toBe('DEV12345');
+      expect(result.code).toBe("DEV12345");
     });
   });
 
-  describe('Real-world Error Scenarios', () => {
-    it('should handle network connectivity issues', async () => {
-      mockFetch.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+  describe("Real-world Error Scenarios", () => {
+    it("should handle network connectivity issues", async () => {
+      mockFetch.mockRejectedValueOnce(new TypeError("Failed to fetch"));
 
       await expect(sessionService.createSession()).rejects.toThrow(SessionServiceError);
-      await expect(sessionService.createSession()).rejects.toThrow('Failed to create session after 3 attempts');
+      await expect(sessionService.createSession()).rejects.toThrow("Failed to create session after 3 attempts");
     });
 
-    it('should handle malformed JSON responses', async () => {
+    it("should handle malformed JSON responses", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => { throw new Error('Invalid JSON'); }
+        json: async () => { throw new Error("Invalid JSON"); }
       });
 
       await expect(sessionService.createSession()).rejects.toThrow(SessionServiceError);
     });
 
-    it('should handle server timeout scenarios', async () => {
+    it("should handle server timeout scenarios", async () => {
       const timeoutService = new SessionService({
         baseUrl: mockBaseUrl,
         timeout: 100,
@@ -176,17 +176,17 @@ describe('SessionService Integration Tests', () => {
     });
   });
 
-  describe('Session Code Validation Integration', () => {
-    it('should validate session codes from actual API responses', async () => {
-      const validCodes = ['ABCD1234', 'A2B3C4D5', 'ZZZZ7777'];
+  describe("Session Code Validation Integration", () => {
+    it("should validate session codes from actual API responses", async () => {
+      const validCodes = ["ABCD1234", "A2B3C4D5", "ZZZZ7777"];
       
       for (const code of validCodes) {
         expect(sessionService.isValidSession(code)).toBe(true);
       }
     });
 
-    it('should reject invalid codes that might come from corrupted responses', async () => {
-      const invalidCodes = ['abc12345', '12345678', 'ABCD123', 'ABCD12345', ''];
+    it("should reject invalid codes that might come from corrupted responses", async () => {
+      const invalidCodes = ["abc12345", "12345678", "ABCD123", "ABCD12345", ""];
       
       for (const code of invalidCodes) {
         expect(sessionService.isValidSession(code)).toBe(false);
@@ -194,8 +194,8 @@ describe('SessionService Integration Tests', () => {
     });
   });
 
-  describe('Service Reliability Features', () => {
-    it('should implement exponential backoff correctly', async () => {
+  describe("Service Reliability Features", () => {
+    it("should implement exponential backoff correctly", async () => {
       const retryService = new SessionService({
         baseUrl: mockBaseUrl,
         maxRetries: 3,
@@ -206,14 +206,14 @@ describe('SessionService Integration Tests', () => {
       mockFetch.mockImplementation(() => {
         callCount++;
         if (callCount < 3) {
-          return Promise.reject(new Error('Network error'));
+          return Promise.reject(new Error("Network error"));
         }
         return Promise.resolve({
           ok: true,
           json: async () => ({
-            code: 'SUCCESS1',
+            code: "SUCCESS1",
             ttl: 600,
-            expiresAt: '2025-01-17T16:00:00.000Z'
+            expiresAt: "2025-01-17T16:00:00.000Z"
           })
         });
       });
@@ -223,12 +223,12 @@ describe('SessionService Integration Tests', () => {
       const endTime = Date.now();
 
       expect(callCount).toBe(3);
-      expect(result.code).toBe('SUCCESS1');
+      expect(result.code).toBe("SUCCESS1");
       // Should have some delay for retries (at least 30ms for two retries)
       expect(endTime - startTime).toBeGreaterThan(20);
     });
 
-    it('should abort request on timeout', async () => {
+    it("should abort request on timeout", async () => {
       const timeoutService = new SessionService({
         baseUrl: mockBaseUrl,
         timeout: 50
@@ -246,7 +246,7 @@ describe('SessionService Integration Tests', () => {
       await new Promise(resolve => setTimeout(resolve, 100));
       
       expect(abortSignal?.aborted).toBe(true);
-      await expect(promise).rejects.toThrow('Request timeout');
+      await expect(promise).rejects.toThrow("Request timeout");
     });
   });
 }); 

@@ -12,6 +12,7 @@ import {
   createMcpDataInCodap
 } from "../mcp-client";
 import { CODAPCommandProcessor } from "./CODAPCommandProcessor";
+import { PairingBanner } from "./PairingBanner";
 import "./App.css";
 
 export const App = () => {
@@ -170,6 +171,17 @@ export const App = () => {
     <div className="App">
       <div className="title">CODAP MCP Plugin</div>
       
+      <PairingBanner
+        relayBaseUrl="https://codap-mcp-cdorsey-concordorgs-projects.vercel.app"
+        autoStart={false}
+        onSessionCreated={(sessionData) => {
+          console.log("Session created:", sessionData);
+        }}
+        onError={(error) => {
+          console.error("Session error:", error);
+        }}
+      />
+      
       <div className="section">
         <h3>CODAP Functions</h3>
         <div className="buttons">
@@ -186,7 +198,7 @@ export const App = () => {
       </div>
 
       <div className="section">
-        <h3>MCP Tools (SDK) {mcpConnected ? "✅" : "❌"}</h3>
+        <h3>MCP Tools (SDK) { mcpConnected ? "✅" : "❌" }</h3>
         <div className="buttons">
           <button onClick={handleListTools} disabled={!mcpConnected}>
             List MCP Tools

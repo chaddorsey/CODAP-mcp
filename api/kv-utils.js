@@ -1,4 +1,4 @@
-const { Redis } = require('@upstash/redis');
+const { Redis } = require("@upstash/redis");
 
 // Initialize Redis client using environment variables
 const redis = new Redis({

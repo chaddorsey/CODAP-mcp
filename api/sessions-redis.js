@@ -1,6 +1,6 @@
 // Session creation endpoint using Node.js runtime with Redis
 // This ensures we use the Redis implementation instead of any cached demo version
-const { setSession, SESSION_TTL } = require('./kv-utils');
+const { setSession, SESSION_TTL } = require("./kv-utils");
 
 // Configuration
 const SESSION_TTL_SECONDS = SESSION_TTL; // 10 minutes (600 seconds)
@@ -45,31 +45,31 @@ function createSuccessResponse(res, data, status = 200) {
  */
 export default async function handler(req, res) {
   // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
   try {
     // Handle CORS preflight
-    if (req.method === 'OPTIONS') {
+    if (req.method === "OPTIONS") {
       res.status(200).end();
       return;
     }
     
     // Only allow POST method
-    if (req.method !== 'POST') {
-      createErrorResponse(res, 405, 'method_not_allowed', 'Only POST method is allowed');
+    if (req.method !== "POST") {
+      createErrorResponse(res, 405, "method_not_allowed", "Only POST method is allowed");
       return;
     }
     
     // Basic rate limiting check (simplified for demo)
-    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
-               req.headers['x-real-ip'] || 
-               'unknown';
+    const ip = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || 
+               req.headers["x-real-ip"] || 
+               "unknown";
     
     // Validate request body (should be empty JSON object)
     if (req.body && Object.keys(req.body).length > 0) {
-      createErrorResponse(res, 400, 'invalid_request', 'Request body must be empty JSON object');
+      createErrorResponse(res, 400, "invalid_request", "Request body must be empty JSON object");
       return;
     }
     
@@ -100,7 +100,7 @@ export default async function handler(req, res) {
     createSuccessResponse(res, response, 201);
     
   } catch (error) {
-    console.error('Session creation error:', error);
-    createErrorResponse(res, 500, 'internal_server_error', 'Failed to create session');
+    console.error("Session creation error:", error);
+    createErrorResponse(res, 500, "internal_server_error", "Failed to create session");
   }
 } 

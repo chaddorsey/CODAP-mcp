@@ -1,4 +1,4 @@
-import type { SessionData } from '../services/types';
+import type { SessionData } from "../services/types";
 
 /**
  * Configuration for prompt generation
@@ -18,10 +18,10 @@ export interface PromptConfig {
  * Default prompt configuration
  */
 const DEFAULT_CONFIG: Required<PromptConfig> = {
-  relayBaseUrl: 'http://localhost:3000',
-  additionalInstructions: '',
+  relayBaseUrl: "http://localhost:3000",
+  additionalInstructions: "",
   includeTroubleshooting: true,
-  serviceName: 'CODAP Plugin Assistant'
+  serviceName: "CODAP Plugin Assistant"
 };
 
 /**
@@ -87,7 +87,7 @@ export function generateSetupPrompt(
 - **One session at a time** - Each session code works with one AI conversation
 - **Save your work** - Export important results before the session expires
 
-${additionalInstructions ? `## Additional Instructions\n\n${additionalInstructions}\n` : ''}
+${additionalInstructions ? `## Additional Instructions\n\n${additionalInstructions}\n` : ""}
 
 ${includeTroubleshooting ? `## Troubleshooting
 
@@ -106,7 +106,7 @@ ${includeTroubleshooting ? `## Troubleshooting
 - Verify your data is properly loaded in CODAP before asking for analysis
 - Be specific about what you want to analyze or visualize
 
-` : ''}
+` : ""}
 
 ---
 *Generated at ${new Date().toLocaleString()} • Session: ${code}*`;
@@ -131,7 +131,7 @@ export function generateSessionCodeText(sessionCode: string): string {
  */
 export function generateMinimalPrompt(
   sessionData: SessionData,
-  relayBaseUrl: string = 'http://localhost:3000'
+  relayBaseUrl = "http://localhost:3000"
 ): string {
   const { code } = sessionData;
   
@@ -190,11 +190,11 @@ export function isValidSessionData(sessionData: any): sessionData is SessionData
   return (
     sessionData !== null &&
     sessionData !== undefined &&
-    typeof sessionData === 'object' &&
-    typeof sessionData.code === 'string' &&
+    typeof sessionData === "object" &&
+    typeof sessionData.code === "string" &&
     sessionData.code.length === 8 &&
-    typeof sessionData.ttl === 'number' &&
+    typeof sessionData.ttl === "number" &&
     sessionData.ttl > 0 &&
-    typeof sessionData.expiresAt === 'string'
+    typeof sessionData.expiresAt === "string"
   );
 } 

@@ -1,17 +1,17 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { createSessionService, SessionService, SessionServiceError } from '../services';
-import { PairingBannerProps, BannerState, PairingBannerState } from './types';
-import { SessionData } from '../services/types';
-import { useCountdown } from '../hooks/useCountdown';
-import { TimerStatus } from '../utils/timeFormat';
-import { useClipboard } from '../hooks/useClipboard';
-import { generateSetupPrompt, generateSessionCodeText } from '../utils/promptGenerator';
-import './PairingBanner.css';
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { createSessionService, SessionService, SessionServiceError } from "../services";
+import { PairingBannerProps, BannerState, PairingBannerState } from "./types";
+import { SessionData } from "../services/types";
+import { useCountdown } from "../hooks/useCountdown";
+import { TimerStatus } from "../utils/timeFormat";
+import { useClipboard } from "../hooks/useClipboard";
+import { generateSetupPrompt, generateSessionCodeText } from "../utils/promptGenerator";
+import "./PairingBanner.css";
 
 /**
  * Default relay base URL - can be overridden via props
  */
-const DEFAULT_RELAY_BASE_URL = 'https://codap-mcp-cdorsey-concordorgs-projects.vercel.app';
+const DEFAULT_RELAY_BASE_URL = "https://codap-mcp-cdorsey-concordorgs-projects.vercel.app";
 
 /**
  * PairingBanner component displays session information and manages session lifecycle
@@ -20,7 +20,7 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
   relayBaseUrl = DEFAULT_RELAY_BASE_URL,
   onSessionCreated,
   onError,
-  className = '',
+  className = "",
   autoStart = true
 }) => {
   // Component state using the defined state interface
@@ -42,24 +42,24 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
 
   // Initialize countdown timer with session TTL
   const countdown = useCountdown(
-    bannerState.sessionData?.ttl || 0,
+    600, // Default to 10 minutes (600 seconds) - will be updated when session is created
     {
       autoStart: false, // We'll start manually when session is created
       onExpire: () => {
         setBannerState(prev => ({
           ...prev,
           sessionData: null,
-          errorMessage: 'Session has expired'
+          errorMessage: "Session has expired"
         }));
-        onError?.(new Error('Session expired'));
+        onError?.(new Error("Session expired"));
       },
       onStatusChange: (status: TimerStatus) => {
         // Could add visual indicator changes based on timer status
-        console.log('Timer status changed:', status);
+        console.log("Timer status changed:", status);
       },
       onAnnouncement: (message: string) => {
         // Accessibility announcements
-        console.log('Timer announcement:', message);
+        console.log("Timer announcement:", message);
       }
     }
   );
@@ -85,7 +85,7 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
     
     const promptText = generateSetupPrompt(bannerState.sessionData, {
       relayBaseUrl,
-      serviceName: 'CODAP Plugin Assistant'
+      serviceName: "CODAP Plugin Assistant"
     });
     await clipboard.copyToClipboard(promptText);
   }, [bannerState.sessionData, relayBaseUrl, clipboard]);
@@ -120,7 +120,7 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
     } catch (error) {
       const errorMessage = error instanceof SessionServiceError 
         ? error.message 
-        : 'Failed to create session';
+        : "Failed to create session";
 
       setBannerState({
         state: BannerState.ERROR,
@@ -159,7 +159,7 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
         🔄
       </div>
       <div className="pairing-banner-message">
-        {bannerState.retrying ? 'Retrying session creation...' : 'Creating session...'}
+        { bannerState.retrying ? "Retrying session creation..." : "Creating session..." }
       </div>
     </div>
   );
@@ -180,14 +180,14 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
         <div className="pairing-banner-session">
           <div className="pairing-banner-code-label">Session Code:</div>
           <div className="pairing-banner-code" role="text" aria-label={`Session code: ${sessionData.code}`}>
-            {sessionData.code}
+            { sessionData.code }
           </div>
         </div>
         <div className="pairing-banner-info">
           <div className={`pairing-banner-timer pairing-banner-timer--${countdown.time.status}`}>
             <span className="pairing-banner-timer-label">Time remaining:</span>
             <span className="pairing-banner-timer-display" aria-live="polite">
-              {countdown.time.display}
+              { countdown.time.display }
             </span>
           </div>
         </div>
@@ -199,7 +199,7 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
             disabled={clipboard.state.isLoading}
             aria-label="Copy session code to clipboard"
           >
-            {clipboard.state.isLoading ? '⏳' : '📋'} Copy Code
+            { clipboard.state.isLoading ? "⏳" : "📋" } Copy Code
           </button>
           <button
             type="button"
@@ -208,19 +208,19 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
             disabled={clipboard.state.isLoading}
             aria-label="Copy complete setup instructions to clipboard"
           >
-            {clipboard.state.isLoading ? '⏳' : '📄'} Copy Instructions
+            { clipboard.state.isLoading ? "⏳" : "📄" } Copy Instructions
           </button>
         </div>
-        {clipboard.state.lastResult && (
+        { clipboard.state.lastResult && (
           <div className={`pairing-banner-copy-feedback ${
-            clipboard.state.lastResult.success ? 'pairing-banner-copy-feedback--success' : 'pairing-banner-copy-feedback--error'
+            clipboard.state.lastResult.success ? "pairing-banner-copy-feedback--success" : "pairing-banner-copy-feedback--error"
           }`}>
-            {clipboard.state.lastResult.success 
-              ? '✅ Copied to clipboard!' 
+            { clipboard.state.lastResult.success 
+              ? "✅ Copied to clipboard!" 
               : `❌ Copy failed: ${clipboard.state.lastResult.error}`
             }
           </div>
-        )}
+        ) }
       </div>
     );
   };
@@ -235,7 +235,7 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
         <span className="pairing-banner-title">Session Error</span>
       </div>
       <div className="pairing-banner-error">
-        {bannerState.errorMessage || 'An unknown error occurred'}
+        { bannerState.errorMessage || "An unknown error occurred" }
       </div>
       <div className="pairing-banner-actions">
         <button 
@@ -299,7 +299,7 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
       aria-live="polite"
       aria-label="Session pairing banner"
     >
-      {renderContent()}
+      { renderContent() }
     </div>
   );
 };

@@ -5,9 +5,9 @@ export {
   formatTimer,
   getAccessibleTimeMessage,
   TimerStatus
-} from './timeFormat';
+} from "./timeFormat";
 
-export type { FormattedTime } from './timeFormat';
+export type { FormattedTime } from "./timeFormat";
 
 export {
   generateSetupPrompt,
@@ -15,6 +15,6 @@ export {
   generateMinimalPrompt,
   generateTechnicalPrompt,
   isValidSessionData
-} from './promptGenerator';
+} from "./promptGenerator";
 
-export type { PromptConfig } from './promptGenerator'; 
+export type { PromptConfig } from "./promptGenerator"; 

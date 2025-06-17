@@ -6,10 +6,10 @@
  * Timer status enumeration
  */
 export enum TimerStatus {
-  ACTIVE = 'active',
-  WARNING = 'warning', 
-  CRITICAL = 'critical',
-  EXPIRED = 'expired'
+  ACTIVE = "active",
+  WARNING = "warning", 
+  CRITICAL = "critical",
+  EXPIRED = "expired"
 }
 
 /**
@@ -42,7 +42,7 @@ export function formatTimeDisplay(totalSeconds: number): string {
   const seconds = totalSeconds % 60;
 
   // Format with leading zeros
-  const formatNumber = (num: number): string => num.toString().padStart(2, '0');
+  const formatNumber = (num: number): string => num.toString().padStart(2, "0");
 
   if (hours > 0) {
     return `${formatNumber(hours)}:${formatNumber(minutes)}:${formatNumber(seconds)}`;

@@ -113,7 +113,7 @@ function notificationHandler (request: { action: any; resource: any; values: any
   const action = request.action;
   const resource = request.resource;
   let requestValues = request.values;
-  let returnMessage = {success: true};
+  let returnMessage = { success: true };
 
   connectionState = "active";
   stats.countCodapReq += 1;
@@ -159,7 +159,7 @@ function notificationHandler (request: { action: any; resource: any; values: any
                 subscription.resourceSpec) && (!subscription.operation ||
             (subscription.operation === value.operation) && subscription.handler)) {
           const rtn = subscription.handler(
-              {action, resource, values: value});
+              { action, resource, values: value });
           if (rtn?.success) { stats.countCodapRplSuccess++; } else{ stats.countCodapRplFail++; }
           success = (success && (rtn ? rtn.success : false));
           handled = true;
@@ -222,7 +222,7 @@ export const codapInterface = {
         }
       }
 
-      const getFrameReq = {action: "get", resource: "interactiveFrame"};
+      const getFrameReq = { action: "get", resource: "interactiveFrame" };
       const newFrame = {
         name: iConfig.name,
         title: iConfig.title,
@@ -246,7 +246,7 @@ export const codapInterface = {
 
       if (!config.customInteractiveStateHandler) {
         this_.on("get", "interactiveState", function () {
-          return ({success: true, values: this_.getInteractiveState()});
+          return ({ success: true, values: this_.getInteractiveState() });
         }.bind(this_));
       }
 

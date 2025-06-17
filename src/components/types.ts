@@ -1,7 +1,7 @@
 /**
  * Type definitions for component props and interfaces
  */
-import { SessionData } from '../services/types';
+import { SessionData } from "../services/types";
 
 /**
  * Props interface for the PairingBanner component
@@ -23,10 +23,10 @@ export interface PairingBannerProps {
  * Enumeration of possible banner states
  */
 export enum BannerState {
-  IDLE = 'idle',
-  LOADING = 'loading',
-  SUCCESS = 'success',
-  ERROR = 'error'
+  IDLE = "idle",
+  LOADING = "loading",
+  SUCCESS = "success",
+  ERROR = "error"
 }
 
 /**
