@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { createSessionService, SessionService, SessionServiceError } from "../services";
 import { PairingBannerProps, BannerState, PairingBannerState } from "./types";
 import { SessionData } from "../services/types";
@@ -6,6 +6,15 @@ import { useCountdown } from "../hooks/useCountdown";
 import { TimerStatus } from "../utils/timeFormat";
 import { useClipboard } from "../hooks/useClipboard";
 import { generateSetupPrompt, generateSessionCodeText } from "../utils/promptGenerator";
+import { 
+  handleKeyboardActivation, 
+  generateTimerAnnouncement, 
+  generateCopyActionDescription,
+  generateCopyFeedback,
+  createAriaId,
+  formatTimeForScreenReader,
+  KEYBOARD_CODES
+} from "../utils/accessibility";
 import "./PairingBanner.css";
 
 /**
@@ -23,13 +32,34 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
   className = "",
   autoStart = true
 }) => {
-  // Component state using the defined state interface
+  // Component state
   const [bannerState, setBannerState] = useState<PairingBannerState>({
     state: BannerState.IDLE,
     sessionData: null,
     errorMessage: null,
     retrying: false
   });
+
+  // Accessibility state for announcements
+  const [announcement, setAnnouncement] = useState<string>("");
+  const [copyFeedback, setCopyFeedback] = useState<string>("");
+  
+  // Refs for ARIA relationships and focus management
+  const bannerRef = useRef<HTMLDivElement>(null);
+  const announcementRef = useRef<HTMLDivElement>(null);
+  const copyFeedbackRef = useRef<HTMLDivElement>(null);
+  
+  // Generate unique IDs for ARIA relationships
+  const ariaIds = useMemo(() => ({
+    banner: createAriaId("pairing-banner"),
+    title: createAriaId("banner-title"),
+    description: createAriaId("banner-description"),
+    timer: createAriaId("timer"),
+    sessionCode: createAriaId("session-code"),
+    actions: createAriaId("banner-actions"),
+    announcement: createAriaId("announcement"),
+    copyFeedback: createAriaId("copy-feedback")
+  }), []);
 
   // Memoize the session service to prevent unnecessary recreations
   const sessionService = useMemo<SessionService>(() => {
@@ -51,14 +81,21 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
           sessionData: null,
           errorMessage: "Session has expired"
         }));
+        setAnnouncement("Session has expired. Please create a new session.");
         onError?.(new Error("Session expired"));
       },
       onStatusChange: (status: TimerStatus) => {
-        // Could add visual indicator changes based on timer status
+        // Generate accessibility announcements for status changes
+        const timeDisplay = countdown.time?.display || "0:00";
+        const announcement = generateTimerAnnouncement(timeDisplay, status, true);
+        if (announcement) {
+          setAnnouncement(announcement);
+        }
         console.log("Timer status changed:", status);
       },
       onAnnouncement: (message: string) => {
-        // Accessibility announcements
+        // Enhanced accessibility announcements
+        setAnnouncement(message);
         console.log("Timer announcement:", message);
       }
     }
@@ -68,17 +105,24 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
   const clipboard = useClipboard();
 
   /**
-   * Copy session code to clipboard
+   * Copy session code to clipboard with accessibility support
    */
   const handleCopyCode = useCallback(async () => {
     if (!bannerState.sessionData) return;
     
     const codeText = generateSessionCodeText(bannerState.sessionData.code);
-    await clipboard.copyToClipboard(codeText);
+    const result = await clipboard.copyToClipboard(codeText);
+    
+    // Generate accessible feedback
+    const feedback = generateCopyFeedback(result.success, "code", result.error);
+    setCopyFeedback(feedback);
+    
+    // Clear feedback after 3 seconds
+    setTimeout(() => setCopyFeedback(""), 3000);
   }, [bannerState.sessionData, clipboard]);
 
   /**
-   * Copy complete setup prompt to clipboard
+   * Copy complete setup prompt to clipboard with accessibility support
    */
   const handleCopyPrompt = useCallback(async () => {
     if (!bannerState.sessionData) return;
@@ -87,8 +131,29 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
       relayBaseUrl,
       serviceName: "CODAP Plugin Assistant"
     });
-    await clipboard.copyToClipboard(promptText);
+    const result = await clipboard.copyToClipboard(promptText);
+    
+    // Generate accessible feedback
+    const feedback = generateCopyFeedback(result.success, "instructions", result.error);
+    setCopyFeedback(feedback);
+    
+    // Clear feedback after 3 seconds
+    setTimeout(() => setCopyFeedback(""), 3000);
   }, [bannerState.sessionData, relayBaseUrl, clipboard]);
+
+  /**
+   * Keyboard-accessible copy code handler
+   */
+  const handleCopyCodeKeyboard = useCallback((event: React.KeyboardEvent) => {
+    handleKeyboardActivation(event, handleCopyCode);
+  }, [handleCopyCode]);
+
+  /**
+   * Keyboard-accessible copy prompt handler
+   */
+  const handleCopyPromptKeyboard = useCallback((event: React.KeyboardEvent) => {
+    handleKeyboardActivation(event, handleCopyPrompt);
+  }, [handleCopyPrompt]);
 
   /**
    * Creates a new session using the SessionService
@@ -151,125 +216,248 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
   }, [autoStart, createSession]);
 
   /**
-   * Renders loading state
+   * Renders loading state with accessibility enhancements
    */
   const renderLoadingState = () => (
-    <div className="pairing-banner-content">
-      <div className="pairing-banner-spinner" aria-label="Creating session">
-        🔄
+    <div className="pairing-banner-content" role="status" aria-live="polite">
+      <div className="pairing-banner-header">
+        <div 
+          className="pairing-banner-spinner" 
+          aria-label="Creating session"
+          role="img"
+          aria-describedby={ariaIds.description}
+        >
+          <span className="pairing-banner-spinner-icon" aria-hidden="true">🔄</span>
+        </div>
+        <h2 
+          id={ariaIds.title}
+          className="pairing-banner-title"
+        >
+          Session Creation
+        </h2>
       </div>
-      <div className="pairing-banner-message">
-        { bannerState.retrying ? "Retrying session creation..." : "Creating session..." }
+      <div 
+        id={ariaIds.description}
+        className="pairing-banner-message"
+        role="status"
+        aria-live="polite"
+      >
+        {bannerState.retrying ? "Retrying session creation..." : "Creating session..."}
       </div>
     </div>
   );
 
   /**
-   * Renders success state with session information
+   * Renders success state with comprehensive accessibility features
    */
   const renderSuccessState = () => {
     const { sessionData } = bannerState;
     if (!sessionData) return null;
 
+    const codeDescription = generateCopyActionDescription("code", sessionData.code);
+    const instructionsDescription = generateCopyActionDescription("instructions");
+
     return (
       <div className="pairing-banner-content">
         <div className="pairing-banner-header">
-          <span className="pairing-banner-icon">🔗</span>
-          <span className="pairing-banner-title">Session Ready</span>
+          <span 
+            className="pairing-banner-icon" 
+            role="img" 
+            aria-label="Session ready"
+            aria-hidden="true"
+          >
+            🔗
+          </span>
+          <h2 
+            id={ariaIds.title}
+            className="pairing-banner-title"
+          >
+            Session Ready
+          </h2>
         </div>
+        
         <div className="pairing-banner-session">
-          <div className="pairing-banner-code-label">Session Code:</div>
-          <div className="pairing-banner-code" role="text" aria-label={`Session code: ${sessionData.code}`}>
-            { sessionData.code }
+          <div className="pairing-banner-code-label" id={`${ariaIds.sessionCode}-label`}>
+            Session Code:
+          </div>
+          <div 
+            id={ariaIds.sessionCode}
+            className="pairing-banner-code" 
+            role="text" 
+            aria-labelledby={`${ariaIds.sessionCode}-label`}
+            aria-describedby={`${ariaIds.sessionCode}-description`}
+          >
+            {sessionData.code}
+          </div>
+          <div 
+            id={`${ariaIds.sessionCode}-description`}
+            className="pairing-banner-code-description sr-only"
+          >
+            Share this code with your AI assistant to establish a connection
           </div>
         </div>
+        
         <div className="pairing-banner-info">
           <div className={`pairing-banner-timer pairing-banner-timer--${countdown.time.status}`}>
-            <span className="pairing-banner-timer-label">Time remaining:</span>
-            <span className="pairing-banner-timer-display" aria-live="polite">
-              { countdown.time.display }
+            <span className="pairing-banner-timer-label" id={`${ariaIds.timer}-label`}>
+              Time remaining:
+            </span>
+            <span 
+              id={ariaIds.timer}
+              className="pairing-banner-timer-display" 
+              aria-live="polite"
+              aria-labelledby={`${ariaIds.timer}-label`}
+              aria-describedby={`${ariaIds.timer}-description`}
+            >
+              {countdown.time.display}
+            </span>
+            <span 
+              id={`${ariaIds.timer}-description`}
+              className="sr-only"
+            >
+              {formatTimeForScreenReader(countdown.time.display)} until session expires
             </span>
           </div>
         </div>
-        <div className="pairing-banner-actions">
+        
+        <div 
+          id={ariaIds.actions}
+          className="pairing-banner-actions"
+          role="group"
+          aria-labelledby={`${ariaIds.actions}-label`}
+        >
+          <div id={`${ariaIds.actions}-label`} className="sr-only">
+            Copy actions
+          </div>
+          
           <button
             type="button"
             className="pairing-banner-copy-button pairing-banner-copy-button--code"
             onClick={handleCopyCode}
+            onKeyDown={handleCopyCodeKeyboard}
             disabled={clipboard.state.isLoading}
-            aria-label="Copy session code to clipboard"
+            aria-label={`Copy session code ${sessionData.code} to clipboard`}
+            aria-describedby={`${ariaIds.sessionCode}-copy-description`}
           >
-            { clipboard.state.isLoading ? "⏳" : "📋" } Copy Code
+            <span aria-hidden="true">
+              {clipboard.state.isLoading ? "⏳" : "📋"}
+            </span>
+            <span>Copy Code</span>
           </button>
+          <div 
+            id={`${ariaIds.sessionCode}-copy-description`}
+            className="sr-only"
+          >
+            {codeDescription}
+          </div>
+          
           <button
             type="button"
             className="pairing-banner-copy-button pairing-banner-copy-button--prompt"
             onClick={handleCopyPrompt}
+            onKeyDown={handleCopyPromptKeyboard}
             disabled={clipboard.state.isLoading}
             aria-label="Copy complete setup instructions to clipboard"
+            aria-describedby="instructions-copy-description"
           >
-            { clipboard.state.isLoading ? "⏳" : "📄" } Copy Instructions
+            <span aria-hidden="true">
+              {clipboard.state.isLoading ? "⏳" : "📄"}
+            </span>
+            <span>Copy Instructions</span>
           </button>
-        </div>
-        { clipboard.state.lastResult && (
-          <div className={`pairing-banner-copy-feedback ${
-            clipboard.state.lastResult.success ? "pairing-banner-copy-feedback--success" : "pairing-banner-copy-feedback--error"
-          }`}>
-            { clipboard.state.lastResult.success 
-              ? "✅ Copied to clipboard!" 
-              : `❌ Copy failed: ${clipboard.state.lastResult.error}`
-            }
+          <div 
+            id="instructions-copy-description"
+            className="sr-only"
+          >
+            {instructionsDescription}
           </div>
-        ) }
+        </div>
       </div>
     );
   };
 
   /**
-   * Renders error state with retry option
+   * Renders error state with accessibility enhancements
    */
   const renderErrorState = () => (
-    <div className="pairing-banner-content">
+    <div className="pairing-banner-content" role="alert" aria-live="assertive">
       <div className="pairing-banner-header">
-        <span className="pairing-banner-icon">❌</span>
-        <span className="pairing-banner-title">Session Error</span>
+        <span 
+          className="pairing-banner-icon" 
+          role="img" 
+          aria-label="Error"
+          aria-hidden="true"
+        >
+          ❌
+        </span>
+        <h2 
+          id={ariaIds.title}
+          className="pairing-banner-title"
+        >
+          Session Error
+        </h2>
       </div>
-      <div className="pairing-banner-error">
-        { bannerState.errorMessage || "An unknown error occurred" }
+      <div 
+        className="pairing-banner-error"
+        id={ariaIds.description}
+        role="alert"
+      >
+        {bannerState.errorMessage || "An unknown error occurred"}
       </div>
       <div className="pairing-banner-actions">
         <button 
           className="pairing-banner-retry-btn"
           onClick={handleRetry}
+          onKeyDown={(event) => handleKeyboardActivation(event, handleRetry)}
           type="button"
           aria-label="Retry session creation"
+          aria-describedby={ariaIds.description}
         >
-          Try Again
+          <span aria-hidden="true">🔄</span>
+          <span>Try Again</span>
         </button>
       </div>
     </div>
   );
 
   /**
-   * Renders idle state with manual start option
+   * Renders idle state with accessibility enhancements
    */
   const renderIdleState = () => (
     <div className="pairing-banner-content">
       <div className="pairing-banner-header">
-        <span className="pairing-banner-icon">⚡</span>
-        <span className="pairing-banner-title">CODAP MCP Pairing</span>
+        <span 
+          className="pairing-banner-icon" 
+          role="img" 
+          aria-label="Ready to start"
+          aria-hidden="true"
+        >
+          ⚡
+        </span>
+        <h2 
+          id={ariaIds.title}
+          className="pairing-banner-title"
+        >
+          CODAP MCP Pairing
+        </h2>
       </div>
-      <div className="pairing-banner-message">
+      <div 
+        className="pairing-banner-message"
+        id={ariaIds.description}
+      >
         Ready to create a new session for LLM pairing
       </div>
       <div className="pairing-banner-actions">
         <button 
           className="pairing-banner-start-btn"
           onClick={createSession}
+          onKeyDown={(event) => handleKeyboardActivation(event, createSession)}
           type="button"
           aria-label="Start session creation"
+          aria-describedby={ariaIds.description}
         >
-          Create Session
+          <span aria-hidden="true">🚀</span>
+          <span>Create Session</span>
         </button>
       </div>
     </div>
@@ -294,12 +482,61 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
 
   return (
     <div 
+      ref={bannerRef}
+      id={ariaIds.banner}
       className={`pairing-banner pairing-banner--${bannerState.state} ${className}`}
-      role="banner"
-      aria-live="polite"
-      aria-label="Session pairing banner"
+      role="region"
+      aria-labelledby={ariaIds.title}
+      aria-describedby={ariaIds.description}
     >
-      { renderContent() }
+      {renderContent()}
+      
+      {/* Accessibility announcement region */}
+      <div
+        ref={announcementRef}
+        id={ariaIds.announcement}
+        className="sr-only"
+        aria-live="polite"
+        aria-atomic="true"
+        role="status"
+      >
+        {announcement}
+      </div>
+      
+      {/* Copy feedback announcement region */}
+      <div
+        ref={copyFeedbackRef}
+        id={ariaIds.copyFeedback}
+        className="sr-only"
+        aria-live="assertive"
+        aria-atomic="true"
+        role="status"
+      >
+        {copyFeedback}
+      </div>
+      
+      {/* Visual copy feedback for sighted users */}
+      {clipboard.state.lastResult && (
+        <div 
+          className={`pairing-banner-copy-feedback ${
+            clipboard.state.lastResult.success 
+              ? "pairing-banner-copy-feedback--success" 
+              : "pairing-banner-copy-feedback--error"
+          }`}
+          role="status"
+          aria-live="polite"
+        >
+          <span aria-hidden="true">
+            {clipboard.state.lastResult.success ? "✅" : "❌"}
+          </span>
+          <span>
+            {clipboard.state.lastResult.success 
+              ? "Copied to clipboard!" 
+              : `Copy failed: ${clipboard.state.lastResult.error}`
+            }
+          </span>
+        </div>
+      )}
     </div>
   );
 };
