@@ -1,0 +1,24 @@
+# dependencies
+/node_modules
+
+# testing
+/coverage
+/playwright-report
+/test-results
+
+# production
+/build
+/dist
+
+# OS
+.DS_Store
+
+# Logs
+npm-debug.log*
+npm-error.log*
+TESTING-PBI1.md
+test-relay-manual.js
+.vercel
+
+# Local environment variables
+.env.local

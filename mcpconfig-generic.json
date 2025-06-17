@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "generic-tools": {
+      "name": "Generic MCP Tools",
+      "command": "node",
+      "args": ["dist/server/mcp-server-stdio-generic.js"]
+    }
+  }
+} 

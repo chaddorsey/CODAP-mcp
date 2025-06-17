@@ -1,0 +1,18 @@
+Initializing MCP SuperAssistant proxy...
+Connecting to codap-interactive (stdio - inferred)...
+CODAP Interactive MCP Server started successfully
+Connected to codap-interactive: 6 tools, 0 resources, 0 prompts
+Successfully initialized mcpsuperassistantproxy with 1 servers
+MCP SuperAssistant Proxy running with backwards compatibility at:
+  - Modern Streamable HTTP: http://localhost:3007/mcp
+  - Legacy SSE: http://localhost:3007/sse
+  - Legacy messages: http://localhost:3007/messages
+
+Clients should connect to http://localhost:3007/mcp for automatic backwards compatibility.
+
+Received SIGHUP, shutting down MCP SuperAssistant proxy gracefully...
+Starting graceful shutdown...
+Disconnected from codap-interactive
+HTTP server closed successfully
+MCP SuperAssistant Proxy stopped
+Graceful shutdown completed

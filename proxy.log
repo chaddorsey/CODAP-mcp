@@ -1,0 +1,64 @@
+Initializing MCP SuperAssistant proxy...
+Connecting to codap-interactive (stdio - inferred)...
+CODAP Interactive MCP Server started successfully
+Connected to codap-interactive: 6 tools, 0 resources, 0 prompts
+Successfully initialized mcpsuperassistantproxy with 1 servers
+MCP SuperAssistant Proxy running with backwards compatibility at:
+  - Modern Streamable HTTP: http://localhost:3007/mcp
+  - Legacy SSE: http://localhost:3007/sse
+  - Legacy messages: http://localhost:3007/messages
+
+Clients should connect to http://localhost:3007/mcp for automatic backwards compatibility.
+POST /mcp request from ::1, sessionId: none, active sessions: 0
+Creating new session for initialize request from ::1
+New Streamable HTTP session initialized: 793d94e5-87ab-4dc4-93db-0da1390cca99, total sessions: 1
+New SSE connection from ::1
+SSE session created: 9de980db-0249-4cd2-a9f6-ea3391144f78
+POST to SSE transport (session 9de980db-0249-4cd2-a9f6-ea3391144f78)
+POST to SSE transport (session 9de980db-0249-4cd2-a9f6-ea3391144f78)
+POST to SSE transport (session 9de980db-0249-4cd2-a9f6-ea3391144f78)
+POST to SSE transport (session 9de980db-0249-4cd2-a9f6-ea3391144f78)
+POST to SSE transport (session 9de980db-0249-4cd2-a9f6-ea3391144f78)
+POST to SSE transport (session 9de980db-0249-4cd2-a9f6-ea3391144f78)
+POST to SSE transport (session 9de980db-0249-4cd2-a9f6-ea3391144f78)
+POST to SSE transport (session 9de980db-0249-4cd2-a9f6-ea3391144f78)
+New SSE connection from ::1
+SSE session created: 6110590c-b822-48c1-b9e0-3a3bb068ad68
+POST /mcp request from ::1, sessionId: none, active sessions: 1
+Creating new session for initialize request from ::1
+SSE transport closed (session 9de980db-0249-4cd2-a9f6-ea3391144f78)
+Cleaning up SSE session: 9de980db-0249-4cd2-a9f6-ea3391144f78
+SSE transport closed (session 9de980db-0249-4cd2-a9f6-ea3391144f78)
+SSE transport closed (session 9de980db-0249-4cd2-a9f6-ea3391144f78)
+SSE client disconnected (session 9de980db-0249-4cd2-a9f6-ea3391144f78)
+New SSE connection from ::1
+SSE session created: cd4f2a93-1f5d-4264-b467-cc7eee34e77b
+POST to SSE transport (session cd4f2a93-1f5d-4264-b467-cc7eee34e77b)
+POST to SSE transport (session cd4f2a93-1f5d-4264-b467-cc7eee34e77b)
+POST to SSE transport (session cd4f2a93-1f5d-4264-b467-cc7eee34e77b)
+POST to SSE transport (session cd4f2a93-1f5d-4264-b467-cc7eee34e77b)
+POST to SSE transport (session cd4f2a93-1f5d-4264-b467-cc7eee34e77b)
+POST to SSE transport (session cd4f2a93-1f5d-4264-b467-cc7eee34e77b)
+POST to SSE transport (session cd4f2a93-1f5d-4264-b467-cc7eee34e77b)
+POST to SSE transport (session cd4f2a93-1f5d-4264-b467-cc7eee34e77b)
+POST /mcp request from ::1, sessionId: none, active sessions: 1
+Creating new session for initialize request from ::1
+New Streamable HTTP session initialized: ad84c552-bccc-4556-9c7d-8a153aea7171, total sessions: 2
+SSE transport closed (session cd4f2a93-1f5d-4264-b467-cc7eee34e77b)
+Cleaning up SSE session: cd4f2a93-1f5d-4264-b467-cc7eee34e77b
+SSE transport closed (session cd4f2a93-1f5d-4264-b467-cc7eee34e77b)
+SSE transport closed (session cd4f2a93-1f5d-4264-b467-cc7eee34e77b)
+SSE client disconnected (session cd4f2a93-1f5d-4264-b467-cc7eee34e77b)
+
+Received SIGTERM, shutting down MCP SuperAssistant proxy gracefully...
+Starting graceful shutdown...
+SSE transport closed (session 6110590c-b822-48c1-b9e0-3a3bb068ad68)
+Cleaning up SSE session: 6110590c-b822-48c1-b9e0-3a3bb068ad68
+SSE transport closed (session 6110590c-b822-48c1-b9e0-3a3bb068ad68)
+SSE transport closed (session 6110590c-b822-48c1-b9e0-3a3bb068ad68)
+SSE transport closed (session 6110590c-b822-48c1-b9e0-3a3bb068ad68)
+SSE client disconnected (session 6110590c-b822-48c1-b9e0-3a3bb068ad68)
+Disconnected from codap-interactive
+HTTP server closed successfully
+MCP SuperAssistant Proxy stopped
+Graceful shutdown completed

@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "codap-interactive": {
+      "name": "CODAP Interactive Tools",
+      "command": "node",
+      "args": ["dist/server/mcp-server-codap-interactive.js"]
+    }
+  }
+} 
