@@ -61,7 +61,17 @@ module.exports = (env, argv) => {
       rules: [
         {
           test: /\.tsx?$/,
+          exclude: [
+            /node_modules/,
+            /server/,        // Exclude server directory from webpack build
+            /api/,           // Exclude api directory from webpack build
+            /\.test\./,      // Exclude test files from webpack build
+            /\.spec\./       // Exclude spec files from webpack build
+          ],
           loader: 'ts-loader',
+          options: {
+            configFile: 'tsconfig.webpack.json'
+          }
         },
         // This code coverage instrumentation should only be added when needed. It makes
         // the code larger and slower
