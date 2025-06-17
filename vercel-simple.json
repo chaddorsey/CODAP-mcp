@@ -1,0 +1,40 @@
+{
+  "buildCommand": null,
+  "outputDirectory": ".",
+  "functions": {
+    "api/sessions.js": {
+      "maxDuration": 10
+    },
+    "api/request.js": {
+      "maxDuration": 10
+    },
+    "api/response.js": {
+      "maxDuration": 10
+    },
+    "api/stream.js": {
+      "maxDuration": 60
+    },
+    "api/kv-utils.js": {
+      "maxDuration": 5
+    }
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization"
+        }
+      ]
+    }
+  ]
+} 

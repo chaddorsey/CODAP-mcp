@@ -1,9 +1,8 @@
 // Test script to verify Redis session persistence on branch deployment
 const fetch = require('node-fetch');
 
-// Branch deployments typically follow this pattern: 
-// https://your-app-git-branch-name-username.vercel.app
-const BRANCH_BASE_URL = 'https://codap-mcp-git-code-paired-sessions-cdorsey-concordorgs-projects.vercel.app/api';
+// Using the most recent preview deployment
+const BRANCH_BASE_URL = 'https://codap-fd3aw92ip-cdorsey-concordorgs-projects.vercel.app/api';
 const MAIN_BASE_URL = 'https://codap-mcp-cdorsey-concordorgs-projects.vercel.app/api';
 const SSO_BYPASS_SECRET = 'pAg5Eon3T8qOwMaWKzo9k6T4pdbYiCye';
 
