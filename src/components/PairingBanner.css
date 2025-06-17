@@ -153,8 +153,10 @@
 
 .pairing-banner-actions {
   display: flex;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
 }
 
 .pairing-banner-start-btn,
@@ -216,4 +218,109 @@
 .pairing-banner--idle {
   border-color: #2196f3;
   background-color: #e3f2fd;
+}
+
+/* Copy actions styling */
+.pairing-banner-copy-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background-color: #f8f9fa;
+  color: #495057;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.pairing-banner-copy-button:hover:not(:disabled) {
+  background-color: #e9ecef;
+  border-color: #adb5bd;
+  transform: translateY(-1px);
+}
+
+.pairing-banner-copy-button:active:not(:disabled) {
+  transform: translateY(0);
+  background-color: #dee2e6;
+}
+
+.pairing-banner-copy-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.pairing-banner-copy-button:focus {
+  outline: 2px solid #007bff;
+  outline-offset: 2px;
+}
+
+/* Specific button styling */
+.pairing-banner-copy-button--code {
+  border-color: #28a745;
+  color: #155724;
+}
+
+.pairing-banner-copy-button--code:hover:not(:disabled) {
+  background-color: #d4edda;
+  border-color: #28a745;
+}
+
+.pairing-banner-copy-button--prompt {
+  border-color: #007bff;
+  color: #004085;
+}
+
+.pairing-banner-copy-button--prompt:hover:not(:disabled) {
+  background-color: #d1ecf1;
+  border-color: #007bff;
+}
+
+/* Copy feedback styling */
+.pairing-banner-copy-feedback {
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: center;
+  animation: fadeInUp 0.3s ease;
+}
+
+.pairing-banner-copy-feedback--success {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.pairing-banner-copy-feedback--error {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive design for copy actions */
+@media (max-width: 480px) {
+  .pairing-banner-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .pairing-banner-copy-button {
+    justify-content: center;
+  }
 } 

@@ -4,6 +4,8 @@ import { PairingBannerProps, BannerState, PairingBannerState } from './types';
 import { SessionData } from '../services/types';
 import { useCountdown } from '../hooks/useCountdown';
 import { TimerStatus } from '../utils/timeFormat';
+import { useClipboard } from '../hooks/useClipboard';
+import { generateSetupPrompt, generateSessionCodeText } from '../utils/promptGenerator';
 import './PairingBanner.css';
 
 /**
@@ -61,6 +63,32 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
       }
     }
   );
+
+  // Initialize clipboard functionality
+  const clipboard = useClipboard();
+
+  /**
+   * Copy session code to clipboard
+   */
+  const handleCopyCode = useCallback(async () => {
+    if (!bannerState.sessionData) return;
+    
+    const codeText = generateSessionCodeText(bannerState.sessionData.code);
+    await clipboard.copyToClipboard(codeText);
+  }, [bannerState.sessionData, clipboard]);
+
+  /**
+   * Copy complete setup prompt to clipboard
+   */
+  const handleCopyPrompt = useCallback(async () => {
+    if (!bannerState.sessionData) return;
+    
+    const promptText = generateSetupPrompt(bannerState.sessionData, {
+      relayBaseUrl,
+      serviceName: 'CODAP Plugin Assistant'
+    });
+    await clipboard.copyToClipboard(promptText);
+  }, [bannerState.sessionData, relayBaseUrl, clipboard]);
 
   /**
    * Creates a new session using the SessionService
@@ -163,6 +191,36 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
             </span>
           </div>
         </div>
+        <div className="pairing-banner-actions">
+          <button
+            type="button"
+            className="pairing-banner-copy-button pairing-banner-copy-button--code"
+            onClick={handleCopyCode}
+            disabled={clipboard.state.isLoading}
+            aria-label="Copy session code to clipboard"
+          >
+            {clipboard.state.isLoading ? '⏳' : '📋'} Copy Code
+          </button>
+          <button
+            type="button"
+            className="pairing-banner-copy-button pairing-banner-copy-button--prompt"
+            onClick={handleCopyPrompt}
+            disabled={clipboard.state.isLoading}
+            aria-label="Copy complete setup instructions to clipboard"
+          >
+            {clipboard.state.isLoading ? '⏳' : '📄'} Copy Instructions
+          </button>
+        </div>
+        {clipboard.state.lastResult && (
+          <div className={`pairing-banner-copy-feedback ${
+            clipboard.state.lastResult.success ? 'pairing-banner-copy-feedback--success' : 'pairing-banner-copy-feedback--error'
+          }`}>
+            {clipboard.state.lastResult.success 
+              ? '✅ Copied to clipboard!' 
+              : `❌ Copy failed: ${clipboard.state.lastResult.error}`
+            }
+          </div>
+        )}
       </div>
     );
   };

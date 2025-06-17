@@ -127,7 +127,8 @@ describe('PairingBanner', () => {
       render(<PairingBanner />);
       
       await waitFor(() => {
-        expect(screen.getByText('Expires in: 10 minutes')).toBeInTheDocument();
+        expect(screen.getByText('Time remaining:')).toBeInTheDocument();
+        expect(screen.getByText('10:00')).toBeInTheDocument();
       });
     });
 
