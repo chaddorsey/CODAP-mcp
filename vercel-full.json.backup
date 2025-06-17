@@ -1,4 +1,6 @@
 {
+  "buildCommand": "npm run build:webpack",
+  "outputDirectory": "dist",
   "functions": {
     "api/sessions.js": {
       "maxDuration": 10
@@ -30,12 +32,6 @@
           "value": "Content-Type, Authorization"
         }
       ]
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/api/not-found"
     }
   ]
 } 
