@@ -1,305 +1,474 @@
 /**
- * PairingBanner component styles
- * Following CODAP plugin design patterns
+ * PairingBanner Component Styles
+ * Enhanced responsive design with CODAP integration
+ * Following modern design principles and accessibility standards
  */
 
-.pairing-banner {
-  margin: 1rem 0;
-  padding: 1rem;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  background-color: #f9f9f9;
-  font-family: inherit;
+/* CSS Custom Properties for Design System Integration */
+:root {
+  /* Colors - CODAP Theme */
+  --codap-primary-500: #007cba;
+  --codap-primary-600: #005a87;
+  --codap-primary-700: #004c73;
+  --codap-primary-50: #e3f2fd;
+  
+  /* Semantic Colors */
+  --color-success: #4caf50;
+  --color-success-light: #e8f5e8;
+  --color-success-border: #c8e6c9;
+  --color-warning: #ff9800;
+  --color-warning-light: #fff3e0;
+  --color-warning-border: #ffcc02;
+  --color-error: #f44336;
+  --color-error-light: #ffebee;
+  --color-error-border: #ffcdd2;
+  --color-critical: #d32f2f;
+  
+  /* Neutral Colors */
+  --color-white: #ffffff;
+  --color-gray-50: #fafafa;
+  --color-gray-100: #f5f5f5;
+  --color-gray-200: #eeeeee;
+  --color-gray-300: #e0e0e0;
+  --color-gray-600: #757575;
+  --color-gray-700: #616161;
+  --color-gray-800: #424242;
+  
+  /* Text Colors */
+  --text-primary: #333333;
+  --text-secondary: #666666;
+  --text-disabled: #9e9e9e;
+  
+  /* Background Colors */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f9f9f9;
+  --bg-tertiary: #f5f5f5;
+  
+  /* Typography */
+  --font-family-primary: inherit;
+  --font-family-mono: 'Courier New', 'Monaco', 'Menlo', monospace;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.85rem;
+  --font-size-base: 0.9rem;
+  --font-size-md: 0.95rem;
+  --font-size-lg: 1.1rem;
+  --font-size-xl: 1.2rem;
+  --font-size-2xl: 1.4rem;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  
+  /* Spacing */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  
+  /* Border Radius */
+  --radius-sm: 2px;
+  --radius-base: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-base: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  
+  /* Animation */
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --duration-slow: 300ms;
+  --easing-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* Component Specific */
+  --button-min-height: 44px;
+  --banner-max-width: 480px;
 }
+
+/* ==========================================================================
+   Base Banner Styles
+   ========================================================================== */
+
+.pairing-banner {
+  /* Layout & Positioning */
+  position: relative;
+  margin: var(--space-4) auto;
+  padding: var(--space-4);
+  max-width: var(--banner-max-width);
+  width: 100%;
+  box-sizing: border-box;
+  
+  /* Appearance */
+  background: var(--bg-primary);
+  border: 1px solid var(--color-gray-300);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-base);
+  
+  /* Typography */
+  font-family: var(--font-family-primary);
+  font-size: var(--font-size-base);
+  line-height: 1.5;
+  color: var(--text-primary);
+  
+  /* Animation */
+  transition: all var(--duration-normal) var(--easing-smooth);
+}
+
+.pairing-banner:focus-within {
+  box-shadow: var(--shadow-md), 0 0 0 3px rgba(0, 124, 186, 0.1);
+}
+
+/* ==========================================================================
+   Content Structure
+   ========================================================================== */
 
 .pairing-banner-content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--space-4);
+  text-align: center;
 }
 
+/* Header Section */
 .pairing-banner-header {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-weight: bold;
-  font-size: 1.1rem;
-  color: #333;
-}
-
-.pairing-banner-icon {
-  font-size: 1.2rem;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
 }
 
 .pairing-banner-title {
   margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
 }
 
-.pairing-banner-message {
-  text-align: center;
-  color: #666;
-  font-size: 0.95rem;
-  margin: 0;
+.pairing-banner-icon {
+  font-size: var(--font-size-xl);
+  color: var(--codap-primary-500);
+  flex-shrink: 0;
 }
+
+/* Message Section */
+.pairing-banner-message {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-md);
+  line-height: 1.6;
+  max-width: 400px;
+}
+
+/* ==========================================================================
+   Session Code Display
+   ========================================================================== */
 
 .pairing-banner-session {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
-  margin: 0.5rem 0;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+  width: 100%;
 }
 
 .pairing-banner-code-label {
-  font-size: 0.9rem;
-  color: #666;
-  font-weight: normal;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-medium);
+  margin: 0;
 }
 
 .pairing-banner-code {
-  font-family: 'Courier New', monospace;
-  font-size: 1.4rem;
-  font-weight: bold;
+  /* Layout */
+  display: inline-block;
+  padding: var(--space-3) var(--space-4);
+  margin: var(--space-2) 0;
+  
+  /* Appearance */
+  background: var(--bg-primary);
+  border: 2px solid var(--codap-primary-500);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  
+  /* Typography */
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
   letter-spacing: 0.1em;
-  padding: 0.5rem 1rem;
-  background-color: #fff;
-  border: 2px solid #007cba;
-  border-radius: 6px;
-  color: #007cba;
+  color: var(--codap-primary-600);
   text-align: center;
+  
+  /* Interaction */
   user-select: text;
+  cursor: text;
+  transition: all var(--duration-normal) var(--easing-smooth);
 }
 
-.pairing-banner-info {
-  text-align: center;
+.pairing-banner-code:hover {
+  border-color: var(--codap-primary-600);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
 }
+
+.pairing-banner-code:focus {
+  outline: 2px solid var(--codap-primary-500);
+  outline-offset: 2px;
+}
+
+/* ==========================================================================
+   Timer Display
+   ========================================================================== */
 
 .pairing-banner-timer {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.25rem;
-  margin-top: 0.5rem;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
 }
 
 .pairing-banner-timer-label {
-  font-size: 0.85rem;
-  color: #666;
-  font-weight: normal;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-medium);
+  margin: 0;
 }
 
 .pairing-banner-timer-display {
-  font-family: 'Courier New', monospace;
-  font-size: 1.2rem;
-  font-weight: bold;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  transition: all 0.3s ease;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-base);
+  border: 1px solid transparent;
+  transition: all var(--duration-normal) var(--easing-smooth);
+  min-width: 80px;
+  text-align: center;
 }
 
-/* Timer status-based styling */
+/* Timer State Styles */
 .pairing-banner-timer--active .pairing-banner-timer-display {
-  color: #4caf50;
-  background-color: #e8f5e8;
-  border: 1px solid #c8e6c9;
+  color: var(--color-success);
+  background-color: var(--color-success-light);
+  border-color: var(--color-success-border);
 }
 
 .pairing-banner-timer--warning .pairing-banner-timer-display {
-  color: #ff9800;
-  background-color: #fff3e0;
-  border: 1px solid #ffcc02;
+  color: var(--color-warning);
+  background-color: var(--color-warning-light);
+  border-color: var(--color-warning-border);
 }
 
 .pairing-banner-timer--critical .pairing-banner-timer-display {
-  color: #f44336;
-  background-color: #ffebee;
-  border: 1px solid #ffcdd2;
+  color: var(--color-critical);
+  background-color: var(--color-error-light);
+  border-color: var(--color-error-border);
   animation: pulse-critical 1s infinite;
 }
 
 .pairing-banner-timer--expired .pairing-banner-timer-display {
-  color: #d32f2f;
-  background-color: #ffebee;
-  border: 1px solid #f44336;
+  color: var(--color-critical);
+  background-color: var(--color-error-light);
+  border-color: var(--color-error);
+  opacity: 0.8;
 }
 
 @keyframes pulse-critical {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.7;
-  }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
 
-/* Legacy TTL styling for backward compatibility */
-.pairing-banner-ttl {
-  font-size: 0.85rem;
-  color: #666;
-  font-style: italic;
-}
-
-.pairing-banner-error {
-  color: #d32f2f;
-  text-align: center;
-  font-size: 0.9rem;
-  margin: 0.5rem 0;
-  padding: 0.5rem;
-  background-color: #ffebee;
-  border: 1px solid #ffcdd2;
-  border-radius: 4px;
-}
+/* ==========================================================================
+   Action Buttons
+   ========================================================================== */
 
 .pairing-banner-actions {
   display: flex;
-  gap: 0.75rem;
-  margin-top: 1rem;
-  justify-content: center;
   flex-wrap: wrap;
+  gap: var(--space-3);
+  justify-content: center;
+  align-items: center;
+  margin-top: var(--space-4);
+  width: 100%;
 }
 
+/* Base Button Styles */
+.pairing-banner button {
+  /* Layout */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--button-min-height);
+  padding: var(--space-2) var(--space-4);
+  
+  /* Appearance */
+  border: 1px solid var(--codap-primary-500);
+  border-radius: var(--radius-base);
+  background: var(--codap-primary-500);
+  color: var(--color-white);
+  box-shadow: var(--shadow-sm);
+  
+  /* Typography */
+  font-family: var(--font-family-primary);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+  white-space: nowrap;
+  
+  /* Interaction */
+  cursor: pointer;
+  transition: all var(--duration-normal) var(--easing-smooth);
+  
+  /* Accessibility */
+  touch-action: manipulation;
+}
+
+.pairing-banner button:hover:not(:disabled) {
+  background: var(--codap-primary-600);
+  border-color: var(--codap-primary-600);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.pairing-banner button:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+.pairing-banner button:disabled {
+  background: var(--color-gray-300);
+  border-color: var(--color-gray-300);
+  color: var(--text-disabled);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.pairing-banner button:focus {
+  outline: 2px solid var(--codap-primary-500);
+  outline-offset: 2px;
+}
+
+/* Specific Button Variants */
 .pairing-banner-start-btn,
 .pairing-banner-retry-btn {
-  padding: 0.5rem 1rem;
-  border: 1px solid #007cba;
-  border-radius: 4px;
-  background-color: #007cba;
-  color: white;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: background-color 0.2s;
-}
-
-.pairing-banner-start-btn:hover,
-.pairing-banner-retry-btn:hover {
-  background-color: #005a87;
+  font-weight: var(--font-weight-semibold);
 }
 
 .pairing-banner-retry-btn {
-  background-color: #f57c00;
-  border-color: #f57c00;
+  background: var(--color-warning);
+  border-color: var(--color-warning);
 }
 
-.pairing-banner-retry-btn:hover {
-  background-color: #e65100;
+.pairing-banner-retry-btn:hover:not(:disabled) {
+  background: #e65100;
+  border-color: #e65100;
 }
 
+/* Copy Buttons */
+.pairing-banner-copy-button {
+  background: var(--bg-primary);
+  color: var(--codap-primary-500);
+  border-color: var(--codap-primary-500);
+  font-size: var(--font-size-sm);
+  padding: var(--space-2) var(--space-3);
+  min-height: 40px;
+}
+
+.pairing-banner-copy-button:hover:not(:disabled) {
+  background: var(--codap-primary-50);
+  color: var(--codap-primary-600);
+  border-color: var(--codap-primary-600);
+}
+
+.pairing-banner-copy-button:active:not(:disabled) {
+  background: var(--codap-primary-500);
+  color: var(--color-white);
+}
+
+/* ==========================================================================
+   Loading & Error States
+   ========================================================================== */
+
+.pairing-banner--loading {
+  background: var(--bg-secondary);
+  border-color: var(--color-gray-200);
+}
+
+.pairing-banner--success {
+  border-color: var(--color-success-border);
+  background: linear-gradient(135deg, var(--bg-primary) 0%, var(--color-success-light) 100%);
+}
+
+.pairing-banner--error {
+  border-color: var(--color-error-border);
+  background: var(--color-error-light);
+}
+
+.pairing-banner--idle {
+  opacity: 0.9;
+}
+
+/* Loading Spinner */
 .pairing-banner-spinner {
-  font-size: 1.5rem;
+  font-size: var(--font-size-2xl);
+  color: var(--codap-primary-500);
   animation: spin 1s linear infinite;
 }
 
 @keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
-/* State-specific styling */
-.pairing-banner--loading {
-  border-color: #ff9800;
-  background-color: #fff3e0;
-}
-
-.pairing-banner--success {
-  border-color: #4caf50;
-  background-color: #f1f8e9;
-}
-
-.pairing-banner--error {
-  border-color: #f44336;
-  background-color: #ffebee;
-}
-
-.pairing-banner--idle {
-  border-color: #2196f3;
-  background-color: #e3f2fd;
-}
-
-/* Copy actions styling */
-.pairing-banner-copy-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  background-color: #f8f9fa;
-  color: #495057;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  text-decoration: none;
-}
-
-.pairing-banner-copy-button:hover:not(:disabled) {
-  background-color: #e9ecef;
-  border-color: #adb5bd;
-  transform: translateY(-1px);
-}
-
-.pairing-banner-copy-button:active:not(:disabled) {
-  transform: translateY(0);
-  background-color: #dee2e6;
-}
-
-.pairing-banner-copy-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.pairing-banner-copy-button:focus {
-  outline: 2px solid #007bff;
-  outline-offset: 2px;
-}
-
-/* Specific button styling */
-.pairing-banner-copy-button--code {
-  border-color: #28a745;
-  color: #155724;
-}
-
-.pairing-banner-copy-button--code:hover:not(:disabled) {
-  background-color: #d4edda;
-  border-color: #28a745;
-}
-
-.pairing-banner-copy-button--prompt {
-  border-color: #007bff;
-  color: #004085;
-}
-
-.pairing-banner-copy-button--prompt:hover:not(:disabled) {
-  background-color: #d1ecf1;
-  border-color: #007bff;
-}
-
-/* Copy feedback styling */
-.pairing-banner-copy-feedback {
-  margin-top: 0.75rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 4px;
-  font-size: 0.875rem;
-  font-weight: 500;
+/* Error Message */
+.pairing-banner-error {
+  color: var(--color-critical);
+  background: var(--color-error-light);
+  border: 1px solid var(--color-error-border);
+  border-radius: var(--radius-base);
+  padding: var(--space-3);
+  margin: var(--space-3) 0;
+  font-size: var(--font-size-sm);
   text-align: center;
-  animation: fadeInUp 0.3s ease;
+}
+
+/* ==========================================================================
+   Copy Feedback
+   ========================================================================== */
+
+.pairing-banner-copy-feedback {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-base);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  z-index: 10;
+  animation: fadeInUp var(--duration-slow) var(--easing-smooth);
 }
 
 .pairing-banner-copy-feedback--success {
-  background-color: #d4edda;
-  color: #155724;
-  border: 1px solid #c3e6cb;
+  background: var(--color-success);
+  color: var(--color-white);
+  box-shadow: var(--shadow-md);
 }
 
 .pairing-banner-copy-feedback--error {
-  background-color: #f8d7da;
-  color: #721c24;
-  border: 1px solid #f5c6cb;
+  background: var(--color-error);
+  color: var(--color-white);
+  box-shadow: var(--shadow-md);
 }
 
 @keyframes fadeInUp {
@@ -313,19 +482,10 @@
   }
 }
 
-/* Responsive design for copy actions */
-@media (max-width: 480px) {
-  .pairing-banner-actions {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .pairing-banner-copy-button {
-    justify-content: center;
-  }
-}
+/* ==========================================================================
+   Accessibility Features
+   ========================================================================== */
 
-/* Screen reader only content - accessible but visually hidden */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -338,179 +498,167 @@
   border: 0;
 }
 
-/* Enhanced focus indicators for accessibility */
-.pairing-banner button:focus,
-.pairing-banner [tabindex]:focus {
-  outline: 2px solid #007cba;
-  outline-offset: 2px;
-  box-shadow: 0 0 0 4px rgba(0, 124, 186, 0.2);
-}
-
-/* High contrast focus for better visibility */
+/* High Contrast Mode Support */
 @media (prefers-contrast: high) {
-  .pairing-banner button:focus,
-  .pairing-banner [tabindex]:focus {
-    outline: 3px solid #000;
-    outline-offset: 3px;
-    box-shadow: 0 0 0 6px rgba(0, 0, 0, 0.3);
+  .pairing-banner {
+    border-width: 2px;
+  }
+  
+  .pairing-banner button:focus {
+    outline-width: 3px;
+  }
+  
+  .pairing-banner-code {
+    border-width: 3px;
   }
 }
 
-/* Reduced motion support */
+/* Reduced Motion Support */
 @media (prefers-reduced-motion: reduce) {
-  .pairing-banner-spinner-icon {
+  .pairing-banner,
+  .pairing-banner button,
+  .pairing-banner-code,
+  .pairing-banner-timer-display {
+    transition: none;
+  }
+  
+  .pairing-banner-spinner {
     animation: none;
   }
   
-  .pairing-banner * {
-    transition: none !important;
-    animation: none !important;
-  }
-}
-
-/* Enhanced button styling for accessibility */
-.pairing-banner button {
-  min-height: 44px; /* WCAG minimum touch target size */
-  min-width: 44px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  cursor: pointer;
-  border: 2px solid transparent;
-  transition: all 0.2s ease-in-out;
-}
-
-.pairing-banner button:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.pairing-banner button:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.pairing-banner button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* Improve button text contrast */
-.pairing-banner-start-btn,
-.pairing-banner-retry-btn {
-  background: #007cba;
-  color: white;
-  border: 2px solid #007cba;
-}
-
-.pairing-banner-start-btn:hover:not(:disabled),
-.pairing-banner-retry-btn:hover:not(:disabled) {
-  background: #005a87;
-  border-color: #005a87;
-}
-
-.pairing-banner-copy-button {
-  background: #f0f8ff;
-  color: #333;
-  border: 2px solid #ccc;
-}
-
-.pairing-banner-copy-button:hover:not(:disabled) {
-  background: #e0f0ff;
-  border-color: #007cba;
-}
-
-/* Timer status indicators with better contrast */
-.pairing-banner-timer--active {
-  color: #2d5016; /* Dark green for better contrast */
-}
-
-.pairing-banner-timer--warning {
-  color: #8b4513; /* Dark orange for better contrast */
-}
-
-.pairing-banner-timer--critical {
-  color: #8b0000; /* Dark red for better contrast */
-  font-weight: bold;
-}
-
-.pairing-banner-timer--expired {
-  color: #8b0000;
-  font-weight: bold;
-}
-
-/* Session code styling for better readability */
-.pairing-banner-code {
-  font-family: 'Courier New', monospace;
-  font-size: 1.2em;
-  font-weight: bold;
-  letter-spacing: 0.1em;
-  background: #f5f5f5;
-  padding: 0.5rem 1rem;
-  border: 2px solid #ddd;
-  border-radius: 4px;
-  color: #333;
-}
-
-/* Copy feedback styling */
-.pairing-banner-copy-feedback {
-  margin-top: 0.5rem;
-  padding: 0.5rem;
-  border-radius: 4px;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.pairing-banner-copy-feedback--success {
-  background: #d4edda;
-  color: #155724;
-  border: 1px solid #c3e6cb;
-}
-
-.pairing-banner-copy-feedback--error {
-  background: #f8d7da;
-  color: #721c24;
-  border: 1px solid #f5c6cb;
-}
-
-/* Responsive design for accessibility */
-@media (max-width: 768px) {
-  .pairing-banner {
-    font-size: 0.9rem;
+  @keyframes pulse-critical {
+    0%, 100% { opacity: 0.8; }
   }
   
-  .pairing-banner button {
-    min-height: 48px; /* Larger touch targets on mobile */
-    min-width: 48px;
+  .pairing-banner-copy-feedback {
+    animation: none;
+  }
+}
+
+/* ==========================================================================
+   Responsive Design
+   ========================================================================== */
+
+/* Extra Small Devices (phones, 320px and up) */
+@media (max-width: 479px) {
+  .pairing-banner {
+    margin: var(--space-2) var(--space-2);
+    padding: var(--space-3);
+    max-width: none;
+  }
+  
+  .pairing-banner-title {
+    font-size: var(--font-size-md);
+  }
+  
+  .pairing-banner-code {
+    font-size: var(--font-size-xl);
+    padding: var(--space-2) var(--space-3);
   }
   
   .pairing-banner-actions {
     flex-direction: column;
-    gap: 0.75rem;
-  }
-  
-  .pairing-banner-copy-button {
-    width: 100%;
-  }
-}
-
-/* Print styles for accessibility */
-@media print {
-  .pairing-banner {
-    border: 2px solid #000;
-    background: white !important;
-    color: black !important;
+    gap: var(--space-2);
   }
   
   .pairing-banner button {
-    border: 1px solid #000;
+    width: 100%;
+    max-width: 280px;
+  }
+}
+
+/* Small Devices (landscape phones, 480px and up) */
+@media (min-width: 480px) and (max-width: 767px) {
+  .pairing-banner {
+    margin: var(--space-3) var(--space-2);
+    max-width: 440px;
+  }
+  
+  .pairing-banner-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  
+  .pairing-banner button {
+    flex: 1;
+    min-width: 120px;
+    max-width: 200px;
+  }
+}
+
+/* Medium Devices (tablets, 768px and up) */
+@media (min-width: 768px) {
+  .pairing-banner {
+    margin: var(--space-4) auto;
+    padding: var(--space-5);
+  }
+  
+  .pairing-banner-content {
+    gap: var(--space-5);
+  }
+  
+  .pairing-banner-code {
+    font-size: var(--font-size-2xl);
+    padding: var(--space-4) var(--space-5);
+  }
+  
+  .pairing-banner-actions {
+    gap: var(--space-4);
+  }
+}
+
+/* Large Devices (desktops, 1024px and up) */
+@media (min-width: 1024px) {
+  .pairing-banner {
+    padding: var(--space-6);
+  }
+  
+  .pairing-banner-title {
+    font-size: var(--font-size-xl);
+  }
+  
+  .pairing-banner-message {
+    font-size: var(--font-size-lg);
+  }
+}
+
+/* ==========================================================================
+   Print Styles
+   ========================================================================== */
+
+@media print {
+  .pairing-banner {
     background: white !important;
-    color: black !important;
+    border: 1px solid black !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+  
+  .pairing-banner button {
+    display: none !important;
   }
   
   .pairing-banner-copy-feedback {
-    border: 1px solid #000;
+    display: none !important;
+  }
+  
+  .pairing-banner-spinner {
+    display: none !important;
+  }
+}
+
+/* ==========================================================================
+   Dark Mode Support (Future Enhancement)
+   ========================================================================== */
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-primary: #1a1a1a;
+    --bg-secondary: #2d2d2d;
+    --bg-tertiary: #3d3d3d;
+    --text-primary: #e0e0e0;
+    --text-secondary: #b0b0b0;
+    --color-gray-300: #4a4a4a;
+    --color-gray-200: #5a5a5a;
   }
 } 
