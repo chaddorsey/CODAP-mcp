@@ -46,7 +46,8 @@
     "start:api": "node dist/src/api-server.js",
     "start:secure": "webpack serve",
     "start:secure:no-certs": "webpack serve --server-options-cert-reset --server-options-key-reset",
-    "build": "npm-run-all lint:build build:webpack",
+    "build": "npm run build:webpack",
+    "build:full": "npm-run-all lint:build build:webpack",
     "build:webpack": "webpack --mode production",
     "build:top-test": "cross-env DEPLOY_PATH=specific/release/ webpack --mode production --output-path top-test/specific/release && cp top-test/specific/release/index-top.html top-test/",
     "build:mcp": "tsc -p tsconfig.server.json",
@@ -65,6 +66,8 @@
     "test:playwright": "playwright test",
     "test:playwright:open": "playwright test --ui",
     "test:full": "npm-run-all test test:playwright",
+    "test:relay": "node test-relay-manual.js",
+    "test:relay:local": "node test-relay-manual.js http://localhost:3000",
     "strings:pull": "node bin/pull-strings.js --prefix=DG.plugin --out=./src/strings.json"
   },
   "repository": {

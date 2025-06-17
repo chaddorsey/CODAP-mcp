@@ -1,36 +1,20 @@
 {
+  "buildCommand": "npm run build:webpack",
+  "outputDirectory": "dist",
   "functions": {
-    "server/relay/post-session.ts": {
-      "runtime": "edge"
+    "api/sessions.js": {
+      "maxDuration": 10
     },
-    "server/relay/get-stream.ts": {
-      "runtime": "edge"
+    "api/request.js": {
+      "maxDuration": 10
     },
-    "server/relay/post-request.ts": {
-      "runtime": "edge"
+    "api/response.js": {
+      "maxDuration": 10
     },
-    "server/relay/post-response.ts": {
-      "runtime": "edge"
+    "api/stream.js": {
+      "maxDuration": 60
     }
   },
-  "rewrites": [
-    {
-      "source": "/api/sessions",
-      "destination": "/server/relay/post-session.ts"
-    },
-    {
-      "source": "/stream",
-      "destination": "/server/relay/get-stream.ts"
-    },
-    {
-      "source": "/request",
-      "destination": "/server/relay/post-request.ts"
-    },
-    {
-      "source": "/response",
-      "destination": "/server/relay/post-response.ts"
-    }
-  ],
   "headers": [
     {
       "source": "/api/(.*)",

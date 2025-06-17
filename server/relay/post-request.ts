@@ -1,15 +1,17 @@
-import { kv } from '@vercel/kv';
-import { createErrorResponse, createSuccessResponse, getRateLimitKey } from './utils';
-import { ToolRequestSchema } from './schemas';
+export const runtime = "edge";
+
+import { kv } from "@vercel/kv";
+import { createErrorResponse, createSuccessResponse, getRateLimitKey } from "./utils";
+import { ToolRequestSchema } from "./schemas";
 
 // Configuration
-const RATE_LIMIT_REQUEST_PER_CODE = parseInt(process.env.RATE_LIMIT_REQUEST_PER_CODE || '60');
+const RATE_LIMIT_REQUEST_PER_CODE = parseInt(process.env.RATE_LIMIT_REQUEST_PER_CODE || "60", 10);
 
 /**
  * Rate limiting check for tool requests per IP+code combination
  */
 async function checkRateLimit(ip: string, code: string): Promise<boolean> {
-  const key = getRateLimitKey(`${ip}:${code}`, 'request');
+  const key = getRateLimitKey(`${ip}:${code}`, "request");
   const current = await kv.incr(key);
   
   if (current === 1) {
@@ -28,7 +30,7 @@ async function validateSession(code: string): Promise<boolean> {
     const sessionData = await kv.get(`session:${code}`);
     return sessionData !== null;
   } catch (error) {
-    console.error('Session validation error:', error);
+    console.error("Session validation error:", error);
     return false;
   }
 }
@@ -57,40 +59,40 @@ async function enqueueToolRequest(code: string, request: any): Promise<void> {
 export default async function handler(request: Request): Promise<Response> {
   try {
     // Handle CORS preflight
-    if (request.method === 'OPTIONS') {
+    if (request.method === "OPTIONS") {
       return new Response(null, {
         status: 200,
         headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type'
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type"
         }
       });
     }
     
     // Only allow POST method
-    if (request.method !== 'POST') {
+    if (request.method !== "POST") {
       return createErrorResponse(
         405,
-        'method_not_allowed',
-        'Only POST method is allowed'
+        "method_not_allowed",
+        "Only POST method is allowed"
       );
     }
     
     // Get client IP for rate limiting
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
-               request.headers.get('x-real-ip') || 
-               'unknown';
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || 
+               request.headers.get("x-real-ip") || 
+               "unknown";
     
     // Parse and validate request body
     let body;
     try {
       body = await request.json();
-    } catch (error) {
+    } catch {
       return createErrorResponse(
         400,
-        'invalid_json',
-        'Request body must be valid JSON'
+        "invalid_json",
+        "Request body must be valid JSON"
       );
     }
     
@@ -99,8 +101,8 @@ export default async function handler(request: Request): Promise<Response> {
     if (!validation.success) {
       return createErrorResponse(
         400,
-        'validation_error',
-        'Request body validation failed',
+        "validation_error",
+        "Request body validation failed",
         validation.error.message
       );
     }
@@ -112,9 +114,9 @@ export default async function handler(request: Request): Promise<Response> {
     if (!rateLimitOk) {
       return createErrorResponse(
         429,
-        'rate_limit_exceeded',
+        "rate_limit_exceeded",
         `Too many requests for this session. Limit: ${RATE_LIMIT_REQUEST_PER_CODE} per minute`,
-        'REQUEST_RATE_LIMIT'
+        "REQUEST_RATE_LIMIT"
       );
     }
     
@@ -123,8 +125,8 @@ export default async function handler(request: Request): Promise<Response> {
     if (!sessionValid) {
       return createErrorResponse(
         404,
-        'session_not_found',
-        'Session not found or expired'
+        "session_not_found",
+        "Session not found or expired"
       );
     }
     
@@ -134,17 +136,18 @@ export default async function handler(request: Request): Promise<Response> {
     // Return 202 Accepted with request details
     return createSuccessResponse({
       id,
-      status: 'queued',
-      message: 'Tool request queued for processing'
+      status: "queued",
+      message: "Tool request queued for processing"
     }, 202);
     
   } catch (error) {
-    console.error('Tool request error:', error);
+    console.error("Tool request error:", error);
     
     return createErrorResponse(
       500,
-      'internal_server_error',
-      'Failed to process tool request'
+      "internal_server_error",
+      "Failed to process tool request"
     );
   }
 } 
+

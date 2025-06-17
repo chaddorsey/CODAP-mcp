@@ -5,7 +5,7 @@ import { createErrorResponse, createSuccessResponse, getRateLimitKey } from "./u
 import { ToolResponseSchema } from "./schemas";
 
 // Configuration
-const RATE_LIMIT_RESPONSE_PER_CODE = parseInt(process.env.RATE_LIMIT_RESPONSE_PER_CODE || "60", 10);
+const RATE_LIMIT_RESPONSE_PER_CODE = 60;
 
 /**
  * Rate limiting check for tool responses per IP+code combination

@@ -5,8 +5,8 @@ import { generateSessionCode, createErrorResponse, createSuccessResponse, getRat
 import { CreateSessionRequestSchema, SessionDataSchema } from "./schemas";
 
 // Configuration
-const SESSION_TTL_SECONDS = parseInt(process.env.SESSION_TTL_SECONDS || "600", 10); // 10 minutes
-const RATE_LIMIT_SESSION_PER_IP = parseInt(process.env.RATE_LIMIT_SESSION_PER_IP || "30", 10);
+const SESSION_TTL_SECONDS = 600; // 10 minutes
+const RATE_LIMIT_SESSION_PER_IP = 30;
 
 /**
  * Rate limiting check for session creation

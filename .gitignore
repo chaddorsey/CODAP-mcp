@@ -16,3 +16,6 @@
 # Logs
 npm-debug.log*
 npm-error.log*
+TESTING-PBI1.md
+test-relay-manual.js
+.vercel

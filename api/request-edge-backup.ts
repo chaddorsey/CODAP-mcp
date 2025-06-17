@@ -2,16 +2,16 @@ export const runtime = "edge";
 
 import { kv } from "@vercel/kv";
 import { createErrorResponse, createSuccessResponse, getRateLimitKey } from "./utils";
-import { ToolResponseSchema } from "./schemas";
+import { ToolRequestSchema } from "./schemas";
 
 // Configuration
-const RATE_LIMIT_RESPONSE_PER_CODE = parseInt(process.env.RATE_LIMIT_RESPONSE_PER_CODE || "60", 10);
+const RATE_LIMIT_REQUEST_PER_CODE = 60;
 
 /**
- * Rate limiting check for tool responses per IP+code combination
+ * Rate limiting check for tool requests per IP+code combination
  */
 async function checkRateLimit(ip: string, code: string): Promise<boolean> {
-  const key = getRateLimitKey(`${ip}:${code}`, "response");
+  const key = getRateLimitKey(`${ip}:${code}`, "request");
   const current = await kv.incr(key);
   
   if (current === 1) {
@@ -19,7 +19,7 @@ async function checkRateLimit(ip: string, code: string): Promise<boolean> {
     await kv.expire(key, 60);
   }
   
-  return current <= RATE_LIMIT_RESPONSE_PER_CODE;
+  return current <= RATE_LIMIT_REQUEST_PER_CODE;
 }
 
 /**
@@ -36,25 +36,25 @@ async function validateSession(code: string): Promise<boolean> {
 }
 
 /**
- * Store tool response in KV with TTL
+ * Enqueue tool request to session queue
  */
-async function storeToolResponse(code: string, response: any): Promise<void> {
-  const responseKey = `res:${code}`;
-  const responseJson = JSON.stringify({
-    ...response,
+async function enqueueToolRequest(code: string, request: any): Promise<void> {
+  const queueKey = `req:${code}`;
+  const requestJson = JSON.stringify({
+    ...request,
     timestamp: new Date().toISOString()
   });
   
   // Add to the end of the list (FIFO queue)
-  await kv.rpush(responseKey, responseJson);
+  await kv.rpush(queueKey, requestJson);
   
-  // Set TTL on the response queue (1 hour)
-  await kv.expire(responseKey, 3600);
+  // Set TTL on the queue to clean up old requests (1 hour)
+  await kv.expire(queueKey, 3600);
 }
 
 /**
- * POST /response handler
- * Accepts tool results from browsers and stores them for LLM consumption
+ * POST /request handler
+ * Accepts tool requests from LLMs and queues them for browser consumption
  */
 export default async function handler(request: Request): Promise<Response> {
   try {
@@ -97,7 +97,7 @@ export default async function handler(request: Request): Promise<Response> {
     }
     
     // Validate against schema
-    const validation = ToolResponseSchema.safeParse(body);
+    const validation = ToolRequestSchema.safeParse(body);
     if (!validation.success) {
       return createErrorResponse(
         400,
@@ -107,7 +107,7 @@ export default async function handler(request: Request): Promise<Response> {
       );
     }
     
-    const { code, id, result } = validation.data;
+    const { code, id, tool, args } = validation.data;
     
     // Check rate limit per IP+code combination
     const rateLimitOk = await checkRateLimit(ip, code);
@@ -115,8 +115,8 @@ export default async function handler(request: Request): Promise<Response> {
       return createErrorResponse(
         429,
         "rate_limit_exceeded",
-        `Too many responses for this session. Limit: ${RATE_LIMIT_RESPONSE_PER_CODE} per minute`,
-        "RESPONSE_RATE_LIMIT"
+        `Too many requests for this session. Limit: ${RATE_LIMIT_REQUEST_PER_CODE} per minute`,
+        "REQUEST_RATE_LIMIT"
       );
     }
     
@@ -130,23 +130,23 @@ export default async function handler(request: Request): Promise<Response> {
       );
     }
     
-    // Store the tool response
-    await storeToolResponse(code, { id, result });
+    // Enqueue the tool request
+    await enqueueToolRequest(code, { id, tool, args });
     
-    // Return 202 Accepted with response confirmation
+    // Return 202 Accepted with request details
     return createSuccessResponse({
       id,
-      status: "stored",
-      message: "Tool response stored successfully"
+      status: "queued",
+      message: "Tool request queued for processing"
     }, 202);
     
   } catch (error) {
-    console.error("Tool response error:", error);
+    console.error("Tool request error:", error);
     
     return createErrorResponse(
       500,
       "internal_server_error",
-      "Failed to process tool response"
+      "Failed to process tool request"
     );
   }
 } 

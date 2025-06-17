@@ -4,14 +4,14 @@
  * Entropy: 40 bits (~1 trillion combinations)
  */
 export function generateSessionCode(): string {
-  const base32Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  const base32Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
   const codeLength = 8;
   
   // Use crypto.getRandomValues for cryptographic security
   const randomBytes = new Uint8Array(codeLength);
   crypto.getRandomValues(randomBytes);
   
-  let code = '';
+  let code = "";
   for (let i = 0; i < codeLength; i++) {
     code += base32Chars[randomBytes[i] % 32];
   }
@@ -44,10 +44,10 @@ export function createErrorResponse(
     {
       status,
       headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type'
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type"
       }
     }
   );
@@ -58,17 +58,17 @@ export function createErrorResponse(
  */
 export function createSuccessResponse(
   data: any,
-  status: number = 200
+  status = 200
 ): Response {
   return new Response(
     JSON.stringify(data),
     {
       status,
       headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type'
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type"
       }
     }
   );
@@ -80,3 +80,4 @@ export function createSuccessResponse(
 export function getRateLimitKey(ip: string, endpoint: string): string {
   return `ratelimit:${endpoint}:${ip}`;
 } 
+
