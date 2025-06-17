@@ -2,7 +2,7 @@
 
 | ID | Actor | User Story | Status | Conditions of Satisfaction (CoS) |
 | :-- | :---- | :--------- | :----- | :------------------------------- |
-| 1 | Plugin Developer | As a plugin developer, I want a Vercel relay that can create sessions and stream tool-invocation events via SSE so that LLMs can communicate with the browser without local servers. | InProgress | • `POST /api/sessions` returns code & TTL<br>• `GET /stream`, `/request`, `/response` implemented with KV store<br>• Works in dev deployment; automated integration tests pass<br>• Production deployment accessible with SSO bypass |
+| 1 | Plugin Developer | As a plugin developer, I want a Vercel relay that can create sessions and stream tool-invocation events via SSE so that LLMs can communicate with the browser without local servers. | Done | • `POST /api/sessions` returns code & TTL<br>• `GET /stream`, `/request`, `/response` implemented with KV store<br>• Works in dev deployment; automated integration tests pass<br>• Production deployment accessible with SSO bypass |
 | 2 | End User | As an end user, I want the CODAP plugin to display a pairing banner with copy-prompt/code actions so that I can easily connect an LLM session. | Proposed | • Banner visible on load with 8-char code<br>• Countdown timer updates<br>• Copy prompt includes code, relay URL, instructions<br>• UX meets accessibility spec |
 | 3 | Browser Worker | As a browser worker, I want to fetch tool requests via SSE (with polling fallback) and post results so that CODAP executes LLM commands in real time. | Proposed | • EventSource connection established<br>• Fallback to 1 s polling when SSE fails<br>• Successful round-trip shown in demo |
 | 4 | LLM Agent | As an LLM agent, I want to retrieve a JSON-Schema tool manifest for the current session so that I can build correctly-shaped MCP calls. | Proposed | • `GET /metadata` returns manifest derived from registry<br>• Version field included<br>• Sample schema validated against JSON Schema draft-07 |
@@ -29,6 +29,7 @@
 | 2025-06-17-01:35:00 | 1 | Task Added | Added missing task 1-6 for KV storage implementation to complete original PBI 1 scope | AI_Agent |
 | 2025-06-17-01:45:00 | 11 | Scope Clarification | Removed secret management overlap with PBI-13, focused on non-secret environment variables | AI_Agent |
 | 2025-06-17-01:45:00 | 1 | Documentation Correction | Updated tasks 1-2 and 1-4 to reflect actual Node.js implementation vs claimed Edge/KV | AI_Agent |
+| 2025-06-17-03:10:00 | 1 | Status Update | Completed - All tasks done, Redis KV storage implemented, production deployment successful | AI_Agent |
 | 2025-06-17-01:15:00 | 11 | Created | New PBI for proper environment variable management and configuration security | AI_Agent |
 | 2025-06-17-01:15:00 | 12 | Created | New PBI for TypeScript migration to improve type safety and maintainability | AI_Agent |
 | 2025-06-17-01:15:00 | 13 | Created | New PBI for comprehensive secrets management and security practices | AI_Agent | 
