@@ -19,7 +19,7 @@ class MockEventSource {
   public onerror: ((event: Event) => void) | null = null;
   public readyState: number = EventSource.CONNECTING;
   public url: string;
-  private listeners: Map<string, ((event: MessageEvent) => void)[]> = new Map();
+  private listeners = new Map<string, ((event: MessageEvent) => void)[]>();
 
   constructor(url: string) {
     this.url = url;

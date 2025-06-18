@@ -344,3 +344,141 @@ export const DEFAULT_POLLING_CONFIG: PollingConfig = {
   maxTrackedIds: 1000, // Track last 1000 request IDs
   retryConfig: DEFAULT_RETRY_CONFIG
 };
+
+// ==================== Tool Request Parser Types ====================
+
+/**
+ * Parsed and validated tool request
+ */
+export interface ParsedToolRequest {
+  /** Unique request identifier */
+  id: string;
+  /** Name of the tool to execute */
+  tool: string;
+  /** Tool parameters/arguments */
+  parameters: Record<string, unknown>;
+  /** Additional metadata */
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Parse error details
+ */
+export interface ParseError {
+  /** Error code for categorization */
+  code: string;
+  /** Human-readable error message */
+  message: string;
+  /** Additional error details */
+  details?: Record<string, unknown>;
+}
+
+/**
+ * Result of parsing operation
+ */
+export interface ParseResult {
+  /** Whether parsing was successful */
+  success: boolean;
+  /** Parsed request data if successful */
+  data?: ParsedToolRequest;
+  /** Error details if parsing failed */
+  error?: ParseError;
+}
+
+/**
+ * Tool request parser interface
+ */
+export interface ToolRequestParserInterface {
+  /** Parse raw request data into structured format */
+  parseRequest(rawRequest: unknown): ParseResult;
+  /** Validate that a tool is supported */
+  validateTool(toolName: string): boolean;
+  /** Validate tool parameters against schema */
+  validateParameters(toolName: string, parameters: Record<string, unknown>): ParseError | null;
+  /** Get list of supported tools */
+  getSupportedTools(): string[];
+}
+
+// ==================== Tool Schema and Registry Types ====================
+
+/**
+ * Schema for a tool parameter
+ */
+export interface ToolParameterSchema {
+  /** Parameter data type */
+  type: "string" | "number" | "boolean" | "object" | "array";
+  /** Parameter description */
+  description?: string;
+  /** Whether parameter is required */
+  required?: boolean;
+  /** Allowed values for enum types */
+  enum?: unknown[];
+  /** Default value if not provided */
+  default?: unknown;
+  /** Minimum value for numbers */
+  minimum?: number;
+  /** Maximum value for numbers */
+  maximum?: number;
+  /** Pattern for string validation */
+  pattern?: string;
+  /** Schema for object properties */
+  properties?: Record<string, ToolParameterSchema>;
+  /** Schema for array items */
+  items?: ToolParameterSchema;
+}
+
+/**
+ * Schema definition for a tool
+ */
+export interface ToolSchema {
+  /** Tool name */
+  name: string;
+  /** Tool description */
+  description: string;
+  /** Parameter schema definition */
+  parameters: {
+    type: "object";
+    properties: Record<string, ToolParameterSchema>;
+    required?: string[];
+  };
+}
+
+/**
+ * Registry of available tools and their schemas
+ */
+export type ToolRegistry = Record<string, ToolSchema>;
+
+// ==================== Parser Configuration ====================
+
+/**
+ * Configuration for tool request parser
+ */
+export interface ToolRequestParserConfig {
+  /** Maximum request size in bytes */
+  maxRequestSize: number;
+  /** Whether to enable security validation */
+  enableSecurityValidation: boolean;
+  /** Allow execution of unknown/unregistered tools */
+  allowUnknownTools: boolean;
+  /** Custom validation functions */
+  customValidators?: Record<string, (value: unknown) => boolean>;
+  /** Whether to sanitize input parameters */
+  sanitizeInputs: boolean;
+  /** Maximum string length for parameters */
+  maxStringLength: number;
+  /** Maximum object depth for nested parameters */
+  maxObjectDepth: number;
+}
+
+/**
+ * Default parser configuration
+ */
+export const DEFAULT_PARSER_CONFIG: ToolRequestParserConfig = {
+  maxRequestSize: 1024 * 1024, // 1MB
+  enableSecurityValidation: true,
+  allowUnknownTools: false,
+  customValidators: {},
+  sanitizeInputs: true,
+  maxStringLength: 10000,
+  maxObjectDepth: 10
+};

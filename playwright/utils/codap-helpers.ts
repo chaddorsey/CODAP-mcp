@@ -1,4 +1,4 @@
-import { Page, expect, Locator } from '@playwright/test';
+import { Page, expect, Locator } from "@playwright/test";
 
 /**
  * CODAP Testing Utilities
@@ -14,24 +14,24 @@ export class CODAPHelpers {
    * @param codapUrl - Base CODAP URL (defaults to codap3.concord.org)
    */
   async navigateToCODAPWithPlugin(
-    pluginUrl: string = 'https://localhost:8088',
-    codapUrl: string = 'https://codap3.concord.org'
+    pluginUrl = "https://localhost:8088",
+    codapUrl = "https://codap3.concord.org"
   ): Promise<void> {
     const fullUrl = `${codapUrl}/?mouseSensor&di=${encodeURIComponent(pluginUrl)}`;
     await this.page.goto(fullUrl);
     
     // Wait for CODAP to load
-    await this.page.waitForLoadState('networkidle');
+    await this.page.waitForLoadState("networkidle");
     
     // Wait for the plugin iframe to be available
-    await this.page.waitForSelector('.codap-web-view-iframe', { timeout: 30000 });
+    await this.page.waitForSelector(".codap-web-view-iframe", { timeout: 30000 });
   }
 
   /**
    * Get the plugin iframe locator
    */
   getPluginFrame() {
-    return this.page.frameLocator('.codap-web-view-iframe');
+    return this.page.frameLocator(".codap-web-view-iframe");
   }
 
   /**
@@ -41,7 +41,7 @@ export class CODAPHelpers {
     const iframe = this.getPluginFrame();
     
     // Wait for the main app container (using actual class name)
-    await iframe.locator('.App').waitFor({ timeout: 30000 });
+    await iframe.locator(".App").waitFor({ timeout: 30000 });
     
     // Wait for any loading states to complete
     await this.page.waitForTimeout(1000);
@@ -51,42 +51,42 @@ export class CODAPHelpers {
    * Get the pairing banner within the plugin
    */
   getPairingBanner(): Locator {
-    return this.getPluginFrame().locator('.pairing-banner');
+    return this.getPluginFrame().locator(".pairing-banner");
   }
 
   /**
    * Get the session code display
    */
   getSessionCode(): Locator {
-    return this.getPluginFrame().locator('.pairing-banner-session-code');
+    return this.getPluginFrame().locator(".pairing-banner-session-code");
   }
 
   /**
    * Get the countdown timer
    */
   getCountdownTimer(): Locator {
-    return this.getPluginFrame().locator('.pairing-banner-timer');
+    return this.getPluginFrame().locator(".pairing-banner-timer");
   }
 
   /**
    * Get the copy code button
    */
   getCopyCodeButton(): Locator {
-    return this.getPluginFrame().locator('.pairing-banner-copy-button--code');
+    return this.getPluginFrame().locator(".pairing-banner-copy-button--code");
   }
 
   /**
    * Get the copy prompt button
    */
   getCopyPromptButton(): Locator {
-    return this.getPluginFrame().locator('.pairing-banner-copy-button--prompt');
+    return this.getPluginFrame().locator(".pairing-banner-copy-button--prompt");
   }
 
   /**
    * Get the copy feedback message
    */
   getCopyFeedback(): Locator {
-    return this.getPluginFrame().locator('.pairing-banner-copy-feedback');
+    return this.getPluginFrame().locator(".pairing-banner-copy-feedback");
   }
 
   /**
@@ -128,7 +128,7 @@ export class CODAPHelpers {
     // Verify feedback appears
     const feedback = this.getCopyFeedback();
     await expect(feedback).toBeVisible();
-    await expect(feedback).toContainText('Code copied');
+    await expect(feedback).toContainText("Code copied");
     
     // Note: Clipboard verification would require additional setup in test environment
   }
@@ -145,7 +145,7 @@ export class CODAPHelpers {
     // Verify feedback appears
     const feedback = this.getCopyFeedback();
     await expect(feedback).toBeVisible();
-    await expect(feedback).toContainText('Prompt copied');
+    await expect(feedback).toContainText("Prompt copied");
     
     // Note: Clipboard content verification would require additional setup in test environment
   }
@@ -176,20 +176,20 @@ export class CODAPHelpers {
     // Focus on copy code button and activate with keyboard
     const copyCodeButton = this.getCopyCodeButton();
     await copyCodeButton.focus();
-    await this.page.keyboard.press('Enter');
+    await this.page.keyboard.press("Enter");
     
     // Verify feedback appears
     const feedback = this.getCopyFeedback();
     await expect(feedback).toBeVisible();
     
     // Test tab navigation to copy prompt button
-    await this.page.keyboard.press('Tab');
+    await this.page.keyboard.press("Tab");
     const copyPromptButton = this.getCopyPromptButton();
     await expect(copyPromptButton).toBeFocused();
     
     // Activate with Space key
-    await this.page.keyboard.press('Space');
-    await expect(feedback).toContainText('Prompt copied');
+    await this.page.keyboard.press("Space");
+    await expect(feedback).toContainText("Prompt copied");
   }
 
   /**
@@ -201,7 +201,7 @@ export class CODAPHelpers {
     await expect(banner).toBeVisible();
     
     // If there are error states, they should be handled gracefully
-    const errorMessage = this.getPluginFrame().locator('.pairing-banner-error');
+    const errorMessage = this.getPluginFrame().locator(".pairing-banner-error");
     if (await errorMessage.isVisible()) {
       await expect(errorMessage).toContainText(/error|failed|unable/i);
     }
@@ -223,14 +223,14 @@ export class AccessibilityHelpers {
     const timer = helpers.getCountdownTimer();
     
     // Verify banner has proper role and label
-    await expect(banner).toHaveAttribute('role', 'region');
-    await expect(banner).toHaveAttribute('aria-label');
+    await expect(banner).toHaveAttribute("role", "region");
+    await expect(banner).toHaveAttribute("aria-label");
     
     // Verify session code has proper labeling
-    await expect(sessionCode).toHaveAttribute('aria-label');
+    await expect(sessionCode).toHaveAttribute("aria-label");
     
     // Verify timer has live region
-    await expect(timer).toHaveAttribute('aria-live');
+    await expect(timer).toHaveAttribute("aria-live");
   }
 
   /**
@@ -238,14 +238,14 @@ export class AccessibilityHelpers {
    */
   async testScreenReaderAnnouncements(helpers: CODAPHelpers): Promise<void> {
     // Verify live regions exist for dynamic updates
-    const liveRegion = helpers.getPluginFrame().locator('[aria-live]');
+    const liveRegion = helpers.getPluginFrame().locator("[aria-live]");
     const count = await liveRegion.count();
     expect(count).toBeGreaterThan(0);
     
     // Test copy action announcements
     await helpers.getCopyCodeButton().click();
     const feedback = helpers.getCopyFeedback();
-    await expect(feedback).toHaveAttribute('role', 'status');
+    await expect(feedback).toHaveAttribute("role", "status");
   }
 
   /**
@@ -257,8 +257,8 @@ export class AccessibilityHelpers {
     const page = this.page;
     
     // Check that focus indicators are visible
-    await page.keyboard.press('Tab');
-    const focusedElement = await page.locator(':focus').first();
+    await page.keyboard.press("Tab");
+    const focusedElement = page.locator(":focus").first();
     await expect(focusedElement).toBeVisible();
   }
 } 

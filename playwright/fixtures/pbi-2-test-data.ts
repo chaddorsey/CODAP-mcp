@@ -52,7 +52,7 @@ export const TEST_CONFIG = {
  * Mock session data for testing
  */
 export const MOCK_SESSION_DATA: SessionData = {
-  sessionId: 'ABC123XY',
+  sessionId: "ABC123XY",
   ttl: 1800, // 30 minutes in seconds
   createdAt: new Date().toISOString(),
   expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString()
@@ -63,19 +63,19 @@ export const MOCK_SESSION_DATA: SessionData = {
  */
 export const EXPECTED_PROMPT_CONTENT = {
   mustContain: [
-    'MCP server',
-    'session code',
-    'relay.codap-mcp.com',
-    'CODAP',
-    'data analysis'
+    "MCP server",
+    "session code",
+    "relay.codap-mcp.com",
+    "CODAP",
+    "data analysis"
   ],
   
   shouldNotContain: [
-    'undefined',
-    'null',
-    '[object Object]',
-    'Error',
-    'Failed'
+    "undefined",
+    "null",
+    "[object Object]",
+    "Error",
+    "Failed"
   ]
 } as const;
 
@@ -101,7 +101,7 @@ export const TEST_SELECTORS = {
   loadingIndicator: '[data-testid="loading-indicator"]',
   
   // Accessibility
-  liveRegion: '[aria-live]',
+  liveRegion: "[aria-live]",
   focusableElements: 'button, [tabindex="0"]'
 } as const;
 
@@ -110,26 +110,26 @@ export const TEST_SELECTORS = {
  */
 export const EXPECTED_ARIA_ATTRIBUTES = {
   banner: {
-    role: 'region',
-    'aria-label': 'MCP Session Pairing Banner'
+    role: "region",
+    "aria-label": "MCP Session Pairing Banner"
   },
   
   sessionCode: {
-    'aria-label': /session code/i
+    "aria-label": /session code/i
   },
   
   timer: {
-    'aria-live': 'polite',
-    'aria-label': /time remaining/i
+    "aria-live": "polite",
+    "aria-label": /time remaining/i
   },
   
   copyButtons: {
-    'aria-describedby': /.+/
+    "aria-describedby": /.+/
   },
   
   feedback: {
-    role: 'status',
-    'aria-live': 'polite'
+    role: "status",
+    "aria-live": "polite"
   }
 } as const;
 
@@ -141,8 +141,8 @@ export class TestDataHelpers {
    * Generate a valid session code for testing
    */
   static generateSessionCode(): string {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let result = '';
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let result = "";
     for (let i = 0; i < 8; i++) {
       result += chars.charAt(Math.floor(Math.random() * chars.length));
     }
@@ -152,7 +152,7 @@ export class TestDataHelpers {
   /**
    * Create mock session data with custom TTL
    */
-  static createMockSession(ttlMinutes: number = 30): SessionData {
+  static createMockSession(ttlMinutes = 30): SessionData {
     const ttlSeconds = ttlMinutes * 60;
     const now = new Date();
     const expiresAt = new Date(now.getTime() + ttlSeconds * 1000);
@@ -171,7 +171,7 @@ export class TestDataHelpers {
   static formatTimeRemaining(seconds: number): string {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
   }
 
   /**
@@ -192,7 +192,7 @@ export class TestDataHelpers {
       halfway: this.formatTimeRemaining(Math.floor(ttlSeconds / 2)),
       warning: this.formatTimeRemaining(300), // 5 minutes warning
       critical: this.formatTimeRemaining(60), // 1 minute critical
-      expired: '0:00'
+      expired: "0:00"
     };
   }
 }
@@ -203,28 +203,28 @@ export class TestDataHelpers {
 export const MOCK_API_RESPONSES = {
   createSession: {
     success: {
-      sessionId: 'ABC123XY',
+      sessionId: "ABC123XY",
       ttl: 1800,
-      relayUrl: 'wss://relay.codap-mcp.com/session/ABC123XY'
+      relayUrl: "wss://relay.codap-mcp.com/session/ABC123XY"
     },
     
     error: {
-      error: 'Failed to create session',
-      code: 'SESSION_CREATE_FAILED'
+      error: "Failed to create session",
+      code: "SESSION_CREATE_FAILED"
     }
   },
   
   getSession: {
     success: {
-      sessionId: 'ABC123XY',
+      sessionId: "ABC123XY",
       ttl: 1800,
-      status: 'active',
+      status: "active",
       connectedClients: 0
     },
     
     notFound: {
-      error: 'Session not found',
-      code: 'SESSION_NOT_FOUND'
+      error: "Session not found",
+      code: "SESSION_NOT_FOUND"
     }
   }
 } as const;
@@ -234,22 +234,22 @@ export const MOCK_API_RESPONSES = {
  */
 export const ERROR_SCENARIOS = {
   networkFailure: {
-    description: 'Network connection failure',
-    mockResponse: { error: 'Network error', code: 'NETWORK_ERROR' }
+    description: "Network connection failure",
+    mockResponse: { error: "Network error", code: "NETWORK_ERROR" }
   },
   
   serverError: {
-    description: 'Server internal error',
-    mockResponse: { error: 'Internal server error', code: 'SERVER_ERROR' }
+    description: "Server internal error",
+    mockResponse: { error: "Internal server error", code: "SERVER_ERROR" }
   },
   
   sessionExpired: {
-    description: 'Session has expired',
-    mockResponse: { error: 'Session expired', code: 'SESSION_EXPIRED' }
+    description: "Session has expired",
+    mockResponse: { error: "Session expired", code: "SESSION_EXPIRED" }
   },
   
   invalidResponse: {
-    description: 'Invalid API response format',
-    mockResponse: 'Invalid JSON response'
+    description: "Invalid API response format",
+    mockResponse: "Invalid JSON response"
   }
 } as const; 

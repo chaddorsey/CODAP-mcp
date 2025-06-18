@@ -1,6 +1,6 @@
-import { expect } from '@playwright/test';
-import { test } from './fixtures';
-import { CODAPHelpers, AccessibilityHelpers } from './utils/codap-helpers';
+import { expect } from "@playwright/test";
+import { test } from "./fixtures";
+import { CODAPHelpers, AccessibilityHelpers } from "./utils/codap-helpers";
 
 /**
  * PBI 2 Conditions of Satisfaction (CoS) End-to-End Tests
@@ -9,7 +9,7 @@ import { CODAPHelpers, AccessibilityHelpers } from './utils/codap-helpers';
  * "CODAP Plugin Pairing Banner" are met through comprehensive E2E testing.
  */
 
-test.describe('PBI 2: CODAP Plugin Pairing Banner - Conditions of Satisfaction', () => {
+test.describe("PBI 2: CODAP Plugin Pairing Banner - Conditions of Satisfaction", () => {
   let codapHelpers: CODAPHelpers;
   let accessibilityHelpers: AccessibilityHelpers;
 
@@ -27,8 +27,8 @@ test.describe('PBI 2: CODAP Plugin Pairing Banner - Conditions of Satisfaction',
     await codapHelpers.waitForPluginLoad();
   });
 
-  test.describe('Core Functionality - CoS Verification', () => {
-    test('CoS 1: Banner visible on plugin load with 8-character session code', async () => {
+  test.describe("Core Functionality - CoS Verification", () => {
+    test("CoS 1: Banner visible on plugin load with 8-character session code", async () => {
       // Verify banner is visible
       const banner = codapHelpers.getPairingBanner();
       await expect(banner).toBeVisible();
@@ -39,7 +39,7 @@ test.describe('PBI 2: CODAP Plugin Pairing Banner - Conditions of Satisfaction',
       await codapHelpers.verifySessionCodeFormat();
     });
 
-    test('CoS 2: Countdown timer displays remaining session time and updates regularly', async () => {
+    test("CoS 2: Countdown timer displays remaining session time and updates regularly", async () => {
       // Verify timer is visible and active
       const timer = codapHelpers.getCountdownTimer();
       await expect(timer).toBeVisible();
@@ -58,7 +58,7 @@ test.describe('PBI 2: CODAP Plugin Pairing Banner - Conditions of Satisfaction',
       await codapHelpers.testCopyPrompt();
     });
 
-    test('CoS 5: Session management handles creation and lifecycle', async () => {
+    test("CoS 5: Session management handles creation and lifecycle", async () => {
       // Verify session is active and banner shows appropriate state
       const banner = codapHelpers.getPairingBanner();
       await expect(banner).toBeVisible();
@@ -71,8 +71,8 @@ test.describe('PBI 2: CODAP Plugin Pairing Banner - Conditions of Satisfaction',
     });
   });
 
-  test.describe('Technical Requirements - CoS Verification', () => {
-    test('CoS 6: Integration with relay API endpoints from PBI 1', async () => {
+  test.describe("Technical Requirements - CoS Verification", () => {
+    test("CoS 6: Integration with relay API endpoints from PBI 1", async () => {
       // Verify banner loads successfully (indicates API integration works)
       const banner = codapHelpers.getPairingBanner();
       await expect(banner).toBeVisible();
@@ -83,12 +83,12 @@ test.describe('PBI 2: CODAP Plugin Pairing Banner - Conditions of Satisfaction',
       await codapHelpers.verifySessionCodeFormat();
     });
 
-    test('CoS 7: Proper error handling for network failures', async () => {
+    test("CoS 7: Proper error handling for network failures", async () => {
       // Test error handling and graceful degradation
       await codapHelpers.testErrorHandling();
     });
 
-    test('CoS 8: Clean React component architecture with TypeScript', async () => {
+    test("CoS 8: Clean React component architecture with TypeScript", async () => {
       // Verify component renders correctly (indicates proper architecture)
       const banner = codapHelpers.getPairingBanner();
       await expect(banner).toBeVisible();
@@ -101,8 +101,8 @@ test.describe('PBI 2: CODAP Plugin Pairing Banner - Conditions of Satisfaction',
     });
   });
 
-  test.describe('Accessibility & UX - CoS Verification', () => {
-    test('CoS 9: WCAG AA compliance verified through accessibility audit', async () => {
+  test.describe("Accessibility & UX - CoS Verification", () => {
+    test("CoS 9: WCAG AA compliance verified through accessibility audit", async () => {
       // Verify ARIA attributes are properly set
       await accessibilityHelpers.verifyARIAAttributes(codapHelpers);
       
@@ -110,41 +110,41 @@ test.describe('PBI 2: CODAP Plugin Pairing Banner - Conditions of Satisfaction',
       await accessibilityHelpers.verifyVisualAccessibility();
     });
 
-    test('CoS 10: Screen reader compatibility tested', async () => {
+    test("CoS 10: Screen reader compatibility tested", async () => {
       // Test screen reader announcements and live regions
       await accessibilityHelpers.testScreenReaderAnnouncements(codapHelpers);
     });
 
-    test('CoS 11: Keyboard navigation fully functional', async () => {
+    test("CoS 11: Keyboard navigation fully functional", async () => {
       // Test complete keyboard navigation
       await codapHelpers.testKeyboardNavigation();
     });
 
-    test('CoS 12: Visual feedback for all user actions', async () => {
+    test("CoS 12: Visual feedback for all user actions", async () => {
       // Test copy code feedback
       const copyCodeButton = codapHelpers.getCopyCodeButton();
       await copyCodeButton.click();
       
       const feedback = codapHelpers.getCopyFeedback();
       await expect(feedback).toBeVisible();
-      await expect(feedback).toContainText('copied');
+      await expect(feedback).toContainText("copied");
       
       // Test copy prompt feedback
       const copyPromptButton = codapHelpers.getCopyPromptButton();
       await copyPromptButton.click();
       
       await expect(feedback).toBeVisible();
-      await expect(feedback).toContainText('copied');
+      await expect(feedback).toContainText("copied");
     });
 
-    test('CoS 13: Mobile-responsive design tested on common device sizes', async () => {
+    test("CoS 13: Mobile-responsive design tested on common device sizes", async () => {
       // Test responsive design across different viewport sizes
       await codapHelpers.testResponsiveDesign();
     });
   });
 
-  test.describe('Cross-Browser Compatibility', () => {
-    test('Banner functionality works consistently across browsers', async () => {
+  test.describe("Cross-Browser Compatibility", () => {
+    test("Banner functionality works consistently across browsers", async () => {
       // This test runs on all configured browser projects
       const banner = codapHelpers.getPairingBanner();
       await expect(banner).toBeVisible();
@@ -159,8 +159,8 @@ test.describe('PBI 2: CODAP Plugin Pairing Banner - Conditions of Satisfaction',
     });
   });
 
-  test.describe('Performance & Integration', () => {
-    test('Banner loads quickly and does not impact CODAP performance', async () => {
+  test.describe("Performance & Integration", () => {
+    test("Banner loads quickly and does not impact CODAP performance", async () => {
       // Measure basic loading performance
       const startTime = Date.now();
       
@@ -173,7 +173,7 @@ test.describe('PBI 2: CODAP Plugin Pairing Banner - Conditions of Satisfaction',
       expect(loadTime).toBeLessThan(5000);
     });
 
-    test('Banner integrates properly with CODAP plugin framework', async () => {
+    test("Banner integrates properly with CODAP plugin framework", async () => {
       // Verify banner coexists with CODAP interface
       const banner = codapHelpers.getPairingBanner();
       await expect(banner).toBeVisible();
@@ -181,12 +181,12 @@ test.describe('PBI 2: CODAP Plugin Pairing Banner - Conditions of Satisfaction',
       // Verify CODAP interface is still accessible
       // (This would be expanded based on specific CODAP integration requirements)
       const iframe = codapHelpers.getPluginFrame();
-      await expect(iframe.locator('body')).toBeVisible();
+      await expect(iframe.locator("body")).toBeVisible();
     });
   });
 
-  test.describe('User Journey End-to-End', () => {
-    test('Complete user journey: Plugin load → See banner → Copy code → Copy prompt', async () => {
+  test.describe("User Journey End-to-End", () => {
+    test("Complete user journey: Plugin load → See banner → Copy code → Copy prompt", async () => {
       // 1. Plugin loads and banner is visible
       const banner = codapHelpers.getPairingBanner();
       await expect(banner).toBeVisible();
@@ -208,7 +208,7 @@ test.describe('PBI 2: CODAP Plugin Pairing Banner - Conditions of Satisfaction',
       await expect(feedback).toBeVisible();
     });
 
-    test('Accessibility user journey: Screen reader user can complete all actions', async () => {
+    test("Accessibility user journey: Screen reader user can complete all actions", async () => {
       // Verify all elements have proper ARIA attributes
       await accessibilityHelpers.verifyARIAAttributes(codapHelpers);
       
