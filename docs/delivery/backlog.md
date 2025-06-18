@@ -3,7 +3,7 @@
 | ID | Actor | User Story | Status | Conditions of Satisfaction (CoS) |
 | :-- | :---- | :--------- | :----- | :------------------------------- |
 | 1 | Plugin Developer | As a plugin developer, I want a Vercel relay that can create sessions and stream tool-invocation events via SSE so that LLMs can communicate with the browser without local servers. | Done | • `POST /api/sessions` returns code & TTL<br>• `GET /stream`, `/request`, `/response` implemented with KV store<br>• Works in dev deployment; automated integration tests pass<br>• Production deployment accessible with SSO bypass |
-| 2 | End User | As an end user, I want the CODAP plugin to display a pairing banner with copy-prompt/code actions so that I can easily connect an LLM session. [View Details](./2/prd.md) | InProgress | • Banner visible on load with 8-char code<br>• Countdown timer updates<br>• Copy prompt includes code, relay URL, instructions<br>• UX meets accessibility spec |
+| 2 | End User | As an end user, I want the CODAP plugin to display a pairing banner with copy-prompt/code actions so that I can easily connect an LLM session. [View Details](./2/prd.md) | Done | • Banner visible on load with 8-char code ✅<br>• Countdown timer updates ✅<br>• Copy prompt includes code, relay URL, instructions ✅<br>• UX meets accessibility spec ✅ |
 | 3 | Browser Worker | As a browser worker, I want to fetch tool requests via SSE (with polling fallback) and post results so that CODAP executes LLM commands in real time. | Proposed | • EventSource connection established<br>• Fallback to 1 s polling when SSE fails<br>• Successful round-trip shown in demo |
 | 4 | LLM Agent | As an LLM agent, I want to retrieve a JSON-Schema tool manifest for the current session so that I can build correctly-shaped MCP calls. | Proposed | • `GET /metadata` returns manifest derived from registry<br>• Version field included<br>• Sample schema validated against JSON Schema draft-07 |
 | 5 | Security Engineer | As a security engineer, I want enforced TTL, 40-bit code entropy and rate-limiting on `/request` so that sessions remain secure. | Proposed | • Codes auto-expire after 10 min<br>• Collision probability documented<br>• 60 req/min IP+code limit applied |
@@ -34,4 +34,5 @@
 | 2025-06-17-01:15:00 | 12 | Created | New PBI for TypeScript migration to improve type safety and maintainability | AI_Agent |
 | 2025-06-17-01:15:00 | 13 | Created | New PBI for comprehensive secrets management and security practices | AI_Agent |
 | 2025-01-17-14:45:00 | 2 | Status Update | Moved from Proposed to Agreed - Task breakdown approved, commencing implementation | AI_Agent | 
-| 2025-01-17-15:00:00 | 2 | Status Update | Moved from Agreed to InProgress - Starting implementation of pairing banner | AI_Agent | 
+| 2025-01-17-15:00:00 | 2 | Status Update | Moved from Agreed to InProgress - Starting implementation of pairing banner | AI_Agent |
+| 2025-01-17-17:55:00 | 2 | Status Update | Moved from InProgress to Done - All tasks completed, E2E tests passing, CoS verified | AI_Agent | 
