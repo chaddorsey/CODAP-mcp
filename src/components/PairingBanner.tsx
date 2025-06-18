@@ -15,6 +15,11 @@ import {
 } from "../utils/accessibility";
 import { useBrowserWorker } from "../hooks/useBrowserWorker";
 import { ConnectionStatus } from "./ConnectionStatus";
+import { ToolExecutionStatus } from "./ToolExecutionStatus";
+import { ConnectionMetrics } from "./ConnectionMetrics";
+import { useExecutionHistory } from "../hooks/useExecutionHistory";
+import { usePerformanceMetrics } from "../hooks/usePerformanceMetrics";
+import { ConnectionType } from "../services/browserWorker";
 import "./PairingBanner.css";
 import "../styles/browserWorker.scss";
 
@@ -122,6 +127,21 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
       console.error("Browser worker error:", error);
       setAnnouncement(`Browser worker error: ${error.message}`);
     }
+  });
+
+  // Initialize execution history tracking
+  const executionHistory = useExecutionHistory({
+    maxHistorySize: 50,
+    persistHistory: true,
+    storageKey: "browser-worker-execution-history"
+  });
+
+  // Initialize performance metrics tracking
+  const performanceMetrics = usePerformanceMetrics({
+    samplingInterval: 1000,
+    maxDataPoints: 500,
+    persistMetrics: true,
+    storageKey: "browser-worker-performance-metrics"
   });
 
   /**
@@ -459,26 +479,54 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
               </div>
             ) : (
               <div className="worker-enabled">
+                {/* Basic Status Display */}
+                <ConnectionStatus
+                  connectionStatus={browserWorker.connectionStatus}
+                  isRunning={browserWorker.isRunning}
+                  isStarting={browserWorker.isStarting}
+                  isStopping={browserWorker.isStopping}
+                  actions={{
+                    start: browserWorker.start,
+                    stop: handleDisableBrowserWorker,
+                    restart: browserWorker.restart
+                  }}
+                  showControls={!showBrowserWorkerDetails}
+                  className="worker-connection-status"
+                />
+
+                {/* Detailed Status Indicators (when details are shown) */}
                 {showBrowserWorkerDetails && (
-                  <ConnectionStatus
-                    connectionStatus={browserWorker.connectionStatus}
-                    isRunning={browserWorker.isRunning}
-                    isStarting={browserWorker.isStarting}
-                    isStopping={browserWorker.isStopping}
-                    actions={{
-                      start: browserWorker.start,
-                      stop: handleDisableBrowserWorker,
-                      restart: browserWorker.restart
-                    }}
-                    showControls={true}
-                    className="worker-connection-status"
-                  />
+                  <div className="worker-detailed-status">
+                    {/* Tool Execution Status */}
+                    <ToolExecutionStatus
+                      executions={executionHistory.allExecutions}
+                      isEnabled={browserWorker.isRunning}
+                      queueSize={executionHistory.statistics.queued}
+                      maxHistory={10}
+                      showDetails={true}
+                      className="worker-execution-status"
+                    />
+
+                                         {/* Performance Metrics */}
+                     <ConnectionMetrics
+                       metrics={performanceMetrics.metrics}
+                       currentConnectionType={ConnectionType.SSE}
+                       showDetails={true}
+                       isEnabled={browserWorker.isRunning}
+                       className="worker-performance-metrics"
+                     />
+                  </div>
                 )}
                 
+                {/* Summary View (when details are hidden) */}
                 {!showBrowserWorkerDetails && (
                   <div className="worker-summary">
                     <div className="worker-status">
                       Status: {browserWorker.isRunning ? "🟢 Connected" : "🟡 Starting..."}
+                    </div>
+                    <div className="worker-stats">
+                      <span>Queue: {executionHistory.statistics.queued}</span>
+                      <span>Success: {executionHistory.statistics.successRate.toFixed(0)}%</span>
                     </div>
                     <button
                       type="button"

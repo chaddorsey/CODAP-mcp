@@ -352,8 +352,8 @@ export class BrowserWorkerErrorSystem {
     }
 
     // If no handler could handle the error, use fallback
-    const duration = Date.now() - startTime;
-    this.updateHandlingTime(duration);
+    const fallbackDuration = Date.now() - startTime;
+    this.updateHandlingTime(fallbackDuration);
     this.statistics.failedRecoveries++;
 
     return {
