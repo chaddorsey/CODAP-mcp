@@ -431,3 +431,4 @@ export function validateToolParameters(
 
   return { valid: errors.length === 0, errors };
 } 
+ 

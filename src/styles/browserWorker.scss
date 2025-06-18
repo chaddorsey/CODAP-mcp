@@ -737,6 +737,162 @@
   }
 }
 
+/* Developer Testing Section */
+.worker-developer-section {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid #e1e5e9;
+  border-radius: 8px;
+  background-color: #f8f9fa;
+
+  .developer-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+
+    h4 {
+      margin: 0;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: #495057;
+    }
+  }
+
+  .developer-section-description {
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-bottom: 1rem;
+    margin-top: 0;
+  }
+
+  .developer-tools-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+
+    .btn {
+      font-size: 0.75rem;
+      padding: 0.375rem 0.75rem;
+      
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+    }
+  }
+
+  .developer-test-results {
+    .test-results-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+
+      h5 {
+        margin: 0;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #495057;
+      }
+    }
+
+    .test-results-list {
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      background-color: #ffffff;
+    }
+
+    .test-result {
+      padding: 0.5rem;
+      border-bottom: 1px solid #f1f3f4;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      &.success {
+        border-left: 3px solid #28a745;
+      }
+
+      &.error {
+        border-left: 3px solid #dc3545;
+      }
+
+      .test-result-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.25rem;
+
+        .test-result-icon {
+          font-size: 0.75rem;
+        }
+
+        .test-result-tool {
+          font-weight: 600;
+          font-size: 0.8rem;
+          color: #495057;
+        }
+
+        .test-result-time {
+          font-size: 0.7rem;
+          color: #6c757d;
+          margin-left: auto;
+        }
+      }
+
+      .test-result-error {
+        background-color: #f8d7da;
+        border: 1px solid #f5c6cb;
+        border-radius: 4px;
+        padding: 0.375rem;
+        font-size: 0.75rem;
+        color: #721c24;
+        margin-top: 0.25rem;
+      }
+
+      .test-result-data {
+        margin-top: 0.25rem;
+
+        pre {
+          background-color: #f8f9fa;
+          border: 1px solid #e9ecef;
+          border-radius: 4px;
+          padding: 0.375rem;
+          font-size: 0.7rem;
+          margin: 0;
+          max-height: 100px;
+          overflow-y: auto;
+          color: #495057;
+        }
+      }
+    }
+  }
+}
+
+/* Responsive adjustments for developer section */
+@media (max-width: 768px) {
+  .worker-developer-section {
+    .developer-tools-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .developer-section-header {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.5rem;
+
+      h4 {
+        text-align: center;
+      }
+    }
+  }
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .connection-status {

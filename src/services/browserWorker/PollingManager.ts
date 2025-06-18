@@ -382,3 +382,4 @@ export class PollingManager implements PollingManagerInterface {
     });
   }
 } 
+ 

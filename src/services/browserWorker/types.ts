@@ -709,3 +709,4 @@ export const DEFAULT_PARSER_CONFIG: ToolRequestParserConfig = {
   maxStringLength: 10000,
   maxObjectDepth: 10
 };
+ 

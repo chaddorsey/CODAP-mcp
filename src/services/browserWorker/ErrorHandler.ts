@@ -545,3 +545,4 @@ export class BrowserWorkerErrorSystem {
     this.statistics.averageHandlingTime = Math.round(sum / this.handlingTimes.length);
   }
 } 
+ 

@@ -29,6 +29,58 @@ import "../styles/browserWorker.scss";
 const DEFAULT_RELAY_BASE_URL = "https://codap-mcp-cdorsey-concordorgs-projects.vercel.app";
 
 /**
+ * Developer test data for CODAP tools
+ */
+const DEV_TEST_DATA = {
+  simpleDataset: {
+    name: "Test Dataset",
+    attributes: [
+      { name: "id", type: "categorical" },
+      { name: "value", type: "numeric" },
+      { name: "category", type: "categorical" }
+    ],
+    data: [
+      { id: "item1", value: 42, category: "A" },
+      { id: "item2", value: 37, category: "B" },
+      { id: "item3", value: 51, category: "A" },
+      { id: "item4", value: 28, category: "B" },
+      { id: "item5", value: 63, category: "A" }
+    ],
+    title: "Sample Test Data"
+  },
+  simpleGraph: {
+    dataContext: "Test Dataset",
+    graphType: "scatterplot",
+    xAttribute: "category",
+    yAttribute: "value", 
+    title: "Value by Category"
+  },
+  numericGraph: {
+    dataContext: "Numeric Data",
+    graphType: "scatterplot", 
+    xAttribute: "x",
+    yAttribute: "y",
+    title: "X vs Y Scatter Plot"
+  },
+  numericDataset: {
+    name: "Numeric Data",
+    attributes: [
+      { name: "x", type: "numeric" },
+      { name: "y", type: "numeric" },
+      { name: "label", type: "categorical" }
+    ],
+    data: [
+      { x: 10, y: 15, label: "Point1" },
+      { x: 20, y: 25, label: "Point2" },
+      { x: 15, y: 30, label: "Point3" },
+      { x: 25, y: 20, label: "Point4" },
+      { x: 30, y: 35, label: "Point5" }
+    ],
+    title: "Numeric Sample Data"
+  }
+};
+
+/**
  * PairingBanner component displays session information and manages session lifecycle
  */
 export const PairingBanner: React.FC<PairingBannerProps> = ({
@@ -49,6 +101,16 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
   // Accessibility state for announcements
   const [announcement, setAnnouncement] = useState<string>("");
   const [copyFeedback, setCopyFeedback] = useState<string>("");
+  
+  // Developer testing state
+  const [showDeveloperSection, setShowDeveloperSection] = useState(false);
+  const [testResults, setTestResults] = useState<{
+    tool: string;
+    success: boolean;
+    result?: any;
+    error?: string;
+    timestamp: string;
+  }[]>([]);
   
   // Refs for ARIA relationships and focus management
   const bannerRef = useRef<HTMLDivElement>(null);
@@ -230,6 +292,178 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
    */
   const toggleBrowserWorkerDetails = useCallback(() => {
     setShowBrowserWorkerDetails(prev => !prev);
+  }, []);
+
+  /**
+   * Developer tool testing functions - makes REAL CODAP API calls
+   */
+  const runTestTool = useCallback(async (toolName: string, params: any) => {
+    if (!browserWorkerEnabled || !browserWorker.isRunning) {
+      const error = "Browser worker is not running";
+      setTestResults(prev => [...prev, {
+        tool: toolName,
+        success: false,
+        error,
+        timestamp: new Date().toISOString()
+      }]);
+      return;
+    }
+
+    try {
+      console.log(`Testing tool: ${toolName}`, params);
+      
+      let result: any;
+      
+      // Import CODAP Plugin API functions
+      const { 
+        sendMessage, 
+        createTable, 
+        createItems,
+        createDataContext,
+        initializePlugin 
+      } = await import("@concord-consortium/codap-plugin-api");
+
+      // Execute the actual tool based on tool name
+      switch (toolName) {
+        case "get_status":
+          result = await sendMessage("get", "interactiveFrame");
+          break;
+
+        case "create_data_context":
+          result = await createDataContext(params.name);
+          if (result.success && params.collections) {
+            // Create collections with attributes
+            for (const collection of params.collections) {
+              await sendMessage("create", `dataContext[${params.name}].collection`, {
+                name: collection.name,
+                title: collection.title || collection.name,
+                attrs: collection.attrs
+              });
+            }
+          }
+          break;
+
+        case "create_dataset_with_table": {
+          // First create the data context
+          const dataContextResult = await createDataContext(params.name);
+          
+          if (dataContextResult.success) {
+            // Create the collection with attributes
+            await sendMessage("create", `dataContext[${params.name}].collection`, {
+              name: "cases",
+              title: "Cases",
+              attrs: params.attributes
+            });
+            
+            // Then add the data if provided
+            if (params.data && params.data.length > 0) {
+              await createItems(params.name, params.data);
+            }
+            
+            // Finally create the table to display the data
+            const tableResult = await createTable(params.name, params.tableName || `${params.name} Table`);
+            
+            result = {
+              dataContext: dataContextResult,
+              table: tableResult,
+              message: "Dataset with table created successfully"
+            };
+          } else {
+            result = dataContextResult;
+          }
+          break;
+        }
+
+        case "create_graph":
+          result = await sendMessage("create", "component", {
+            type: "graph",
+            dataContext: params.dataContext,
+            title: params.title,
+            xAttributeName: params.xAttribute,
+            yAttributeName: params.yAttribute
+          });
+          break;
+
+        default:
+          throw new Error(`Unknown tool: ${toolName}`);
+      }
+      
+      setTestResults(prev => [...prev, {
+        tool: toolName,
+        success: true,
+        result,
+        error: undefined,
+        timestamp: new Date().toISOString()
+      }]);
+
+      console.log(`Tool ${toolName} result:`, result);
+    } catch (error) {
+      console.error(`Tool ${toolName} error:`, error);
+      setTestResults(prev => [...prev, {
+        tool: toolName,
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date().toISOString()
+      }]);
+    }
+  }, [browserWorkerEnabled, browserWorker]);
+
+  const testGetStatus = useCallback(() => {
+    runTestTool("get_status", {});
+  }, [runTestTool]);
+
+  const testCreateDataset = useCallback(() => {
+    runTestTool("create_dataset_with_table", DEV_TEST_DATA.simpleDataset);
+  }, [runTestTool]);
+
+  const testCreateGraph = useCallback(async () => {
+    // First ensure the dataset exists, then create the graph
+    try {
+      console.log("Creating dataset first...");
+      await runTestTool("create_dataset_with_table", DEV_TEST_DATA.simpleDataset);
+      
+      // Wait for CODAP to process the dataset
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      console.log("Now creating graph...");
+      await runTestTool("create_graph", DEV_TEST_DATA.simpleGraph);
+    } catch (error) {
+      console.error("Graph creation workflow failed:", error);
+    }
+  }, [runTestTool]);
+
+  const testCreateDataContext = useCallback(() => {
+    runTestTool("create_data_context", {
+      name: "Simple Context",
+      title: "Test Data Context",
+      collections: [{
+        name: "cases",
+        attrs: [
+          { name: "test_id", type: "categorical" },
+          { name: "test_value", type: "numeric" }
+        ]
+      }]
+    });
+  }, [runTestTool]);
+
+  const testCreateNumericGraph = useCallback(async () => {
+    // Create a numeric dataset with X-Y coordinates and then graph it
+    try {
+      console.log("Creating numeric dataset...");
+      await runTestTool("create_dataset_with_table", DEV_TEST_DATA.numericDataset);
+      
+      // Wait for CODAP to process the dataset
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      console.log("Creating numeric graph...");
+      await runTestTool("create_graph", DEV_TEST_DATA.numericGraph);
+    } catch (error) {
+      console.error("Numeric graph creation workflow failed:", error);
+    }
+  }, [runTestTool]);
+
+  const clearTestResults = useCallback(() => {
+    setTestResults([]);
   }, []);
 
   /**
@@ -538,6 +772,126 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
                     >
                       Disable
                     </button>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* Developer Testing Section (only in development) */}
+            {process.env.NODE_ENV === "development" && browserWorkerEnabled && (
+              <div className="worker-developer-section">
+                <div className="developer-section-header">
+                  <h4>Developer Tool Testing</h4>
+                  <button
+                    type="button"
+                    className="btn btn-sm"
+                    onClick={() => setShowDeveloperSection(prev => !prev)}
+                    data-testid="toggle-developer-section"
+                  >
+                    {showDeveloperSection ? "Hide" : "Show"} Testing Tools
+                  </button>
+                </div>
+                
+                {showDeveloperSection && (
+                  <div className="developer-section-content">
+                    <p className="developer-section-description">
+                      Test CODAP tool execution directly without requiring an LLM connection.
+                    </p>
+                    
+                    <div className="developer-tools-grid">
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-sm"
+                        onClick={testGetStatus}
+                        disabled={!browserWorker.isRunning}
+                        data-testid="test-get-status"
+                      >
+                        📊 Get Status
+                      </button>
+                      
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-sm"
+                        onClick={testCreateDataContext}
+                        disabled={!browserWorker.isRunning}
+                        data-testid="test-create-data-context"
+                      >
+                        🗂️ Create Data Context
+                      </button>
+                      
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-sm"
+                        onClick={testCreateDataset}
+                        disabled={!browserWorker.isRunning}
+                        data-testid="test-create-dataset"
+                      >
+                        📋 Create Dataset + Table
+                      </button>
+                      
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-sm"
+                        onClick={testCreateGraph}
+                        disabled={!browserWorker.isRunning}
+                        data-testid="test-create-graph"
+                      >
+                        📈 Dataset → Graph (Categories)
+                      </button>
+                      
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-sm"
+                        onClick={testCreateNumericGraph}
+                        disabled={!browserWorker.isRunning}
+                        data-testid="test-create-numeric-graph"
+                      >
+                        🎯 Dataset → Graph (X-Y Plot)
+                      </button>
+                    </div>
+                    
+                    {testResults.length > 0 && (
+                      <div className="developer-test-results">
+                        <div className="test-results-header">
+                          <h5>Test Results</h5>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline"
+                            onClick={clearTestResults}
+                            data-testid="clear-test-results"
+                          >
+                            Clear
+                          </button>
+                        </div>
+                        
+                        <div className="test-results-list">
+                          {testResults.slice(-5).reverse().map((result, index) => (
+                            <div
+                              key={`${result.tool}-${result.timestamp}-${index}`}
+                              className={`test-result ${result.success ? "success" : "error"}`}
+                            >
+                              <div className="test-result-header">
+                                <span className="test-result-icon">
+                                  {result.success ? "✅" : "❌"}
+                                </span>
+                                <span className="test-result-tool">{result.tool}</span>
+                                <span className="test-result-time">
+                                  {new Date(result.timestamp).toLocaleTimeString()}
+                                </span>
+                              </div>
+                              {result.error && (
+                                <div className="test-result-error">{result.error}</div>
+                              )}
+                              {result.result && (
+                                <div className="test-result-data">
+                                  <pre>{JSON.stringify(result.result, null, 2)}</pre>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
