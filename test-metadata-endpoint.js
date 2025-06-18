@@ -1,6 +1,6 @@
 const axios = require('axios');
 
-const BASE_URL = process.env.VERCEL_URL || 'https://codap-mcp-cdorsey-concordorgs-projects.vercel.app';
+const BASE_URL = process.env.VERCEL_URL || 'https://codap-mcp-cdorsey-1448-cdorsey-concordorgs-projects.vercel.app';
 const SSO_BYPASS_SECRET = "pAg5Eon3T8qOwMaWKzo9k6T4pdbYiCye";
 
 // Helper function to get headers with bypass

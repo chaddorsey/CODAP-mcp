@@ -14,10 +14,10 @@
     "api/stream.js": {
       "maxDuration": 60
     },
-    "api/kv-utils.js": {
-      "maxDuration": 5
-    },
     "api/metadata.js": {
+      "maxDuration": 10
+    },
+    "api/metadata-simple.js": {
       "maxDuration": 10
     }
   },
@@ -35,9 +35,14 @@
         },
         {
           "key": "Access-Control-Allow-Headers",
-          "value": "Content-Type, Authorization"
+          "value": "Content-Type, Authorization, x-sso-bypass"
         }
       ]
     }
-  ]
+  ],
+  "build": {
+    "env": {
+      "VERCEL_AUTOMATION_BYPASS_SECRET": "pAg5Eon3T8qOwMaWKzo9k6T4pdbYiCye"
+    }
+  }
 } 
