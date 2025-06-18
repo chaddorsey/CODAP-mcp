@@ -10,6 +10,10 @@ export { ToolExecutor } from "./ToolExecutor";
 export { ExecutionQueue } from "./ExecutionQueue";
 export { ResponseHandler } from "./ResponseHandler";
 
+// Error handling and recovery exports
+export { BrowserWorkerErrorSystem, NetworkErrorHandler, AuthenticationErrorHandler, ValidationErrorHandler, ExecutionErrorHandler, ConfigurationErrorHandler, FallbackErrorHandler } from "./ErrorHandler";
+export { CircuitBreaker } from "./CircuitBreaker";
+
 // Utility exports
 export { RateLimiter } from "./utils/rateLimiter";
 export { BatchProcessor } from "./utils/batchProcessor";

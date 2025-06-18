@@ -470,6 +470,233 @@ export interface ToolRequestParserConfig {
   maxObjectDepth: number;
 }
 
+// ==================== Error Handling Types ====================
+
+export enum ErrorSeverity {
+  INFO = "info",
+  WARNING = "warning", 
+  ERROR = "error",
+  CRITICAL = "critical"
+}
+
+export enum ErrorCategory {
+  NETWORK = "network",
+  AUTHENTICATION = "authentication",
+  VALIDATION = "validation",
+  EXECUTION = "execution",
+  CONFIGURATION = "configuration",
+  RESOURCE = "resource",
+  TIMEOUT = "timeout",
+  UNKNOWN = "unknown"
+}
+
+export interface BrowserWorkerError {
+  /** Unique error identifier */
+  id: string;
+  /** Error category for classification */
+  category: ErrorCategory;
+  /** Error severity level */
+  severity: ErrorSeverity;
+  /** Human-readable error message */
+  message: string;
+  /** Technical error details */
+  details?: Record<string, unknown>;
+  /** Component that generated the error */
+  component: string;
+  /** Original error object if applicable */
+  originalError?: Error;
+  /** Error timestamp */
+  timestamp: number;
+  /** Correlation ID for tracking related errors */
+  correlationId?: string;
+  /** Whether this error is retryable */
+  retryable: boolean;
+  /** Suggested recovery actions */
+  recoveryActions?: string[];
+}
+
+export interface BrowserWorkerErrorHandler {
+  /** Handle an error with appropriate strategy */
+  handleError(error: BrowserWorkerError): Promise<ErrorHandlingResult>;
+  /** Check if this handler can process the error */
+  canHandle(error: BrowserWorkerError): boolean;
+  /** Get handler priority (higher numbers = higher priority) */
+  getPriority(): number;
+}
+
+export interface ErrorHandlingResult {
+  /** Whether the error was handled successfully */
+  handled: boolean;
+  /** Whether to continue error propagation */
+  propagate: boolean;
+  /** Recovery action taken */
+  action?: "retry" | "failover" | "ignore" | "escalate" | "shutdown";
+  /** Delay before retry (if applicable) */
+  retryDelay?: number;
+  /** Additional result data */
+  data?: Record<string, unknown>;
+}
+
+// ==================== Circuit Breaker Types ====================
+
+export enum CircuitState {
+  CLOSED = "closed",
+  OPEN = "open", 
+  HALF_OPEN = "half_open"
+}
+
+export interface CircuitBreakerConfig {
+  /** Failure threshold to open circuit */
+  failureThreshold: number;
+  /** Time window for failure counting (ms) */
+  timeWindow: number;
+  /** Timeout before attempting recovery (ms) */
+  timeout: number;
+  /** Number of test requests in half-open state */
+  testRequestCount: number;
+  /** Success threshold to close circuit from half-open */
+  successThreshold: number;
+}
+
+export interface CircuitBreakerStats {
+  /** Current circuit state */
+  state: CircuitState;
+  /** Failure count in current window */
+  failureCount: number;
+  /** Success count in current window */
+  successCount: number;
+  /** Total requests in current window */
+  totalRequests: number;
+  /** Time when circuit was last opened */
+  lastOpenTime?: number;
+  /** Next retry time when circuit is open */
+  nextRetryTime?: number;
+}
+
+export interface CircuitBreakerInterface {
+  /** Execute an operation with circuit breaker protection */
+  execute<T>(operation: () => Promise<T>): Promise<T>;
+  /** Get current circuit breaker statistics */
+  getStats(): CircuitBreakerStats;
+  /** Force circuit to open */
+  forceOpen(): void;
+  /** Force circuit to close */
+  forceClose(): void;
+  /** Reset circuit breaker statistics */
+  reset(): void;
+}
+
+// ==================== Health Monitoring Types ====================
+
+export enum HealthStatus {
+  HEALTHY = "healthy",
+  DEGRADED = "degraded",
+  UNHEALTHY = "unhealthy",
+  UNKNOWN = "unknown"
+}
+
+export interface HealthCheck {
+  /** Component being checked */
+  component: string;
+  /** Current health status */
+  status: HealthStatus;
+  /** Health check timestamp */
+  timestamp: number;
+  /** Response time in milliseconds */
+  responseTime: number;
+  /** Health check details */
+  details?: Record<string, unknown>;
+  /** Error information if unhealthy */
+  error?: string;
+}
+
+export interface HealthMonitorConfig {
+  /** Health check interval in milliseconds */
+  checkInterval: number;
+  /** Health check timeout in milliseconds */
+  checkTimeout: number;
+  /** Number of failed checks before marking unhealthy */
+  unhealthyThreshold: number;
+  /** Number of successful checks to recover from unhealthy */
+  healthyThreshold: number;
+  /** Components to monitor */
+  components: string[];
+}
+
+export interface HealthMonitorInterface {
+  /** Start health monitoring */
+  start(): void;
+  /** Stop health monitoring */
+  stop(): void;
+  /** Get health status for all components */
+  getHealthStatus(): Record<string, HealthCheck>;
+  /** Get health status for specific component */
+  getComponentHealth(component: string): HealthCheck | undefined;
+  /** Register a health check function for a component */
+  registerHealthCheck(component: string, checkFn: () => Promise<HealthCheck>): void;
+  /** Unregister health check for a component */
+  unregisterHealthCheck(component: string): void;
+}
+
+// ==================== Recovery Manager Types ====================
+
+export interface RecoveryAction {
+  /** Recovery action type */
+  type: "reconnect" | "restart" | "failover" | "retry" | "reset";
+  /** Component to apply recovery to */
+  component: string;
+  /** Recovery action parameters */
+  parameters?: Record<string, unknown>;
+  /** Priority of this recovery action */
+  priority: number;
+  /** Maximum attempts for this recovery */
+  maxAttempts: number;
+  /** Current attempt count */
+  attemptCount: number;
+}
+
+export interface RecoveryResult {
+  /** Whether recovery was successful */
+  success: boolean;
+  /** Recovery action that was executed */
+  action: RecoveryAction;
+  /** Time taken for recovery (ms) */
+  duration: number;
+  /** Error details if recovery failed */
+  error?: string;
+  /** Next recovery action if this one failed */
+  nextAction?: RecoveryAction;
+}
+
+export interface RecoveryManagerInterface {
+  /** Execute recovery action for a component */
+  executeRecovery(component: string, error: BrowserWorkerError): Promise<RecoveryResult>;
+  /** Register recovery strategy for error type */
+  registerRecoveryStrategy(errorCategory: ErrorCategory, strategy: RecoveryStrategy): void;
+  /** Get recovery statistics */
+  getRecoveryStats(): Record<string, RecoveryStats>;
+}
+
+export interface RecoveryStrategy {
+  /** Create recovery actions for an error */
+  createRecoveryActions(error: BrowserWorkerError): RecoveryAction[];
+  /** Check if this strategy applies to the error */
+  appliesTo(error: BrowserWorkerError): boolean;
+}
+
+export interface RecoveryStats {
+  /** Total recovery attempts */
+  totalAttempts: number;
+  /** Successful recoveries */
+  successfulRecoveries: number;
+  /** Failed recoveries */
+  failedRecoveries: number;
+  /** Average recovery time */
+  averageRecoveryTime: number;
+  /** Last recovery attempt timestamp */
+  lastAttempt?: number;
+}
+
 /**
  * Default parser configuration
  */
