@@ -10,7 +10,7 @@ This document lists all tasks associated with PBI 3.
 | :------ | :--- | :----- | :---------- |
 | 3-1 | [Design Browser Worker Architecture](./3-1.md) | Done | Define the technical architecture and interfaces for the browser worker component |
 | 3-2 | [Implement Connection Manager](./3-2.md) | Done | Create connection manager to handle SSE connections with EventSource API and heartbeat monitoring |
-| 3-3 | [Implement Polling Fallback System](./3-3.md) | Proposed | Add polling fallback mechanism when SSE connection fails or is unavailable |
+| 3-3 | [Implement Polling Fallback System](./3-3.md) | Done | Add polling fallback mechanism when SSE connection fails or is unavailable |
 | 3-4 | [Create Tool Request Parser](./3-4.md) | Proposed | Implement parser to handle incoming MCP tool requests from relay |
 | 3-5 | [Implement Tool Executor](./3-5.md) | Proposed | Create tool executor with sequential queue to run MCP tools against CODAP plugin API |
 | 3-6 | [Implement Response Handler](./3-6.md) | Proposed | Create response handler to post execution results back to relay |

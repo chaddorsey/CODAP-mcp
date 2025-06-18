@@ -273,4 +273,74 @@ export interface SessionIntegration {
   getSessionData(): { code: string; ttl: number; expiresAt: string } | null;
   /** Check if session is still valid */
   isSessionValid(): boolean;
-} 
+}
+
+// ==================== Polling Types ====================
+
+/**
+ * Polling request response from relay server
+ */
+export interface PollingResponse {
+  requests: ToolRequest[];
+  lastRequestId?: string;
+  timestamp: number;
+}
+
+/**
+ * Request deduplication tracking
+ */
+export interface RequestTracker {
+  lastProcessedId?: string;
+  processedIds: Set<string>;
+  maxTrackedIds: number;
+}
+
+/**
+ * Polling manager interface
+ */
+export interface PollingManagerInterface {
+  /** Start polling for requests */
+  startPolling(): void;
+  /** Stop polling */
+  stopPolling(): void;
+  /** Check if polling is active */
+  isPolling(): boolean;
+  /** Set polling interval */
+  setPollingInterval(interval: number): void;
+  /** Add event listener */
+  addEventListener(event: "request" | "error" | "status-change", handler: (data: any) => void): void;
+  /** Remove event listener */
+  removeEventListener(event: "request" | "error" | "status-change", handler: (data: any) => void): void;
+  /** Get current polling status */
+  getStatus(): PollingStatus;
+}
+
+/**
+ * Polling status information
+ */
+export interface PollingStatus {
+  isActive: boolean;
+  interval: number;
+  lastPollTime?: number;
+  lastSuccessTime?: number;
+  errorCount: number;
+  totalRequests: number;
+}
+
+/**
+ * Polling configuration
+ */
+export interface PollingConfig {
+  interval: number;
+  maxTrackedIds: number;
+  retryConfig: RetryConfig;
+}
+
+/**
+ * Default polling configuration
+ */
+export const DEFAULT_POLLING_CONFIG: PollingConfig = {
+  interval: 1000, // 1 second
+  maxTrackedIds: 1000, // Track last 1000 request IDs
+  retryConfig: DEFAULT_RETRY_CONFIG
+};
