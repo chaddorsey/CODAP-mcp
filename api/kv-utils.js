@@ -32,7 +32,23 @@ async function getSession(code) {
   const key = `session:${code}`;
   try {
     const data = await redis.get(key);
-    return data ? JSON.parse(data) : null;
+    if (!data) return null;
+    if (typeof data === "string") {
+      try {
+        return JSON.parse(data);
+      } catch (err) {
+        console.error("[kv-utils] JSON.parse error:", err, "Raw data:", data);
+        return null;
+      }
+    }
+    // If data is already an object, return as is
+    if (typeof data === "object") {
+      console.warn("[kv-utils] Redis returned object, not string:", data);
+      return data;
+    }
+    // Unexpected type
+    console.error("[kv-utils] Unexpected Redis data type:", typeof data, data);
+    return null;
   } catch (err) {
     console.error("[kv-utils] Redis getSession error:", err);
     throw err;
