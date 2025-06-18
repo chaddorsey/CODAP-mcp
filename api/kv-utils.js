@@ -1,5 +1,9 @@
 const { Redis } = require("@upstash/redis");
 
+// Log Redis environment variable status
+console.log("[kv-utils] KV_REST_API_URL:", process.env.KV_REST_API_URL ? "set" : "NOT SET");
+console.log("[kv-utils] KV_REST_API_TOKEN:", process.env.KV_REST_API_TOKEN ? "set" : "NOT SET");
+
 // Initialize Redis client using environment variables
 const redis = new Redis({
   url: process.env.KV_REST_API_URL,
@@ -26,8 +30,13 @@ async function setSession(code, sessionData) {
  */
 async function getSession(code) {
   const key = `session:${code}`;
-  const data = await redis.get(key);
-  return data ? JSON.parse(data) : null;
+  try {
+    const data = await redis.get(key);
+    return data ? JSON.parse(data) : null;
+  } catch (err) {
+    console.error("[kv-utils] Redis getSession error:", err);
+    throw err;
+  }
 }
 
 /**
