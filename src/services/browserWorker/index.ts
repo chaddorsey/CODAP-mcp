@@ -6,6 +6,8 @@
 export { ConnectionManager } from "./ConnectionManager";
 export { PollingManager } from "./PollingManager";
 export { ToolRequestParser } from "./ToolRequestParser";
+export { ToolExecutor } from "./ToolExecutor";
+export { ExecutionQueue } from "./ExecutionQueue";
 export * from "./types";
 export * from "./utils/exponentialBackoff";
 export * from "./utils/requestDeduplication";
