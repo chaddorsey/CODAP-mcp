@@ -130,9 +130,9 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
   const canRestart = isRunning && !isLoading;
 
   return (
-    <div className={`connection-status ${className}`}>
+    <div className={`connection-status ${className}`} data-testid="connection-status">
       {/* Status Indicator */}
-      <div className={`status-indicator status-${statusDisplay.color}`}>
+      <div className={`status-indicator status-${statusDisplay.color}`} data-testid="browser-worker-status">
         <span className="status-icon" role="img" aria-label={statusDisplay.text}>
           {statusDisplay.icon}
         </span>
@@ -198,6 +198,7 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
               type="button"
               onClick={handleRestart}
               className="btn btn-outline btn-sm"
+              data-testid="restart-browser-worker"
               disabled={isLoading}
             >
               Restart

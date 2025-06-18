@@ -459,6 +459,7 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
               className="toggle-button"
               onClick={toggleBrowserWorkerDetails}
               aria-label={showBrowserWorkerDetails ? "Hide details" : "Show details"}
+              data-testid="show-details"
             >
               {showBrowserWorkerDetails ? "Hide" : "Show"} Details
             </button>
@@ -473,6 +474,7 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
                   className="enable-button"
                   onClick={handleEnableBrowserWorker}
                   disabled={!bannerState.sessionData}
+                  data-testid="enable-browser-worker"
                 >
                   Enable Browser Worker
                 </button>
@@ -532,6 +534,7 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
                       type="button"
                       className="btn btn-secondary btn-sm"
                       onClick={handleDisableBrowserWorker}
+                      data-testid="disable-browser-worker"
                     >
                       Disable
                     </button>
@@ -657,6 +660,7 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
       role="region"
       aria-labelledby={ariaIds.title}
       aria-describedby={ariaIds.description}
+      data-testid="pairing-banner"
     >
       {renderContent()}
       

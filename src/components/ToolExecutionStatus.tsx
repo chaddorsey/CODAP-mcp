@@ -165,7 +165,7 @@ export const ToolExecutionStatus: React.FC<ToolExecutionStatusProps> = ({
   }
 
   return (
-    <div className={`tool-execution-status ${className}`}>
+    <div className={`tool-execution-status ${className}`} data-testid="tool-execution-status">
       {/* Header with queue info */}
       <div className="execution-header">
         <div className="execution-title">Tool Execution</div>

@@ -17,4 +17,4 @@ This document lists all tasks associated with PBI 3.
 | 3-7 | [Add Error Handling and Recovery](./3-7.md) | Done | Implement comprehensive error handling and connection recovery logic |
 | 3-8 | [Integrate with Pairing UI](./3-8.md) | Done | Connect browser worker with existing pairing banner UI |
 | 3-9 | [Add Connection Status Indicators](./3-9.md) | Done | Implement visual indicators for connection status and tool execution |
-| 3-10 | [E2E CoS Test](./3-10.md) | Proposed | Create end-to-end test verifying complete round-trip functionality | 
+| 3-10 | [E2E CoS Test](./3-10.md) | Done | Create end-to-end test verifying complete round-trip functionality | 

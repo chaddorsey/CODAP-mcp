@@ -143,7 +143,7 @@ export const ConnectionMetrics: React.FC<ConnectionMetricsProps> = ({
   }
 
   return (
-    <div className={`connection-metrics ${className}`}>
+    <div className={`connection-metrics ${className}`} data-testid="performance-metrics">
       {/* Header */}
       <div className="metrics-header">
         <div className="metrics-title">Connection Metrics</div>
