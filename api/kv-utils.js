@@ -1,9 +1,5 @@
 const { Redis } = require("@upstash/redis");
 
-// Log Redis environment variable status
-console.log("[kv-utils] KV_REST_API_URL:", process.env.KV_REST_API_URL ? "set" : "NOT SET");
-console.log("[kv-utils] KV_REST_API_TOKEN:", process.env.KV_REST_API_TOKEN ? "set" : "NOT SET");
-
 // Initialize Redis client using environment variables
 const redis = new Redis({
   url: process.env.KV_REST_API_URL,
@@ -37,20 +33,29 @@ async function getSession(code) {
       try {
         return JSON.parse(data);
       } catch (err) {
-        console.error("[kv-utils] JSON.parse error:", err, "Raw data:", data);
+        // Only log parse errors in development
+        if (process.env.NODE_ENV !== "production") {
+          console.error("[kv-utils] JSON.parse error:", err, "Raw data:", data);
+        }
         return null;
       }
     }
-    // If data is already an object, return as is
     if (typeof data === "object") {
-      console.warn("[kv-utils] Redis returned object, not string:", data);
+      // Only log in development
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[kv-utils] Redis returned object, not string:", data);
+      }
       return data;
     }
     // Unexpected type
-    console.error("[kv-utils] Unexpected Redis data type:", typeof data, data);
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[kv-utils] Unexpected Redis data type:", typeof data, data);
+    }
     return null;
   } catch (err) {
-    console.error("[kv-utils] Redis getSession error:", err);
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[kv-utils] Redis getSession error:", err);
+    }
     throw err;
   }
 }
