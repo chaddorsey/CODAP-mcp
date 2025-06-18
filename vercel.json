@@ -1,6 +1,6 @@
 {
-  "buildCommand": "npm run build:webpack",
-  "outputDirectory": "dist",
+  "buildCommand": null,
+  "outputDirectory": ".",
   "functions": {
     "api/sessions.js": {
       "maxDuration": 10
@@ -13,6 +13,12 @@
     },
     "api/stream.js": {
       "maxDuration": 60
+    },
+    "api/kv-utils.js": {
+      "maxDuration": 5
+    },
+    "api/metadata.js": {
+      "maxDuration": 10
     }
   },
   "headers": [

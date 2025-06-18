@@ -16,6 +16,9 @@
     },
     "api/kv-utils.js": {
       "maxDuration": 5
+    },
+    "api/metadata.js": {
+      "maxDuration": 10
     }
   },
   "headers": [
