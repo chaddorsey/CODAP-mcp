@@ -34,8 +34,8 @@ export interface ResponseHandlerConfig {
  * Default configuration
  */
 export const DEFAULT_RESPONSE_HANDLER_CONFIG: ResponseHandlerConfig = {
-  relayBaseUrl: '/api/relay',
-  responseEndpoint: '/responses',
+  relayBaseUrl: "/api/relay",
+  responseEndpoint: "/responses",
   maxRetries: 3,
   timeoutMs: 10000, // 10 seconds
   rateLimiter: {
@@ -48,7 +48,7 @@ export const DEFAULT_RESPONSE_HANDLER_CONFIG: ResponseHandlerConfig = {
     enabled: true
   },
   headers: {
-    'Content-Type': 'application/json'
+    "Content-Type": "application/json"
   },
   debug: false
 };
@@ -140,7 +140,7 @@ export class ResponseHandler implements ResponseHandlerInterface {
     };
 
     if (this.config.debug) {
-      console.log('[ResponseHandler] Initialized with config:', this.config);
+      console.log("[ResponseHandler] Initialized with config:", this.config);
     }
   }
 
@@ -150,7 +150,7 @@ export class ResponseHandler implements ResponseHandlerInterface {
   async postResponse(response: ToolResponse): Promise<void> {
     const result = await this.sendResponse(response);
     if (!result.success) {
-      throw new Error(result.error || 'Failed to post response');
+      throw new Error(result.error || "Failed to post response");
     }
   }
 
@@ -168,7 +168,7 @@ export class ResponseHandler implements ResponseHandlerInterface {
     this.statistics.totalResponses++;
 
     if (this.config.debug) {
-      console.log('[ResponseHandler] Queuing response:', response.requestId);
+      console.log("[ResponseHandler] Queuing response:", response.requestId);
     }
 
     try {
@@ -185,13 +185,13 @@ export class ResponseHandler implements ResponseHandlerInterface {
       };
     } catch (error) {
       if (this.config.debug) {
-        console.error('[ResponseHandler] Failed to queue response:', error);
+        console.error("[ResponseHandler] Failed to queue response:", error);
       }
       
       this.statistics.failedDeliveries++;
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : "Unknown error",
         retryCount: 0,
         durationMs: 0
       };
@@ -293,10 +293,10 @@ export class ResponseHandler implements ResponseHandlerInterface {
           this.statistics.successfulDeliveries += batch.responses.length;
           break;
         } else {
-          lastError = new Error(result.error || 'Unknown delivery error');
+          lastError = new Error(result.error || "Unknown delivery error");
         }
       } catch (error) {
-        lastError = error instanceof Error ? error : new Error('Unknown error');
+        lastError = error instanceof Error ? error : new Error("Unknown error");
         
         if (this.config.debug) {
           console.warn(`[ResponseHandler] Batch delivery attempt ${attempt + 1} failed:`, lastError.message);
@@ -316,7 +316,7 @@ export class ResponseHandler implements ResponseHandlerInterface {
     if (!success) {
       this.statistics.failedDeliveries += batch.responses.length;
       console.error(`[ResponseHandler] Failed to deliver batch ${batch.id} after ${this.config.maxRetries + 1} attempts:`, lastError?.message);
-      throw lastError || new Error('Batch delivery failed');
+      throw lastError || new Error("Batch delivery failed");
     }
 
     if (this.config.debug) {
@@ -341,7 +341,7 @@ export class ResponseHandler implements ResponseHandlerInterface {
       const timeoutId = setTimeout(() => controller.abort(), this.config.timeoutMs);
 
       const response = await fetch(url, {
-        method: 'POST',
+        method: "POST",
         headers: this.config.headers,
         body: JSON.stringify(payload),
         signal: controller.signal
@@ -367,12 +367,12 @@ export class ResponseHandler implements ResponseHandlerInterface {
       return { success: true, statusCode: response.status };
     } catch (error) {
       if (error instanceof Error) {
-        if (error.name === 'AbortError') {
-          return { success: false, error: 'Request timeout' };
+        if (error.name === "AbortError") {
+          return { success: false, error: "Request timeout" };
         }
         return { success: false, error: error.message };
       }
-      return { success: false, error: 'Unknown network error' };
+      return { success: false, error: "Unknown network error" };
     }
   }
 

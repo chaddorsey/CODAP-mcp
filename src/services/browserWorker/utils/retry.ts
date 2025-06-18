@@ -56,7 +56,7 @@ export async function retryWithBackoff<T>(
     try {
       return await operation();
     } catch (error) {
-      lastError = error instanceof Error ? error : new Error('Unknown error');
+      lastError = error instanceof Error ? error : new Error("Unknown error");
       
       // Check if we should retry this error
       if (shouldRetry && !shouldRetry(lastError)) {
@@ -86,19 +86,19 @@ export function isRetryableError(error: Error): boolean {
   const message = error.message.toLowerCase();
   
   // Network errors
-  if (message.includes('network') || 
-      message.includes('timeout') || 
-      message.includes('connection') ||
-      message.includes('fetch')) {
+  if (message.includes("network") || 
+      message.includes("timeout") || 
+      message.includes("connection") ||
+      message.includes("fetch")) {
     return true;
   }
   
   // HTTP status codes that are retryable
-  if (message.includes('429') || // Rate limit
-      message.includes('500') || // Internal server error
-      message.includes('502') || // Bad gateway
-      message.includes('503') || // Service unavailable
-      message.includes('504')) { // Gateway timeout
+  if (message.includes("429") || // Rate limit
+      message.includes("500") || // Internal server error
+      message.includes("502") || // Bad gateway
+      message.includes("503") || // Service unavailable
+      message.includes("504")) { // Gateway timeout
     return true;
   }
   

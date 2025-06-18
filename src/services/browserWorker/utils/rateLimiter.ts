@@ -111,10 +111,10 @@ export class RateLimiter {
    */
   updateFromHeaders(headers: Record<string, string>): void {
     // Standard rate limit headers
-    const rateLimit = headers['x-ratelimit-limit'] || headers['ratelimit-limit'];
-    const remaining = headers['x-ratelimit-remaining'] || headers['ratelimit-remaining'];
-    const reset = headers['x-ratelimit-reset'] || headers['ratelimit-reset'];
-    const retryAfter = headers['retry-after'];
+    const rateLimit = headers["x-ratelimit-limit"] || headers["ratelimit-limit"];
+    const remaining = headers["x-ratelimit-remaining"] || headers["ratelimit-remaining"];
+    const reset = headers["x-ratelimit-reset"] || headers["ratelimit-reset"];
+    const retryAfter = headers["retry-after"];
 
     if (rateLimit) {
       const limit = parseInt(rateLimit, 10);

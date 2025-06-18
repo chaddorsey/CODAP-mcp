@@ -13,7 +13,10 @@ import {
   createAriaId,
   formatTimeForScreenReader
 } from "../utils/accessibility";
+import { useBrowserWorker } from "../hooks/useBrowserWorker";
+import { ConnectionStatus } from "./ConnectionStatus";
 import "./PairingBanner.css";
+import "../styles/browserWorker.scss";
 
 /**
  * Default relay base URL - can be overridden via props
@@ -102,6 +105,25 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
   // Initialize clipboard functionality
   const clipboard = useClipboard();
 
+  // Browser Worker state management
+  const [browserWorkerEnabled, setBrowserWorkerEnabled] = useState(false);
+  const [showBrowserWorkerDetails, setShowBrowserWorkerDetails] = useState(false);
+
+  // Initialize browser worker when session is available
+  const browserWorker = useBrowserWorker({
+    relayBaseUrl,
+    sessionCode: bannerState.sessionData?.code || "",
+    debug: false,
+    autoStart: false, // Manual start when user enables it
+    onStatusChange: (status) => {
+      console.log("Browser worker status changed:", status);
+    },
+    onError: (error) => {
+      console.error("Browser worker error:", error);
+      setAnnouncement(`Browser worker error: ${error.message}`);
+    }
+  });
+
   /**
    * Copy session code to clipboard with accessibility support
    */
@@ -152,6 +174,43 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
   const handleCopyPromptKeyboard = useCallback((event: React.KeyboardEvent) => {
     handleKeyboardActivation(event, handleCopyPrompt);
   }, [handleCopyPrompt]);
+
+  /**
+   * Enable browser worker functionality
+   */
+  const handleEnableBrowserWorker = useCallback(async () => {
+    if (!bannerState.sessionData) return;
+    
+    setBrowserWorkerEnabled(true);
+    try {
+      await browserWorker.start();
+      setAnnouncement("Browser worker enabled and starting connection");
+    } catch (error) {
+      console.error("Failed to start browser worker:", error);
+      setBrowserWorkerEnabled(false);
+      setAnnouncement("Failed to start browser worker");
+    }
+  }, [bannerState.sessionData, browserWorker]);
+
+  /**
+   * Disable browser worker functionality
+   */
+  const handleDisableBrowserWorker = useCallback(async () => {
+    setBrowserWorkerEnabled(false);
+    try {
+      await browserWorker.stop();
+      setAnnouncement("Browser worker disabled");
+    } catch (error) {
+      console.error("Failed to stop browser worker:", error);
+    }
+  }, [browserWorker]);
+
+  /**
+   * Toggle browser worker details visibility
+   */
+  const toggleBrowserWorkerDetails = useCallback(() => {
+    setShowBrowserWorkerDetails(prev => !prev);
+  }, []);
 
   /**
    * Creates a new session using the SessionService
@@ -368,6 +427,70 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
             className="sr-only"
           >
             {instructionsDescription}
+          </div>
+        </div>
+
+        {/* Browser Worker Section */}
+        <div className="browser-worker-section">
+          <div className="section-header">
+            <h4>Real-time Tool Execution</h4>
+            <button
+              type="button"
+              className="toggle-button"
+              onClick={toggleBrowserWorkerDetails}
+              aria-label={showBrowserWorkerDetails ? "Hide details" : "Show details"}
+            >
+              {showBrowserWorkerDetails ? "Hide" : "Show"} Details
+            </button>
+          </div>
+          
+          <div className="worker-content">
+            {!browserWorkerEnabled ? (
+              <div className="worker-disabled">
+                <p>Enable real-time tool execution to allow LLM assistants to interact directly with CODAP.</p>
+                <button
+                  type="button"
+                  className="enable-button"
+                  onClick={handleEnableBrowserWorker}
+                  disabled={!bannerState.sessionData}
+                >
+                  Enable Browser Worker
+                </button>
+              </div>
+            ) : (
+              <div className="worker-enabled">
+                {showBrowserWorkerDetails && (
+                  <ConnectionStatus
+                    connectionStatus={browserWorker.connectionStatus}
+                    isRunning={browserWorker.isRunning}
+                    isStarting={browserWorker.isStarting}
+                    isStopping={browserWorker.isStopping}
+                    actions={{
+                      start: browserWorker.start,
+                      stop: handleDisableBrowserWorker,
+                      restart: browserWorker.restart
+                    }}
+                    showControls={true}
+                    className="worker-connection-status"
+                  />
+                )}
+                
+                {!showBrowserWorkerDetails && (
+                  <div className="worker-summary">
+                    <div className="worker-status">
+                      Status: {browserWorker.isRunning ? "🟢 Connected" : "🟡 Starting..."}
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={handleDisableBrowserWorker}
+                    >
+                      Disable
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

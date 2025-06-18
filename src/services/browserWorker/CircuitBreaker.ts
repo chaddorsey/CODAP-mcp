@@ -32,7 +32,7 @@ export class CircuitBreaker implements CircuitBreakerInterface {
   private successCount = 0;
   private totalRequests = 0;
   private lastOpenTime?: number;
-  private requestHistory: Array<{ timestamp: number; success: boolean }> = [];
+  private requestHistory: { timestamp: number; success: boolean }[] = [];
 
   constructor(config: Partial<CircuitBreakerConfig> = {}) {
     this.config = { ...DEFAULT_CIRCUIT_BREAKER_CONFIG, ...config };

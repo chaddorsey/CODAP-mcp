@@ -256,7 +256,7 @@ export class BrowserWorkerErrorSystem {
   private config: ErrorHandlerConfig;
   private handlers: BrowserWorkerErrorHandler[];
   private statistics: ErrorHandlerStatistics;
-  private correlationMap: Map<string, string[]> = new Map();
+  private correlationMap = new Map<string, string[]>();
   private handlingTimes: number[] = [];
 
   constructor(config: Partial<ErrorHandlerConfig> = {}) {
@@ -296,7 +296,7 @@ export class BrowserWorkerErrorSystem {
     });
 
     if (this.config.debug) {
-      console.log('[BrowserWorkerErrorSystem] Initialized with handlers:', 
+      console.log("[BrowserWorkerErrorSystem] Initialized with handlers:", 
         this.handlers.map(h => h.constructor.name));
     }
   }
