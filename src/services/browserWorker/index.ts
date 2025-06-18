@@ -8,6 +8,13 @@ export { PollingManager } from "./PollingManager";
 export { ToolRequestParser } from "./ToolRequestParser";
 export { ToolExecutor } from "./ToolExecutor";
 export { ExecutionQueue } from "./ExecutionQueue";
+export { ResponseHandler } from "./ResponseHandler";
+
+// Utility exports
+export { RateLimiter } from "./utils/rateLimiter";
+export { BatchProcessor } from "./utils/batchProcessor";
+export * from "./utils/retry";
+
 export * from "./types";
 export * from "./utils/exponentialBackoff";
 export * from "./utils/requestDeduplication";
