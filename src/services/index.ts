@@ -7,4 +7,7 @@ export type {
   ApiErrorResponse,
   SessionErrorCode
 } from "./types";
-export { SessionServiceError, SESSION_ERROR_CODES } from "./types"; 
+export { SessionServiceError, SESSION_ERROR_CODES } from "./types";
+
+// Export Browser Worker service
+export * from "./browserWorker"; 
