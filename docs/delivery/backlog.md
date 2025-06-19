@@ -17,6 +17,7 @@
 | 13 | Security Engineer | As a security engineer, I want proper secrets management and secure configuration practices. | Proposed | • Vercel environment variables for all secrets<br>• Rotation strategy for bypass tokens<br>• No sensitive data in logs or source code<br>• Security scanning in CI pipeline |
 | 14 | Platform Architect | As a platform architect, I want a modular Tool Module system with runtime registration so that tools can be added, versioned, and managed without code deployments. [View Details](./14/prd.md) | Proposed | • Tool modules can be registered at runtime<br>• Schema validation and parameter checking<br>• Version management and dependency resolution<br>• Permission system for tool access control<br>• Module packs for bulk tool distribution<br>• Health checking and lifecycle management |
 | 15 | Integration Developer | As an integration developer, I want a universal adapter pattern so that the same tool interface can work with different backend systems beyond CODAP. [View Details](./15/prd.md) | Proposed | • Universal operation interface for create/read/update/delete<br>• CODAP, Slack, Database, and REST API adapters<br>• Automatic resource schema introspection<br>• Adapter capability detection and routing<br>• Error handling and fallback mechanisms<br>• Cross-application tool compatibility |
+| 16 | Data Analyst | As a data analyst, I want comprehensive CODAP API coverage with full CRUD operations, collection management, and interactive features so that I can perform advanced data manipulation and analysis. [View Details](./16/prd.md) | Proposed | • Complete CRUD operations for all CODAP entities<br>• Collection and attribute management tools<br>• Case and item manipulation capabilities<br>• Selection and filtering tools<br>• Event listeners and real-time updates<br>• Component management and interaction<br>• 90%+ coverage of CODAP Plugin API functions<br>• Comprehensive test suite for all new tools |
 
 ## PBI History Log
 
@@ -45,6 +46,7 @@
 | 2025-06-19-16:20:00 | 4 | Status Update | Moved from InProgress to Done - All tasks completed, comprehensive debugging completed, full end-to-end CODAP integration working | AI_Agent |
 | 2025-06-19-17:30:00 | 14 | Created | New PBI for modular Tool Module system with runtime registration and lifecycle management | AI_Agent |
 | 2025-06-19-17:30:00 | 15 | Created | New PBI for universal adapter pattern enabling cross-application tool compatibility | AI_Agent |
+| 2025-06-19-18:00:00 | 16 | Created | New PBI for comprehensive CODAP API coverage expansion with full CRUD operations and advanced features | AI_Agent |
 
 ---
 
