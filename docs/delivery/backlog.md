@@ -19,6 +19,7 @@
 | 15 | Integration Developer | As an integration developer, I want a universal adapter pattern so that the same tool interface can work with different backend systems beyond CODAP. [View Details](./15/prd.md) | Proposed | • Universal operation interface for create/read/update/delete<br>• CODAP, Slack, Database, and REST API adapters<br>• Automatic resource schema introspection<br>• Adapter capability detection and routing<br>• Error handling and fallback mechanisms<br>• Cross-application tool compatibility |
 | 16 | Data Analyst | As a data analyst, I want comprehensive CODAP API coverage with full CRUD operations, collection management, and interactive features so that I can perform advanced data manipulation and analysis. [View Details](./16/prd.md) | Proposed | • Complete CRUD operations for all CODAP entities<br>• Collection and attribute management tools<br>• Case and item manipulation capabilities<br>• Selection and filtering tools<br>• Event listeners and real-time updates<br>• Component management and interaction<br>• 90%+ coverage of CODAP Plugin API functions<br>• Comprehensive test suite for all new tools |
 | 17 | Plugin Developer | As a plugin developer, I want dynamic tool registration and session-aware tool management so that plugins can communicate their available tools to LLMs in real-time. [View Details](./17/prd.md) | Proposed | • Plugin-initiated tool registration per session<br>• Session-specific tool availability in metadata endpoint<br>• Real-time tool availability updates via SSE<br>• Plugin capability negotiation protocol<br>• Dynamic tool set changes communicated to LLMs<br>• Backwards compatibility with existing static tools<br>• Multi-application plugin support framework |
+| 18 | LLM Application Developer | As an LLM application developer, I want the Vercel server to be fully MCP protocol compliant so that I can integrate CODAP tools using standard MCP clients without custom API implementations. [View Details](./18/prd.md) | Proposed | • JSON-RPC 2.0 message format compliance<br>• Standard MCP lifecycle (initialize, capabilities, tools)<br>• StreamableHTTP transport for Vercel deployment<br>• MCP-compliant tool discovery and execution<br>• Session management with MCP headers<br>• Compatibility with Claude Desktop, Cursor, and MCP SDK<br>• Backwards compatibility during migration<br>• Complete MCP server implementation |
 
 ## PBI History Log
 
@@ -49,6 +50,7 @@
 | 2025-06-19-17:30:00 | 15 | Created | New PBI for universal adapter pattern enabling cross-application tool compatibility | AI_Agent |
 | 2025-06-19-18:00:00 | 16 | Created | New PBI for comprehensive CODAP API coverage expansion with full CRUD operations and advanced features | AI_Agent |
 | 2025-06-19-18:30:00 | 17 | Created | New PBI for dynamic tool registration and session-aware tool management to complete the plugin-LLM integration vision | AI_Agent |
+| 2025-06-19-19:00:00 | 18 | Created | New PBI for full MCP protocol compliance to enable standard LLM client integration | AI_Agent |
 
 ---
 
