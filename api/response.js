@@ -1,7 +1,7 @@
 // Tool response endpoint using Node.js runtime
 // Accepts tool responses from MCP server
 
-import { kv } from "@vercel/kv";
+const { getSession, setResponse } = require("./kv-utils");
 
 /**
  * Validates session code format
@@ -33,7 +33,7 @@ function createSuccessResponse(res, data, status = 200) {
  */
 async function validateSession(code) {
   try {
-    const sessionData = await kv.get(`session:${code}`);
+    const sessionData = await getSession(code);
     if (!sessionData) {
       return false;
     }
@@ -49,20 +49,15 @@ async function validateSession(code) {
 }
 
 /**
- * Store tool response in KV with TTL
+ * Store tool response using kv-utils
  */
-async function storeToolResponse(code, response) {
-  const responseKey = `res:${code}`;
-  const responseJson = JSON.stringify({
-    ...response,
+async function storeToolResponse(code, responseData) {
+  const response = {
+    ...responseData,
     timestamp: new Date().toISOString()
-  });
+  };
   
-  // Add to the end of the list (FIFO queue)
-  await kv.rpush(responseKey, responseJson);
-  
-  // Set TTL on the response queue (1 hour)
-  await kv.expire(responseKey, 3600);
+  await setResponse(code, response);
 }
 
 /**
@@ -93,7 +88,7 @@ export default async function handler(req, res) {
       return;
     }
     
-    const { sessionCode, requestId, result } = req.body;
+    const { sessionCode, requestId, result, error } = req.body;
     
     // Validate required fields
     if (!sessionCode) {
@@ -111,8 +106,9 @@ export default async function handler(req, res) {
       return;
     }
     
-    if (!result) {
-      createErrorResponse(res, 400, "missing_result", "Result object is required");
+    // Must have either result or error, but not both
+    if ((!result && !error) || (result && error)) {
+      createErrorResponse(res, 400, "invalid_response", "Response must contain either 'result' or 'error', but not both");
       return;
     }
     
@@ -126,9 +122,9 @@ export default async function handler(req, res) {
     // Store the tool response in KV storage
     const responseData = {
       id: requestId,
-      result,
-      timestamp: new Date().toISOString(),
-      status: "completed"
+      result: result || null,
+      error: error || null,
+      timestamp: new Date().toISOString()
     };
     
     await storeToolResponse(sessionCode, responseData);
@@ -143,6 +139,6 @@ export default async function handler(req, res) {
     
   } catch (error) {
     console.error("Tool response error:", error);
-    createErrorResponse(res, 500, "internal_server_error", "Failed to process tool response");
+    createErrorResponse(res, 500, "internal_server_error", "Failed to store tool response");
   }
 } 

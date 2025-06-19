@@ -2,7 +2,7 @@
 // Accepts tool requests from CODAP interactive
 // Updated: 2025-06-19 - KV storage enabled for full operation
 
-import { kv } from "@vercel/kv";
+const { getSession } = require("./kv-utils");
 
 /**
  * Validates session code format
@@ -34,7 +34,7 @@ function createSuccessResponse(res, data, status = 200) {
  */
 async function validateSession(code) {
   try {
-    const sessionData = await kv.get(`session:${code}`);
+    const sessionData = await getSession(code);
     if (!sessionData) {
       return false;
     }
@@ -50,20 +50,18 @@ async function validateSession(code) {
 }
 
 /**
- * Enqueue tool request to session queue
+ * Enqueue tool request to session queue using kv-utils
  */
 async function enqueueToolRequest(code, request) {
-  const queueKey = `req:${code}`;
-  const requestJson = JSON.stringify({
+  const { setRequest } = require("./kv-utils");
+  
+  const requestData = {
     ...request,
-    timestamp: new Date().toISOString()
-  });
+    timestamp: new Date().toISOString(),
+    status: "queued"
+  };
   
-  // Add to the end of the list (FIFO queue)
-  await kv.rpush(queueKey, requestJson);
-  
-  // Set TTL on the queue to clean up old requests (1 hour)
-  await kv.expire(queueKey, 3600);
+  await setRequest(code, requestData);
 }
 
 /**

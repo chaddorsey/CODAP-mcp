@@ -1,7 +1,7 @@
 // SSE stream endpoint using Node.js runtime
 // Provides server-sent events for tool request polling
 
-import { kv } from "@vercel/kv";
+const { getSession, getRequest } = require("./kv-utils");
 
 /**
  * Validates session code format
@@ -26,7 +26,7 @@ function createErrorResponse(res, status, error, message, code) {
  */
 async function validateSession(code) {
   try {
-    const sessionData = await kv.get(`session:${code}`);
+    const sessionData = await getSession(code);
     if (!sessionData) {
       return false;
     }
@@ -42,39 +42,20 @@ async function validateSession(code) {
 }
 
 /**
- * Retrieve and clear tool requests from the queue
+ * Get pending tool requests for a session using kv-utils
  */
 async function getToolRequests(code) {
   try {
-    const queueKey = `req:${code}`;
-    
-    // Get all requests in the queue
-    const requests = await kv.lrange(queueKey, 0, -1);
-    
-    if (requests.length > 0) {
-      // Clear the queue after retrieving requests
-      await kv.del(queueKey);
-      
-      // Parse JSON strings back to objects
-      return requests.map(req => {
-        try {
-          return typeof req === "string" ? JSON.parse(req) : req;
-        } catch (error) {
-          console.error("Failed to parse request:", req, error);
-          return null;
-        }
-      }).filter(req => req !== null);
-    }
-    
-    return [];
+    const request = await getRequest(code);
+    return request ? [request] : [];
   } catch (error) {
-    console.error("Error retrieving tool requests:", error);
+    console.error("Error getting tool requests:", error);
     return [];
   }
 }
 
 /**
- * Main handler function for SSE stream
+ * Main handler function for SSE streaming
  */
 export default async function handler(req, res) {
   // Set CORS headers
@@ -91,27 +72,39 @@ export default async function handler(req, res) {
     
     // Only allow GET method
     if (req.method !== "GET") {
-      createErrorResponse(res, 405, "method_not_allowed", "Only GET method is allowed");
+      res.status(405).json({
+        error: "method_not_allowed",
+        message: "Only GET method is allowed"
+      });
       return;
     }
     
-    // Extract session code from query parameters
-    const { code } = req.query;
+    const { sessionCode } = req.query;
     
-    if (!code) {
-      createErrorResponse(res, 400, "missing_session_code", "Session code is required as query parameter");
+    // Validate session code
+    if (!sessionCode) {
+      res.status(400).json({
+        error: "missing_session_code",
+        message: "Session code is required"
+      });
       return;
     }
     
-    if (!isValidSessionCode(code)) {
-      createErrorResponse(res, 400, "invalid_session_code", "Session code must be 8 characters (A-Z, 2-7)");
+    if (!isValidSessionCode(sessionCode)) {
+      res.status(400).json({
+        error: "invalid_session_code",
+        message: "Session code must be 8 characters (A-Z, 2-7)"
+      });
       return;
     }
     
     // Validate session exists and is not expired
-    const sessionValid = await validateSession(code);
+    const sessionValid = await validateSession(sessionCode);
     if (!sessionValid) {
-      createErrorResponse(res, 404, "session_not_found", "Session not found or expired");
+      res.status(404).json({
+        error: "session_not_found",
+        message: "Session not found or expired"
+      });
       return;
     }
     
@@ -121,54 +114,71 @@ export default async function handler(req, res) {
       "Cache-Control": "no-cache",
       "Connection": "keep-alive",
       "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type"
     });
     
-    // Send initial connection event
-    res.write("event: connected\n");
-    res.write(`data: {"message":"Connected to session ${code}","timestamp":"${new Date().toISOString()}"}\n\n`);
+    // Send initial connection confirmation
+    res.write(`data: ${JSON.stringify({
+      type: "connection",
+      message: "Connected to tool request stream",
+      sessionCode,
+      timestamp: new Date().toISOString()
+    })}\n\n`);
     
-    // Send periodic heartbeat events
-    const heartbeatInterval = setInterval(() => {
-      res.write("event: heartbeat\n");
-      res.write(`data: {"timestamp":"${new Date().toISOString()}"}\n\n`);
-    }, 30000); // 30 seconds
+    console.log(`SSE stream connected for session: ${sessionCode}`);
     
-    // Poll for tool requests every second
-    const pollingInterval = setInterval(async () => {
+    // Set up interval to poll for requests
+    const pollInterval = setInterval(async () => {
       try {
-        const requests = await getToolRequests(code);
+        // Check if session is still valid
+        const stillValid = await validateSession(sessionCode);
+        if (!stillValid) {
+          res.write(`data: ${JSON.stringify({
+            type: "session_expired",
+            message: "Session has expired",
+            timestamp: new Date().toISOString()
+          })}\n\n`);
+          clearInterval(pollInterval);
+          res.end();
+          return;
+        }
         
-        for (const toolRequest of requests) {
-          res.write("event: tool-request\n");
-          res.write(`data: ${JSON.stringify(toolRequest)}\n\n`);
+        // Poll for tool requests from KV storage
+        const requests = await getToolRequests(sessionCode);
+        
+        if (requests.length > 0) {
+          for (const request of requests) {
+            res.write(`data: ${JSON.stringify({
+              type: "tool_request",
+              data: request,
+              timestamp: new Date().toISOString()
+            })}\n\n`);
+            
+            console.log(`Sent tool request via SSE for session ${sessionCode}:`, request);
+          }
         }
       } catch (error) {
-        console.error("Error polling for requests:", error);
-        res.write("event: error\n");
-        res.write(`data: {"error":"polling_error","message":"Error retrieving tool requests"}\n\n`);
+        console.error("SSE polling error:", error);
+        res.write(`data: ${JSON.stringify({
+          type: "error",
+          message: "Internal server error during polling",
+          timestamp: new Date().toISOString()
+        })}\n\n`);
       }
-    }, 1000); // 1 second polling
+    }, 1000); // Poll every 1 second
     
-    // Clean up on client disconnect
+    // Handle client disconnect
     req.on("close", () => {
-      clearInterval(heartbeatInterval);
-      clearInterval(pollingInterval);
-      res.end();
+      console.log(`SSE stream closed for session: ${sessionCode}`);
+      clearInterval(pollInterval);
     });
-    
-    // Keep connection alive for up to 10 minutes
-    setTimeout(() => {
-      clearInterval(heartbeatInterval);
-      clearInterval(pollingInterval);
-      res.write("event: timeout\n");
-      res.write(`data: {"message":"Session timeout","timestamp":"${new Date().toISOString()}"}\n\n`);
-      res.end();
-    }, 600000); // 10 minutes
     
   } catch (error) {
     console.error("SSE stream error:", error);
-    if (!res.headersSent) {
-      createErrorResponse(res, 500, "internal_server_error", "Failed to establish SSE stream");
-    }
+    res.status(500).json({
+      error: "internal_server_error",
+      message: "Failed to establish SSE stream"
+    });
   }
 } 
