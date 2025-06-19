@@ -22,6 +22,9 @@
     },
     "api/test-endpoint.js": {
       "maxDuration": 10
+    },
+    "api/tool-request.js": {
+      "maxDuration": 10
     }
   },
   "headers": [

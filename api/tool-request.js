@@ -1,0 +1,156 @@
+// ALTERNATIVE TOOL REQUEST ENDPOINT - TESTING DEPLOYMENT
+// This is api/tool-request.js to test if /api/request path is being hijacked
+// If this works, it proves the issue is with the specific /api/request path
+
+const { getSession } = require("./kv-utils");
+
+/**
+ * Validates session code format
+ */
+function isValidSessionCode(code) {
+  return /^[A-Z2-7]{8}$/.test(code);
+}
+
+/**
+ * Creates a standardized error response
+ */
+function createErrorResponse(res, status, error, message, code) {
+  res.status(status).json({
+    error,
+    message,
+    code
+  });
+}
+
+/**
+ * Creates a standardized success response
+ */
+function createSuccessResponse(res, data, status = 200) {
+  res.status(status).json(data);
+}
+
+/**
+ * Check if session exists and is valid
+ */
+async function validateSession(code) {
+  try {
+    const sessionData = await getSession(code);
+    if (!sessionData) {
+      return false;
+    }
+    
+    // Check if session is expired
+    const now = new Date();
+    const expiresAt = new Date(sessionData.expiresAt);
+    return now <= expiresAt;
+  } catch (error) {
+    console.error("Session validation error:", error);
+    return false;
+  }
+}
+
+/**
+ * Enqueue tool request to session queue using kv-utils
+ */
+async function enqueueToolRequest(code, request) {
+  const { setRequest } = require("./kv-utils");
+  
+  const requestData = {
+    ...request,
+    timestamp: new Date().toISOString(),
+    status: "queued"
+  };
+  
+  await setRequest(code, requestData);
+}
+
+/**
+ * Main handler function
+ */
+export default async function handler(req, res) {
+  // Set CORS headers
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  try {
+    // Handle CORS preflight
+    if (req.method === "OPTIONS") {
+      res.status(200).end();
+      return;
+    }
+    
+    // Only allow POST method
+    if (req.method !== "POST") {
+      createErrorResponse(res, 405, "method_not_allowed", "Only POST method is allowed");
+      return;
+    }
+    
+    // Validate request body
+    if (!req.body) {
+      createErrorResponse(res, 400, "missing_body", "Request body is required");
+      return;
+    }
+    
+    const { sessionCode, requestId, toolName, params = {} } = req.body;
+    
+    // Validate required fields
+    if (!sessionCode) {
+      createErrorResponse(res, 400, "missing_session_code", "Session code is required");
+      return;
+    }
+    
+    if (!isValidSessionCode(sessionCode)) {
+      createErrorResponse(res, 400, "invalid_session_code", "Session code must be 8 characters (A-Z, 2-7)");
+      return;
+    }
+    
+    if (!requestId || typeof requestId !== "string") {
+      createErrorResponse(res, 400, "missing_request_id", "Request ID is required");
+      return;
+    }
+    
+    if (!toolName || typeof toolName !== "string") {
+      createErrorResponse(res, 400, "missing_tool_name", "Tool name is required");
+      return;
+    }
+    
+    // Validate session exists and is not expired
+    const sessionValid = await validateSession(sessionCode);
+    if (!sessionValid) {
+      createErrorResponse(res, 404, "session_not_found", "Session not found or expired");
+      return;
+    }
+    
+    // Enqueue the tool request to KV storage
+    const requestData = {
+      id: requestId,
+      tool: toolName,
+      args: params,
+      timestamp: new Date().toISOString()
+    };
+    
+    try {
+      await enqueueToolRequest(sessionCode, requestData);
+      console.log(`✅ KV storage successful for session ${sessionCode}`);
+    } catch (kvError) {
+      console.error(`❌ KV storage failed for session ${sessionCode}:`, kvError);
+      throw kvError; // Re-throw to be caught by outer try-catch
+    }
+    
+          console.log(`Tool request queued for session ${sessionCode}:`, requestData);
+    
+    createSuccessResponse(res, {
+      id: requestId,
+      status: "queued",
+      message: "✨ TOOL-REQUEST ENDPOINT - KV STORAGE WORKING! ✨",
+      timestamp: new Date().toISOString(),
+      sessionCode: sessionCode,
+      deploymentTest: "NEW_JAVASCRIPT_VERSION_DEC_2024"
+    }, 202);
+    
+  } catch (error) {
+    console.error("Tool request error:", error);
+    createErrorResponse(res, 500, "internal_server_error", "Failed to process tool request");
+  }
+} 
