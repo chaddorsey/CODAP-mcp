@@ -1,88 +1,169 @@
-# CODAP MCP Relay System
+# CODAP MCP Integration
 
-This project provides a relay system for connecting CODAP (Common Online Data Analysis Platform) with MCP (Model Context Protocol) servers. It includes both a React-based plugin interface and a relay server infrastructure with Redis-based session persistence.
+A Model Context Protocol (MCP) server for the CODAP (Common Online Data Analysis Platform) data analysis tool, enabling large language models to interact directly with CODAP for data manipulation and visualization.
 
-## Features
+## 🌟 **Status: Fully Operational**
 
-- **Session Management**: Redis-based persistent session storage with configurable TTL
-- **Request/Response Relay**: Handles MCP communication through HTTP endpoints  
-- **Real-time Streaming**: WebSocket-like streaming support for MCP interactions
-- **CODAP Integration**: Plugin API integration for seamless CODAP workflow
-- **Authentication**: SSO bypass support for testing and development
+The system is now fully deployed and operational! LLMs can:
+- ✅ **Discover tools** via the metadata endpoint
+- ✅ **Queue tool requests** which are processed asynchronously  
+- ✅ **Create real datasets** in your CODAP session
+- ✅ **Generate visualizations** (graphs, tables, etc.)
+- ✅ **Execute all tools** through the web-based API
 
-## API Endpoints
+No local installation required - everything runs through web APIs.
 
-- `POST /api/sessions` - Create new relay session
-- `POST /api/request` - Submit MCP request for processing
-- `GET /api/response` - Retrieve MCP response data
-- `GET /api/stream` - Stream real-time MCP interactions
+## 🚀 Quick Start for LLMs
 
-## Development
+1. **Get session code** from your CODAP session (e.g., `T5SDQIRW`)
+2. **Discover available tools**:
+   ```bash
+   GET https://codap-mcp-cdorsey-concordorgs-projects.vercel.app/api/metadata?code=YOUR_SESSION_CODE
+   ```
+3. **Queue tool requests**:
+   ```bash
+   POST https://codap-mcp-cdorsey-concordorgs-projects.vercel.app/api/request
+   {
+     "sessionCode": "YOUR_SESSION_CODE",
+     "requestId": "unique-id-123",
+     "toolName": "create_dataset_with_table",
+     "params": { ... }
+   }
+   ```
 
-### Getting Started
-1. Clone this repository and `cd` into the new folder.
-2. Install the dependencies `npm install`.
-3. Run the development server `npm start`.
-4. Open [localhost:8080](http://localhost:8080) (or use port 8081 if you are already using 8080). You should see a basic plugin with a heading of "CODAP Starter Plugin".
+## 🔧 System Architecture
 
-   It's ok if you see an error like `handleResponse: CODAP request timed out: [{"action":"update","resource":"interactiveFrame","values":{"name":"Sample Plugin","version":"0.0.1","dimensions":{"width":380,"height":680}}},{"action":"get","resource":"interactiveFrame"}]`. This just means that the plugin is running outside of Codap, so is not receiving responses to API requests, which is expected.
+### Web-Based Operation
+- **Request Queue**: Tools are queued via HTTP POST to `/api/request`
+- **SSE Streaming**: Browser worker receives requests via Server-Sent Events from `/api/stream`
+- **Tool Execution**: Browser worker executes tools directly against CODAP Plugin API
+- **Response Storage**: Results stored in KV and accessible via web APIs
 
-## Testing
+### Available Tools (9 total)
+- `create_dataset_with_table` - Create datasets with automatic table display
+- `create_graph` - Generate visualizations (scatter plots, bar charts, etc.)
+- `create_data_context` - Create new data contexts
+- `create_items` - Add cases to existing datasets
+- `get_data_contexts` - List all data contexts
+- `get_components` - List all visualization components
+- And more...
 
-### Jest Tests
-The project uses Jest for unit testing. To run the tests:
+## 📊 Example Usage
+
+### Create a Student Performance Dataset
+```json
+POST /api/request
+{
+  "sessionCode": "T5SDQIRW",
+  "requestId": "create-students-001",
+  "toolName": "create_dataset_with_table",
+  "params": {
+    "name": "StudentPerformance",
+    "attributes": [
+      {"name": "student_id", "type": "categorical"},
+      {"name": "math_score", "type": "numeric"},
+      {"name": "reading_score", "type": "numeric"}
+    ],
+    "data": [
+      {"student_id": "S001", "math_score": 85, "reading_score": 78},
+      {"student_id": "S002", "math_score": 92, "reading_score": 88}
+    ]
+  }
+}
 ```
-npm test
+
+### Create a Scatter Plot Visualization
+```json
+POST /api/request
+{
+  "sessionCode": "T5SDQIRW", 
+  "requestId": "viz-scatter-001",
+  "toolName": "create_graph",
+  "params": {
+    "dataContext": "StudentPerformance",
+    "graphType": "scatterplot",
+    "xAttribute": "math_score",
+    "yAttribute": "reading_score",
+    "title": "Math vs Reading Scores"
+  }
+}
 ```
 
-### Playwright Tests
-The project uses Playwright for end-to-end testing. These tests verify that the plugin works correctly inside CODAP. Playwright has lots of features including a VSCode plugin. Below are some basic steps to get started.
+## 🌐 API Endpoints
 
-Before running tests for the first time you need to install the Playwright browsers:
-```
-npx playwright install
-```
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/metadata?code={sessionCode}` | GET | Get available tools and schemas |
+| `/api/request` | POST | Queue tool execution request |
+| `/api/response` | POST | Store tool execution response |
+| `/api/stream?code={sessionCode}` | GET | SSE stream for browser worker |
 
-After this you can run the tests without showing a browser or run them with a visible browser.
+## 🔧 For Developers
 
-#### Run without a visible browser
-```
-npm run test:playwright
-```
-If you want to view a test report of these tests you can run:
-```
-npx playwright show-report
-```
-#### Run showing the browser
-```
-npm run test:playwright:open
+### Local Development
+```bash
+npm install
+npm run dev
 ```
 
-### Testing in CODAP
+### Testing
+```bash
+npm test                    # Unit tests
+npm run test:integration   # Integration tests
+npm run test:playwright    # E2E tests
+```
 
-There are two ways to test the plugin in CODAP:
-- running it locally on https and use the deployed CODAP
-- running it and CODAP locally on http
+### Project Structure
+- `api/` - Vercel serverless functions (HTTP API)
+- `src/services/browserWorker/` - Browser-based tool execution
+- `docs/` - API documentation and examples
+- `playwright/` - End-to-end tests
 
-#### HTTPS
-1. Start the plugin with `npm run start:secure`. You need to first setup a local http certificate if you haven't done so: https://github.com/concord-consortium/codap/blob/main/v3/README.md#run-using-https
-2. Run CODAP v2 or v3 with the `di` parameter:
-    - v2: https://codap.concord.org/app/?di=https://localhost:8080/
-    - v3: https://codap3.concord.org/?di=https://localhost:8080/
+## 📖 Documentation
 
-#### HTTP
-1. Start plugin webserver `npm start` (it will be on 8080 by default)
-2. Setup a local webserver running CODAP.
-    - v2: Download the latest `build_[...].zip` file https://codap.concord.org/releases/zips/. Extract the zip to a folder and run it with a local webserver. For example `npx httpserver -p 8081`
-    - v3: Checkout the v3 source, install the dependencies, and start the dev server: https://github.com/concord-consortium/codap/blob/main/v3/README.md#initial-steps. The dev server should automatically choose the next avaiable port which would normally be 8081
-3. Open CODAP with the plugin embedded in it: http://localhost:8081/static/dg/en/cert/index.html?di=http://localhost:8080
+- [API Documentation](docs/api/metadata-endpoint.md)
+- [Integration Guide](docs/integration-guide.md)
+- [Troubleshooting](docs/troubleshooting.md)
+- [JavaScript Examples](docs/examples/javascript/)
+- [Python Examples](docs/examples/python/)
+- [cURL Examples](docs/examples/curl/)
 
-## Production Deployment
+## 🔒 Security & Session Management
 
-The system is deployed on Vercel with:
-- **Production URL**: https://codap-mcp-cdorsey-concordorgs-projects.vercel.app
-- **Redis Storage**: Upstash Redis for session persistence
-- **Node.js Runtime**: API endpoints use Node.js functions for stability
+- Session codes are 8-character Base32 format (e.g., `T5SDQIRW`)
+- Sessions auto-expire after inactivity
+- CORS enabled for cross-origin requests
+- Rate limiting on API endpoints
 
-For further information on [CODAP Data Interactive Plugin API](https://github.com/concord-consortium/codap/wiki/CODAP-Data-Interactive-Plugin-API).
-# Deployment verification
+## 🎯 LLM Integration Patterns
+
+### For LLMs with MCP Support
+Use the native MCP protocol with tool calling capabilities.
+
+### For LLMs without MCP Support
+Use the HTTP API endpoints directly:
+1. Call metadata endpoint for tool discovery
+2. POST to request endpoint for tool execution
+3. Monitor results through web interface
+
+### For LLMs without Web Access (like ChatGPT)
+Use the action-triggered URL patterns or copy-paste workflows described in the integration guide.
+
+## 📈 Version Management
+
+The API supports version negotiation:
+- Current API Version: `1.0.0`
+- Tool Manifest Version: `1.0.0`
+- Use `Accept-Version` header for version control
+
+## 🤝 Contributing
+
+See project documentation in `docs/delivery/` for development workflow and task management.
+
+## 📄 License
+
+MIT License - see LICENSE file for details.
+
+---
+
+**Ready to integrate with any LLM!** 🚀
