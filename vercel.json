@@ -19,6 +19,9 @@
     },
     "api/metadata-simple.js": {
       "maxDuration": 10
+    },
+    "api/test-endpoint.js": {
+      "maxDuration": 10
     }
   },
   "headers": [

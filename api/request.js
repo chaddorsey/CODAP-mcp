@@ -144,9 +144,10 @@ export default async function handler(req, res) {
     createSuccessResponse(res, {
       id: requestId,
       status: "queued",
-      message: "UPDATED VERSION - Tool request queued for processing - KV enabled",
+      message: "🎉 COMPLETELY NEW VERSION - KV STORAGE WORKING! 🎉",
       timestamp: new Date().toISOString(),
-      sessionCode: sessionCode
+      sessionCode: sessionCode,
+      deploymentTest: "NEW_JAVASCRIPT_VERSION_DEC_2024"
     }, 202);
     
   } catch (error) {
