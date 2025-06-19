@@ -1,6 +1,8 @@
 // SSE stream endpoint using Node.js runtime
 // Provides server-sent events for tool request polling
 
+import { kv } from "@vercel/kv";
+
 /**
  * Validates session code format
  */
@@ -17,6 +19,58 @@ function createErrorResponse(res, status, error, message, code) {
     message,
     code
   });
+}
+
+/**
+ * Check if session exists and is valid
+ */
+async function validateSession(code) {
+  try {
+    const sessionData = await kv.get(`session:${code}`);
+    if (!sessionData) {
+      return false;
+    }
+    
+    // Check if session is expired
+    const now = new Date();
+    const expiresAt = new Date(sessionData.expiresAt);
+    return now <= expiresAt;
+  } catch (error) {
+    console.error("Session validation error:", error);
+    return false;
+  }
+}
+
+/**
+ * Retrieve and clear tool requests from the queue
+ */
+async function getToolRequests(code) {
+  try {
+    const queueKey = `req:${code}`;
+    
+    // Get all requests in the queue
+    const requests = await kv.lrange(queueKey, 0, -1);
+    
+    if (requests.length > 0) {
+      // Clear the queue after retrieving requests
+      await kv.del(queueKey);
+      
+      // Parse JSON strings back to objects
+      return requests.map(req => {
+        try {
+          return typeof req === "string" ? JSON.parse(req) : req;
+        } catch (error) {
+          console.error("Failed to parse request:", req, error);
+          return null;
+        }
+      }).filter(req => req !== null);
+    }
+    
+    return [];
+  } catch (error) {
+    console.error("Error retrieving tool requests:", error);
+    return [];
+  }
 }
 
 /**
@@ -54,6 +108,13 @@ export default async function handler(req, res) {
       return;
     }
     
+    // Validate session exists and is not expired
+    const sessionValid = await validateSession(code);
+    if (!sessionValid) {
+      createErrorResponse(res, 404, "session_not_found", "Session not found or expired");
+      return;
+    }
+    
     // Set SSE headers
     res.writeHead(200, {
       "Content-Type": "text/event-stream",
@@ -63,34 +124,44 @@ export default async function handler(req, res) {
     });
     
     // Send initial connection event
-    res.write("event: connected\\n");
-    res.write(`data: {"message":"Connected to session ${code}","timestamp":"${new Date().toISOString()}"}\\n\\n`);
+    res.write("event: connected\n");
+    res.write(`data: {"message":"Connected to session ${code}","timestamp":"${new Date().toISOString()}"}\n\n`);
     
     // Send periodic heartbeat events
     const heartbeatInterval = setInterval(() => {
-      res.write("event: heartbeat\\n");
-      res.write(`data: {"timestamp":"${new Date().toISOString()}"}\\n\\n`);
+      res.write("event: heartbeat\n");
+      res.write(`data: {"timestamp":"${new Date().toISOString()}"}\n\n`);
     }, 30000); // 30 seconds
     
-    // For demo purposes, send a sample tool request after 10 seconds
-    const demoTimeout = setTimeout(() => {
-      res.write("event: tool-request\\n");
-      res.write(`data: {"id":"demo-req-${Date.now()}","tool":"sample_tool","args":{"message":"Demo request for session ${code}"}}\\n\\n`);
-    }, 10000);
+    // Poll for tool requests every second
+    const pollingInterval = setInterval(async () => {
+      try {
+        const requests = await getToolRequests(code);
+        
+        for (const toolRequest of requests) {
+          res.write("event: tool-request\n");
+          res.write(`data: ${JSON.stringify(toolRequest)}\n\n`);
+        }
+      } catch (error) {
+        console.error("Error polling for requests:", error);
+        res.write("event: error\n");
+        res.write(`data: {"error":"polling_error","message":"Error retrieving tool requests"}\n\n`);
+      }
+    }, 1000); // 1 second polling
     
     // Clean up on client disconnect
     req.on("close", () => {
       clearInterval(heartbeatInterval);
-      clearTimeout(demoTimeout);
+      clearInterval(pollingInterval);
       res.end();
     });
     
     // Keep connection alive for up to 10 minutes
     setTimeout(() => {
       clearInterval(heartbeatInterval);
-      clearTimeout(demoTimeout);
-      res.write("event: timeout\\n");
-      res.write(`data: {"message":"Session timeout","timestamp":"${new Date().toISOString()}"}\\n\\n`);
+      clearInterval(pollingInterval);
+      res.write("event: timeout\n");
+      res.write(`data: {"message":"Session timeout","timestamp":"${new Date().toISOString()}"}\n\n`);
       res.end();
     }, 600000); // 10 minutes
     

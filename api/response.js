@@ -1,6 +1,8 @@
 // Tool response endpoint using Node.js runtime
 // Accepts tool responses from MCP server
 
+import { kv } from "@vercel/kv";
+
 /**
  * Validates session code format
  */
@@ -24,6 +26,43 @@ function createErrorResponse(res, status, error, message, code) {
  */
 function createSuccessResponse(res, data, status = 200) {
   res.status(status).json(data);
+}
+
+/**
+ * Check if session exists and is valid
+ */
+async function validateSession(code) {
+  try {
+    const sessionData = await kv.get(`session:${code}`);
+    if (!sessionData) {
+      return false;
+    }
+    
+    // Check if session is expired
+    const now = new Date();
+    const expiresAt = new Date(sessionData.expiresAt);
+    return now <= expiresAt;
+  } catch (error) {
+    console.error("Session validation error:", error);
+    return false;
+  }
+}
+
+/**
+ * Store tool response in KV with TTL
+ */
+async function storeToolResponse(code, response) {
+  const responseKey = `res:${code}`;
+  const responseJson = JSON.stringify({
+    ...response,
+    timestamp: new Date().toISOString()
+  });
+  
+  // Add to the end of the list (FIFO queue)
+  await kv.rpush(responseKey, responseJson);
+  
+  // Set TTL on the response queue (1 hour)
+  await kv.expire(responseKey, 3600);
 }
 
 /**
@@ -77,8 +116,14 @@ export default async function handler(req, res) {
       return;
     }
     
-    // For demo purposes, we'll accept the response and store it
-    // In production, this would store in KV or message queue for pickup by SSE stream
+    // Validate session exists and is not expired
+    const sessionValid = await validateSession(sessionCode);
+    if (!sessionValid) {
+      createErrorResponse(res, 404, "session_not_found", "Session not found or expired");
+      return;
+    }
+    
+    // Store the tool response in KV storage
     const responseData = {
       id: requestId,
       result,
@@ -86,12 +131,14 @@ export default async function handler(req, res) {
       status: "completed"
     };
     
-    console.log(`Tool response received for session ${sessionCode}:`, responseData);
+    await storeToolResponse(sessionCode, responseData);
+    
+    console.log(`Tool response stored for session ${sessionCode}:`, responseData);
     
     createSuccessResponse(res, {
-      message: "Tool response stored successfully",
-      requestId,
-      note: "Demo version - response not persisted to queue"
+      id: requestId,
+      status: "stored",
+      message: "Tool response stored successfully"
     });
     
   } catch (error) {

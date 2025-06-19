@@ -1,6 +1,8 @@
 // Tool request endpoint using Node.js runtime
 // Accepts tool requests from CODAP interactive
 
+import { kv } from "@vercel/kv";
+
 /**
  * Validates session code format
  */
@@ -24,6 +26,43 @@ function createErrorResponse(res, status, error, message, code) {
  */
 function createSuccessResponse(res, data, status = 200) {
   res.status(status).json(data);
+}
+
+/**
+ * Check if session exists and is valid
+ */
+async function validateSession(code) {
+  try {
+    const sessionData = await kv.get(`session:${code}`);
+    if (!sessionData) {
+      return false;
+    }
+    
+    // Check if session is expired
+    const now = new Date();
+    const expiresAt = new Date(sessionData.expiresAt);
+    return now <= expiresAt;
+  } catch (error) {
+    console.error("Session validation error:", error);
+    return false;
+  }
+}
+
+/**
+ * Enqueue tool request to session queue
+ */
+async function enqueueToolRequest(code, request) {
+  const queueKey = `req:${code}`;
+  const requestJson = JSON.stringify({
+    ...request,
+    timestamp: new Date().toISOString()
+  });
+  
+  // Add to the end of the list (FIFO queue)
+  await kv.rpush(queueKey, requestJson);
+  
+  // Set TTL on the queue to clean up old requests (1 hour)
+  await kv.expire(queueKey, 3600);
 }
 
 /**
@@ -77,22 +116,29 @@ export default async function handler(req, res) {
       return;
     }
     
-    // For demo purposes, we'll accept the request and queue it
-    // In production, this would store in KV or message queue
+    // Validate session exists and is not expired
+    const sessionValid = await validateSession(sessionCode);
+    if (!sessionValid) {
+      createErrorResponse(res, 404, "session_not_found", "Session not found or expired");
+      return;
+    }
+    
+    // Enqueue the tool request to KV storage
     const requestData = {
       id: requestId,
       tool: toolName,
-      params,
-      timestamp: new Date().toISOString(),
-      status: "queued"
+      args: params,
+      timestamp: new Date().toISOString()
     };
+    
+    await enqueueToolRequest(sessionCode, requestData);
     
     console.log(`Tool request queued for session ${sessionCode}:`, requestData);
     
     createSuccessResponse(res, {
-      message: "Tool request queued successfully",
-      requestId,
-      note: "Demo version - request not persisted to queue"
+      id: requestId,
+      status: "queued",
+      message: "Tool request queued for processing"
     }, 202);
     
   } catch (error) {
