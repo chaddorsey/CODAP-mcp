@@ -3,7 +3,7 @@
 // Updated: 2025-06-19 - KV storage enabled for full operation
 // DEPLOYMENT DEBUG: This code should show UPDATED VERSION in response
 
-const { getSession } = require("./kv-utils");
+const { getSession, enqueueRequest } = require("./kv-utils");
 
 /**
  * Validates session code format
@@ -48,21 +48,6 @@ async function validateSession(code) {
     console.error("Session validation error:", error);
     return false;
   }
-}
-
-/**
- * Enqueue tool request to session queue using kv-utils
- */
-async function enqueueToolRequest(code, request) {
-  const { setRequest } = require("./kv-utils");
-  
-  const requestData = {
-    ...request,
-    timestamp: new Date().toISOString(),
-    status: "queued"
-  };
-  
-  await setRequest(code, requestData);
 }
 
 /**
@@ -123,31 +108,28 @@ export default async function handler(req, res) {
       return;
     }
     
-    // Enqueue the tool request to KV storage
+    // Create request data for the queue
     const requestData = {
       id: requestId,
       tool: toolName,
-      args: params,
-      timestamp: new Date().toISOString()
+      args: params
     };
     
     try {
-      await enqueueToolRequest(sessionCode, requestData);
-      console.log(`✅ KV storage successful for session ${sessionCode}`);
+      await enqueueRequest(sessionCode, requestData);
+      console.log(`✅ Tool request queued successfully for session ${sessionCode}:`, requestData);
     } catch (kvError) {
-      console.error(`❌ KV storage failed for session ${sessionCode}:`, kvError);
+      console.error(`❌ KV queue operation failed for session ${sessionCode}:`, kvError);
       throw kvError; // Re-throw to be caught by outer try-catch
     }
-    
-          console.log(`Tool request queued for session ${sessionCode}:`, requestData);
     
     createSuccessResponse(res, {
       id: requestId,
       status: "queued",
-      message: "🎉 COMPLETELY NEW VERSION - KV STORAGE WORKING! 🎉",
+      message: "🎉 QUEUE-BASED JOB PROCESSING - KV STORAGE WORKING! 🎉",
       timestamp: new Date().toISOString(),
       sessionCode: sessionCode,
-      deploymentTest: "NEW_JAVASCRIPT_VERSION_DEC_2024"
+      deploymentTest: "QUEUE_FIXED_VERSION_JUN_2025"
     }, 202);
     
   } catch (error) {

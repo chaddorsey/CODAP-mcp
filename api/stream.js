@@ -1,7 +1,7 @@
 // SSE stream endpoint using Node.js runtime
 // Provides server-sent events for tool request polling
 
-const { getSession, getRequest } = require("./kv-utils");
+const { getSession, dequeueRequest, getQueueLength } = require("./kv-utils");
 
 /**
  * Validates session code format
@@ -42,15 +42,18 @@ async function validateSession(code) {
 }
 
 /**
- * Get pending tool requests for a session using kv-utils
+ * Get and consume the next tool request from the queue
  */
-async function getToolRequests(code) {
+async function getNextToolRequest(code) {
   try {
-    const request = await getRequest(code);
-    return request ? [request] : [];
+    const request = await dequeueRequest(code);
+    if (request) {
+      console.log(`Dequeued tool request for session ${code}:`, request);
+    }
+    return request;
   } catch (error) {
-    console.error("Error getting tool requests:", error);
-    return [];
+    console.error("Error getting tool request:", error);
+    return null;
   }
 }
 
@@ -118,15 +121,32 @@ export default async function handler(req, res) {
       "Access-Control-Allow-Headers": "Content-Type"
     });
     
+    // Helper function to send SSE events with proper format
+    const sendSSEEvent = (eventType, data) => {
+      res.write(`event: ${eventType}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+    
     // Send initial connection confirmation
-    res.write(`data: ${JSON.stringify({
-      type: "connection",
-      message: "Connected to tool request stream",
-      sessionCode,
+    sendSSEEvent("connected", {
+      code: sessionCode,
+      message: "SSE connection established",
       timestamp: new Date().toISOString()
-    })}\n\n`);
+    });
     
     console.log(`SSE stream connected for session: ${sessionCode}`);
+    
+    // Check for pending requests immediately on connection
+    const queueLength = await getQueueLength(sessionCode);
+    if (queueLength > 0) {
+      console.log(`Found ${queueLength} pending requests for session ${sessionCode}`);
+    }
+    
+    // Set up heartbeat to keep connection alive
+    const heartbeatInterval = setInterval(() => {
+      sendSSEEvent("heartbeat", {
+        timestamp: new Date().toISOString()
+      });
+    }, 30000); // Send heartbeat every 30 seconds
     
     // Set up interval to poll for requests
     const pollInterval = setInterval(async () => {
@@ -134,37 +154,31 @@ export default async function handler(req, res) {
         // Check if session is still valid
         const stillValid = await validateSession(sessionCode);
         if (!stillValid) {
-          res.write(`data: ${JSON.stringify({
-            type: "session_expired",
+          sendSSEEvent("error", {
+            error: "session_expired",
             message: "Session has expired",
             timestamp: new Date().toISOString()
-          })}\n\n`);
+          });
           clearInterval(pollInterval);
+          clearInterval(heartbeatInterval);
           res.end();
           return;
         }
         
-        // Poll for tool requests from KV storage
-        const requests = await getToolRequests(sessionCode);
+        // Get next tool request from queue (this removes it from the queue)
+        const request = await getNextToolRequest(sessionCode);
         
-        if (requests.length > 0) {
-          for (const request of requests) {
-            res.write(`data: ${JSON.stringify({
-              type: "tool_request",
-              data: request,
-              timestamp: new Date().toISOString()
-            })}\n\n`);
-            
-            console.log(`Sent tool request via SSE for session ${sessionCode}:`, request);
-          }
+        if (request) {
+          sendSSEEvent("tool-request", request);
+          console.log(`Sent tool request via SSE for session ${sessionCode}:`, request);
         }
       } catch (error) {
         console.error("SSE polling error:", error);
-        res.write(`data: ${JSON.stringify({
-          type: "error",
+        sendSSEEvent("error", {
+          error: "polling_error",
           message: "Internal server error during polling",
           timestamp: new Date().toISOString()
-        })}\n\n`);
+        });
       }
     }, 1000); // Poll every 1 second
     
@@ -172,6 +186,7 @@ export default async function handler(req, res) {
     req.on("close", () => {
       console.log(`SSE stream closed for session: ${sessionCode}`);
       clearInterval(pollInterval);
+      clearInterval(heartbeatInterval);
     });
     
   } catch (error) {

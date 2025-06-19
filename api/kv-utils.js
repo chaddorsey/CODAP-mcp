@@ -61,24 +61,68 @@ async function getSession(code) {
 }
 
 /**
- * Store request data in Redis with TTL
+ * Add request to the job queue for a session
  * @param {string} code - Session code
- * @param {Object} requestData - Request data to store
+ * @param {Object} requestData - Request data to queue
  */
-async function setRequest(code, requestData) {
-  const key = `req:${code}`;
-  await redis.setex(key, SESSION_TTL, JSON.stringify(requestData));
+async function enqueueRequest(code, requestData) {
+  const queueKey = `queue:${code}`;
+  const requestWithMetadata = {
+    ...requestData,
+    timestamp: new Date().toISOString(),
+    status: "queued"
+  };
+  
+  // Add to queue (list) and set TTL
+  await redis.lpush(queueKey, JSON.stringify(requestWithMetadata));
+  await redis.expire(queueKey, SESSION_TTL);
 }
 
 /**
- * Retrieve request data from Redis
+ * Get and remove the next request from the queue
  * @param {string} code - Session code
- * @returns {Object|null} Request data or null if not found
+ * @returns {Object|null} Request data or null if queue is empty
+ */
+async function dequeueRequest(code) {
+  const queueKey = `queue:${code}`;
+  const data = await redis.rpop(queueKey);
+  return data ? JSON.parse(data) : null;
+}
+
+/**
+ * Get all pending requests without removing them (for debugging)
+ * @param {string} code - Session code
+ * @returns {Array} Array of pending requests
+ */
+async function peekQueue(code) {
+  const queueKey = `queue:${code}`;
+  const data = await redis.lrange(queueKey, 0, -1);
+  return data.map(item => JSON.parse(item));
+}
+
+/**
+ * Get queue length
+ * @param {string} code - Session code
+ * @returns {number} Number of pending requests
+ */
+async function getQueueLength(code) {
+  const queueKey = `queue:${code}`;
+  return await redis.llen(queueKey);
+}
+
+// Legacy functions for backward compatibility
+/**
+ * @deprecated Use enqueueRequest instead
+ */
+async function setRequest(code, requestData) {
+  return enqueueRequest(code, requestData);
+}
+
+/**
+ * @deprecated Use dequeueRequest instead
  */
 async function getRequest(code) {
-  const key = `req:${code}`;
-  const data = await redis.get(key);
-  return data ? JSON.parse(data) : null;
+  return dequeueRequest(code);
 }
 
 /**
@@ -109,7 +153,7 @@ async function getResponse(code) {
 async function deleteSession(code) {
   await Promise.all([
     redis.del(`session:${code}`),
-    redis.del(`req:${code}`),
+    redis.del(`queue:${code}`),
     redis.del(`res:${code}`)
   ]);
 }
@@ -117,8 +161,12 @@ async function deleteSession(code) {
 module.exports = {
   setSession,
   getSession,
-  setRequest,
-  getRequest,
+  enqueueRequest,
+  dequeueRequest,
+  peekQueue,
+  getQueueLength,
+  setRequest, // Legacy
+  getRequest, // Legacy
   setResponse,
   getResponse,
   deleteSession,
