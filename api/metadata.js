@@ -3,12 +3,20 @@
 const { withSessionValidation, createErrorResponse } = require("./_middleware/sessionValidation");
 
 /**
+ * Version management constants
+ */
+const API_VERSION = "1.0.0";
+const TOOL_MANIFEST_VERSION = "1.0.0";
+const SUPPORTED_API_VERSIONS = ["1.0.0"];
+const SUPPORTED_MANIFEST_VERSIONS = ["1.0.0"];
+
+/**
  * Tool registry - importing from browser worker schemas
  * In a real implementation, this would import from the actual tool registry
  * For now, we'll define the manifest structure based on the existing tools
  */
 const TOOL_MANIFEST = {
-  version: "1.0.0",
+  version: TOOL_MANIFEST_VERSION,
   tools: [
     {
       name: "create_dataset_with_table",
@@ -307,7 +315,12 @@ async function handler(req, res) {
   // Set CORS headers
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept-Version");
+
+  // Set version headers
+  res.setHeader("API-Version", API_VERSION);
+  res.setHeader("Tool-Manifest-Version", TOOL_MANIFEST_VERSION);
+  res.setHeader("Supported-Versions", SUPPORTED_API_VERSIONS.join(", "));
 
   try {
     // Handle CORS preflight
@@ -321,14 +334,28 @@ async function handler(req, res) {
       createErrorResponse(res, 405, "method_not_allowed", "Only GET method is allowed");
       return;
     }
+
+    // Optional: Check version negotiation
+    const acceptVersion = req.headers['accept-version'];
+    if (acceptVersion && !SUPPORTED_API_VERSIONS.includes(acceptVersion)) {
+      createErrorResponse(res, 406, "version_not_acceptable", 
+        `Requested version ${acceptVersion} not supported. Supported versions: ${SUPPORTED_API_VERSIONS.join(", ")}`);
+      return;
+    }
     
     // Session validation is handled by middleware
     // req.session and req.sessionCode are available here
     
-    // Generate response with tool manifest
+    // Generate response with tool manifest and version information
     const now = new Date();
     const response = {
       ...TOOL_MANIFEST,
+      apiVersion: API_VERSION,
+      toolManifestVersion: TOOL_MANIFEST_VERSION,
+      supportedVersions: {
+        api: SUPPORTED_API_VERSIONS,
+        toolManifest: SUPPORTED_MANIFEST_VERSIONS
+      },
       sessionCode: req.sessionCode,
       generatedAt: now.toISOString(),
       expiresAt: req.session.expiresAt
