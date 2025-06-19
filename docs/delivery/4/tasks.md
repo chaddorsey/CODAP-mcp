@@ -9,7 +9,7 @@ This document lists all tasks associated with PBI 4.
 | Task ID | Name                                     | Status   | Description                        |
 | :------ | :--------------------------------------- | :------- | :--------------------------------- |
 | 4-1     | [Create metadata API endpoint](./4-1.md) | Done | Implement GET /api/sessions/:code/metadata endpoint |
-| 4-2     | [Build schema transformation service](./4-2.md) | Proposed | Create service to convert internal schemas to JSON Schema draft-07 |
+| 4-2     | [Build schema transformation service](./4-2.md) | Done | Task reviewed and approved by user. |
 | 4-3     | [Add session validation middleware](./4-3.md) | Proposed | Integrate session code validation for metadata endpoint |
 | 4-4     | [Implement version management](./4-4.md) | Proposed | Add API versioning to manifest responses |
 | 4-5     | [Create integration tests](./4-5.md) | Proposed | Test metadata endpoint with real sessions and tool registry |
