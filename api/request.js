@@ -132,13 +132,13 @@ export default async function handler(req, res) {
     
     await enqueueToolRequest(sessionCode, requestData);
     
-    console.log(`Tool request queued for session ${sessionCode}:`, requestData);
-    
-    createSuccessResponse(res, {
-      id: requestId,
-      status: "queued",
-      message: "Tool request queued for processing"
-    }, 202);
+      console.log(`Tool request queued for session ${sessionCode}:`, requestData);
+  
+  createSuccessResponse(res, {
+    id: requestId,
+    status: "queued",
+    message: "Tool request queued for processing - KV enabled"
+  }, 202);
     
   } catch (error) {
     console.error("Tool request error:", error);
