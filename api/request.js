@@ -1,6 +1,7 @@
 // Tool request endpoint using Node.js runtime
 // Accepts tool requests from CODAP interactive
 // Updated: 2025-06-19 - KV storage enabled for full operation
+// DEPLOYMENT DEBUG: This code should show UPDATED VERSION in response
 
 const { getSession } = require("./kv-utils");
 
