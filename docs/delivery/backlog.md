@@ -5,7 +5,7 @@
 | 1 | Plugin Developer | As a plugin developer, I want a Vercel relay that can create sessions and stream tool-invocation events via SSE so that LLMs can communicate with the browser without local servers. | Done | • `POST /api/sessions` returns code & TTL<br>• `GET /stream`, `/request`, `/response` implemented with KV store<br>• Works in dev deployment; automated integration tests pass<br>• Production deployment accessible with SSO bypass |
 | 2 | End User | As an end user, I want the CODAP plugin to display a pairing banner with copy-prompt/code actions so that I can easily connect an LLM session. [View Details](./2/prd.md) | Done | • Banner visible on load with 8-char code ✅<br>• Countdown timer updates ✅<br>• Copy prompt includes code, relay URL, instructions ✅<br>• UX meets accessibility spec ✅ |
 | 3 | Browser Worker | As a browser worker, I want to fetch tool requests via SSE (with polling fallback) and post results so that CODAP executes LLM commands in real time. [View Details](./3/prd.md) | Done | • EventSource connection established ✅<br>• Fallback to 1 s polling when SSE fails ✅<br>• Successful round-trip shown in demo ✅<br>• Complete E2E test coverage ✅ |
-| 4 | LLM Agent | As an LLM agent, I want to retrieve a JSON-Schema tool manifest for the current session so that I can build correctly-shaped MCP calls. [View Details](./4/prd.md) | InProgress | • `GET /metadata` returns manifest derived from registry<br>• Version field included<br>• Sample schema validated against JSON Schema draft-07 |
+| 4 | LLM Agent | As an LLM agent, I want to retrieve a JSON-Schema tool manifest for the current session so that I can build correctly-shaped MCP calls. [View Details](./4/prd.md) | Done | • `GET /metadata` returns manifest derived from registry ✅<br>• Version field included ✅<br>• Sample schema validated against JSON Schema draft-07 ✅<br>• Complete CODAP integration working ✅ |
 | 5 | Security Engineer | As a security engineer, I want enforced TTL, 40-bit code entropy and rate-limiting on `/request` so that sessions remain secure. | Proposed | • Codes auto-expire after 10 min<br>• Collision probability documented<br>• 60 req/min IP+code limit applied |
 | 6 | DevOps | As DevOps, I want structured logs and comprehensive monitoring from both relay and browser so that we can monitor reliability and performance. | Proposed | • Edge/Serverless logs include requestId & latency<br>• Browser logs throttle to info level<br>• 95th latency alert configured<br>• Error tracking and monitoring dashboard<br>• Performance metrics and alerting |
 | 7 | Integrator | As an integrator, I want a `.well-known/codap-mcp.json` descriptor so that automated clients can self-configure. | Proposed | • Endpoint serves JSON per PRD<br>• Links to request/response schemas<br>• Cache-control max-age=3600 |
@@ -40,4 +40,160 @@
 | 2025-01-17-18:10:00 | 3 | Status Update | Moved from Agreed to InProgress - Task breakdown complete, starting implementation | AI_Agent |
 | 2025-01-18-01:05:00 | 3 | Status Update | Moved from InProgress to Done - All 10 tasks completed, full browser worker system with E2E tests | AI_Agent |
 | 2025-01-27-10:46:00 | 3 | Task Added | Added task 3-11 Developer Testing Infrastructure - retrospective documentation of testing capabilities | AI_Agent |
-| 2025-01-27-11:00:00 | 4 | Status Update | Moved from Proposed to Agreed - Starting PBI 4 development on new branch | AI_Agent | 
+| 2025-01-27-11:00:00 | 4 | Status Update | Moved from Proposed to Agreed - Starting PBI 4 development on new branch | AI_Agent |
+| 2025-06-19-16:20:00 | 4 | Status Update | Moved from InProgress to Done - All tasks completed, comprehensive debugging completed, full end-to-end CODAP integration working | AI_Agent |
+
+---
+
+## Appendix: Post-Task 4-5 Debugging and System Fixes (June 19, 2025)
+
+### Overview
+After completing PBI 4's formal tasks, extensive debugging work was required to achieve full end-to-end CODAP integration. This appendix documents the debugging process, fixes implemented, and lessons learned.
+
+### Timeline Summary
+- **Initial State**: All PBI 4 tasks completed, metadata endpoint functional
+- **Problem Discovery**: Tool requests queued successfully but no data appeared in CODAP
+- **Root Cause**: Multiple client-side and server-side issues preventing complete integration
+- **Final State**: Complete end-to-end CODAP data creation working successfully
+
+### Critical Issues Discovered and Fixed
+
+#### 1. **Client-Side Connection Issues**
+- **Problem**: Browser worker stuck in "connecting" state, never reaching "connected"
+- **Root Cause**: URL parameter mismatch in `ConnectionManager.ts` (used `?code=` instead of `?sessionCode=`)
+- **Fix**: Changed line 218 from `?code=` to `?sessionCode=`
+- **Impact**: Enabled proper SSE stream connection
+
+#### 2. **Server-Side Job Queue System Failures**
+- **Problem**: Tool requests queued but never processed by SSE streams
+- **Root Causes**:
+  - Single request storage instead of proper FIFO queue
+  - JSON parsing errors with Redis client objects
+  - No request processing/removal mechanism
+- **Fixes**: Complete rewrite of `api/kv-utils.js` queue system
+  - Implemented proper Redis queue with `lpush`/`rpop`
+  - Added `safeParseRedisData()` helper for Redis object handling
+  - Added proper request dequeuing and processing
+
+#### 3. **Deployment URL Mismatches**
+- **Problem**: Browser connected to different Vercel deployment than where requests were sent
+- **Root Cause**: Multiple active deployments with different URLs
+- **Solution**: Always verify deployment URLs with `vercel ls` before testing
+- **Critical Memory**: [Always verify deployment URLs before debugging API endpoints][[memory:5544787922024228924]]
+
+#### 4. **Legacy Code Interference**
+- **Problem**: `CODAPCommandProcessor` running legacy polling system conflicting with SSE
+- **Fix**: Removed legacy processor from `App.tsx`
+- **Impact**: Eliminated conflicting HTTP requests
+
+#### 5. **Missing Event Listeners**
+- **Problem**: `BrowserWorkerService` not listening to `message` events containing tool requests
+- **Fix**: Added message event listener for `tool-request` events
+- **Impact**: Enabled tool request processing in browser
+
+#### 6. **CODAP API Structure Issues**
+- **Problem**: Tool arguments not properly extracted and mapped to CODAP API format
+- **Root Cause**: Mismatch between test data structure and expected CODAP API parameters
+- **Fix**: Updated argument extraction logic to handle both legacy and new formats
+- **Impact**: Successful CODAP dataset and table creation
+
+### Key Technical Fixes Implemented
+
+#### Server-Side (`api/kv-utils.js`)
+```javascript
+// Before: Single request storage
+await kv.set(`session:${sessionCode}:request`, JSON.stringify(request));
+
+// After: Proper queue implementation  
+await kv.lpush(`session:${sessionCode}:queue`, JSON.stringify(request));
+```
+
+#### Client-Side (`ConnectionManager.ts`)
+```javascript
+// Before: Wrong parameter name
+const sseUrl = `${this.relayBaseUrl}/api/stream?code=${this.sessionCode}`;
+
+// After: Correct parameter name
+const sseUrl = `${this.relayBaseUrl}/api/stream?sessionCode=${this.sessionCode}`;
+```
+
+#### CODAP Integration (`BrowserWorkerService.ts`)
+```javascript
+// Added proper CODAP API structure
+const result = await sendMessage("create", "dataContext", {
+  name: dataContextName,
+  title: dataContextName,
+  collections: [{
+    name: collectionName,
+    attrs: attributes.map(attr => ({
+      name: attr.name,
+      type: attr.type || 'categorical'
+    }))
+  }]
+});
+```
+
+### Testing Methodology Used
+
+#### Multiple Test Sessions
+- Used 15+ different session codes throughout debugging
+- Each session isolated specific issues
+- Progressive testing revealed layer-by-layer problems
+
+#### Debug Scripts Created
+- `test-session-*.js` files for specific session testing
+- `debug-*.js` files for component-specific debugging
+- Real-time console monitoring via browser MCP tools
+
+#### Verification Process
+1. **API Level**: Verify requests queue successfully (HTTP 202)
+2. **Queue Level**: Verify jobs stored in Redis queue
+3. **SSE Level**: Verify events sent to browser
+4. **Browser Level**: Verify tool requests received and processed
+5. **CODAP Level**: Verify actual data creation in CODAP interface
+
+### Lessons Learned and Best Practices
+
+#### 1. **Deployment URL Verification**
+- **Always run `vercel ls`** before testing API changes
+- Test new deployments using specific generated URLs
+- Don't assume generic URLs serve latest code
+
+#### 2. **End-to-End Testing Strategy**
+- Test each layer independently before integration testing
+- Use browser console monitoring for real-time debugging
+- Create isolated test scripts for each component
+
+#### 3. **Queue System Design**
+- Implement proper FIFO queues, not single-value storage
+- Handle Redis client object vs JSON string variations
+- Always include dequeue/processing mechanisms
+
+#### 4. **Legacy Code Management**
+- Remove conflicting legacy systems during migration
+- Document which systems are deprecated vs active
+- Test that new systems don't interfere with existing ones
+
+### Files Modified During Debug Session
+- `src/services/browserWorker/ConnectionManager.ts` - Fixed URL parameters
+- `api/kv-utils.js` - Complete queue system rewrite
+- `api/stream.js` - Updated to use proper dequeue operations
+- `api/request.js` - Updated to use proper enqueue operations
+- `src/services/BrowserWorkerService.ts` - Added message listeners and CODAP API integration
+- `src/components/App.tsx` - Removed legacy CODAPCommandProcessor
+
+### Final System Status
+✅ **Complete End-to-End Integration Working**
+- API requests accepted and queued
+- Redis queue system processing jobs correctly
+- SSE streams delivering tool requests to browser
+- Browser worker processing tool requests
+- CODAP datasets and tables created successfully
+- All 9 CODAP tools available via metadata endpoint
+
+### Memory Updates Generated
+- [Deployment URL verification process][[memory:5544787922024228924]]
+- [Complete system operational status][[memory:2201863838208887794]]
+- [Task completion commit requirements][[memory:4374363878947665129]]
+
+This debugging session demonstrated the importance of comprehensive end-to-end testing and the value of systematic layer-by-layer debugging when dealing with complex distributed systems. 

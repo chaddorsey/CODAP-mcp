@@ -217,7 +217,7 @@ export class ConnectionManager implements ConnectionManagerInterface {
    */
   private buildSSEUrl(): string {
     const baseUrl = this.config.relayBaseUrl.replace(/\/$/, "");
-    return `${baseUrl}/api/stream?code=${encodeURIComponent(this.config.sessionCode)}`;
+    return `${baseUrl}/api/stream?sessionCode=${encodeURIComponent(this.config.sessionCode)}`;
   }
 
   /**

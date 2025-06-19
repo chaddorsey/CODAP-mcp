@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { initializePlugin, sendMessage } from "@concord-consortium/codap-plugin-api";
-import { CODAPCommandProcessor } from "./CODAPCommandProcessor";
+// import { CODAPCommandProcessor } from "./CODAPCommandProcessor"; // Disabled - conflicts with SSE browser worker
 import { PairingBanner } from "./PairingBanner";
 import "./App.css";
 
@@ -22,8 +22,16 @@ export const App = () => {
         });
         console.log("CODAP interface initialized");
       } catch (error) {
-        // This is expected when running standalone (not embedded in CODAP)
-        console.log("Running in standalone mode (CODAP not available)");
+        // Don't assume CODAP is unavailable - the API might still work
+        console.log("CODAP plugin initialization had issues, but continuing...", error);
+        
+        // Test if we can still use CODAP API directly
+        try {
+          await sendMessage("get", "interactiveFrame");
+          console.log("CODAP interface is actually available despite initialization error");
+        } catch (testError) {
+          console.log("CODAP interface confirmed unavailable - running in standalone mode");
+        }
       }
     };
 
@@ -115,7 +123,7 @@ export const App = () => {
         <pre id={notificationId}>{listenerNotification}</pre>
       </div>
 
-      <CODAPCommandProcessor />
+      {/* CODAPCommandProcessor disabled - using SSE-based browser worker instead */}
     </div>
   );
 };

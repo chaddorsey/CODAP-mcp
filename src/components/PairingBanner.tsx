@@ -26,7 +26,7 @@ import "../styles/browserWorker.scss";
 /**
  * Default relay base URL - can be overridden via props
  */
-const DEFAULT_RELAY_BASE_URL = "https://codap-mcp-cdorsey-concordorgs-projects.vercel.app";
+const DEFAULT_RELAY_BASE_URL = "https://codap-9o3vyf2g9-cdorsey-concordorgs-projects.vercel.app";
 
 /**
  * Developer test data for CODAP tools
