@@ -95,7 +95,8 @@ export default async function handler(req, res) {
     const response = {
       code,
       ttl: SESSION_TTL_SECONDS,
-      expiresAt: expiresAt.toISOString()
+      expiresAt: expiresAt.toISOString(),
+      deploymentTest: "SESSIONS_CURRENT_DEPLOYMENT_DEC19"
     };
     
     createSuccessResponse(res, response, 201);
