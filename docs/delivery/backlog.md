@@ -18,6 +18,7 @@
 | 14 | Platform Architect | As a platform architect, I want a modular Tool Module system with runtime registration so that tools can be added, versioned, and managed without code deployments. [View Details](./14/prd.md) | Proposed | • Tool modules can be registered at runtime<br>• Schema validation and parameter checking<br>• Version management and dependency resolution<br>• Permission system for tool access control<br>• Module packs for bulk tool distribution<br>• Health checking and lifecycle management |
 | 15 | Integration Developer | As an integration developer, I want a universal adapter pattern so that the same tool interface can work with different backend systems beyond CODAP. [View Details](./15/prd.md) | Proposed | • Universal operation interface for create/read/update/delete<br>• CODAP, Slack, Database, and REST API adapters<br>• Automatic resource schema introspection<br>• Adapter capability detection and routing<br>• Error handling and fallback mechanisms<br>• Cross-application tool compatibility |
 | 16 | Data Analyst | As a data analyst, I want comprehensive CODAP API coverage with full CRUD operations, collection management, and interactive features so that I can perform advanced data manipulation and analysis. [View Details](./16/prd.md) | Proposed | • Complete CRUD operations for all CODAP entities<br>• Collection and attribute management tools<br>• Case and item manipulation capabilities<br>• Selection and filtering tools<br>• Event listeners and real-time updates<br>• Component management and interaction<br>• 90%+ coverage of CODAP Plugin API functions<br>• Comprehensive test suite for all new tools |
+| 17 | Plugin Developer | As a plugin developer, I want dynamic tool registration and session-aware tool management so that plugins can communicate their available tools to LLMs in real-time. [View Details](./17/prd.md) | Proposed | • Plugin-initiated tool registration per session<br>• Session-specific tool availability in metadata endpoint<br>• Real-time tool availability updates via SSE<br>• Plugin capability negotiation protocol<br>• Dynamic tool set changes communicated to LLMs<br>• Backwards compatibility with existing static tools<br>• Multi-application plugin support framework |
 
 ## PBI History Log
 
@@ -47,6 +48,7 @@
 | 2025-06-19-17:30:00 | 14 | Created | New PBI for modular Tool Module system with runtime registration and lifecycle management | AI_Agent |
 | 2025-06-19-17:30:00 | 15 | Created | New PBI for universal adapter pattern enabling cross-application tool compatibility | AI_Agent |
 | 2025-06-19-18:00:00 | 16 | Created | New PBI for comprehensive CODAP API coverage expansion with full CRUD operations and advanced features | AI_Agent |
+| 2025-06-19-18:30:00 | 17 | Created | New PBI for dynamic tool registration and session-aware tool management to complete the plugin-LLM integration vision | AI_Agent |
 
 ---
 
