@@ -130,15 +130,23 @@ export default async function handler(req, res) {
       timestamp: new Date().toISOString()
     };
     
-    await enqueueToolRequest(sessionCode, requestData);
+    try {
+      await enqueueToolRequest(sessionCode, requestData);
+      console.log(`✅ KV storage successful for session ${sessionCode}`);
+    } catch (kvError) {
+      console.error(`❌ KV storage failed for session ${sessionCode}:`, kvError);
+      throw kvError; // Re-throw to be caught by outer try-catch
+    }
     
-      console.log(`Tool request queued for session ${sessionCode}:`, requestData);
-  
-  createSuccessResponse(res, {
-    id: requestId,
-    status: "queued",
-    message: "Tool request queued for processing - KV enabled"
-  }, 202);
+          console.log(`Tool request queued for session ${sessionCode}:`, requestData);
+    
+    createSuccessResponse(res, {
+      id: requestId,
+      status: "queued",
+      message: "UPDATED VERSION - Tool request queued for processing - KV enabled",
+      timestamp: new Date().toISOString(),
+      sessionCode: sessionCode
+    }, 202);
     
   } catch (error) {
     console.error("Tool request error:", error);
