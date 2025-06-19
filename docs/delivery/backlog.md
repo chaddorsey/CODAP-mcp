@@ -12,10 +12,11 @@
 | 8 | QA | As QA, I want a Playwright E2E test covering the full pair-and-execute happy path so that we prevent regressions. | Proposed | • Test spins up CODAP, establishes session, issues createCase, verifies response<br>• Runs in CI on every PR |
 | 9 | Performance Engineer | As a performance engineer, I want the relay to scale to 1 000 concurrent sessions with comprehensive performance monitoring so that we can support beta launch. | Proposed | • Load test report shows ≤1 s 95th latency at 1 000 sessions<br>• Scaling plan with KV & Edge concurrency outlined<br>• Performance monitoring and optimization implementation<br>• Cold start time analysis and mitigation strategies |
 | 10 | Accessibility Specialist | As an accessibility specialist, I want the pairing UI to meet WCAG AA so that all users can benefit. | Proposed | • Colour contrast ≥4.5:1<br>• ARIA-live announcements verified by screen readers<br>• Keyboard shortcuts documented |
-
 | 11 | Platform Engineer | As a platform engineer, I want proper environment variable management so that configuration is secure and environment-specific. | Proposed | • Environment-specific configurations (dev/staging/prod)<br>• No hardcoded configuration values in source code<br>• Configuration validation on startup<br>• Clear separation of secret vs non-secret variables |
 | 12 | Developer | As a developer, I want TypeScript implementation for better type safety and maintainability. | Proposed | • All API endpoints migrated to TypeScript<br>• Type definitions for all data models<br>• Edge Function compatibility resolved<br>• Build pipeline with type checking |
 | 13 | Security Engineer | As a security engineer, I want proper secrets management and secure configuration practices. | Proposed | • Vercel environment variables for all secrets<br>• Rotation strategy for bypass tokens<br>• No sensitive data in logs or source code<br>• Security scanning in CI pipeline |
+| 14 | Platform Architect | As a platform architect, I want a modular Tool Module system with runtime registration so that tools can be added, versioned, and managed without code deployments. [View Details](./14/prd.md) | Proposed | • Tool modules can be registered at runtime<br>• Schema validation and parameter checking<br>• Version management and dependency resolution<br>• Permission system for tool access control<br>• Module packs for bulk tool distribution<br>• Health checking and lifecycle management |
+| 15 | Integration Developer | As an integration developer, I want a universal adapter pattern so that the same tool interface can work with different backend systems beyond CODAP. [View Details](./15/prd.md) | Proposed | • Universal operation interface for create/read/update/delete<br>• CODAP, Slack, Database, and REST API adapters<br>• Automatic resource schema introspection<br>• Adapter capability detection and routing<br>• Error handling and fallback mechanisms<br>• Cross-application tool compatibility |
 
 ## PBI History Log
 
@@ -42,6 +43,8 @@
 | 2025-01-27-10:46:00 | 3 | Task Added | Added task 3-11 Developer Testing Infrastructure - retrospective documentation of testing capabilities | AI_Agent |
 | 2025-01-27-11:00:00 | 4 | Status Update | Moved from Proposed to Agreed - Starting PBI 4 development on new branch | AI_Agent |
 | 2025-06-19-16:20:00 | 4 | Status Update | Moved from InProgress to Done - All tasks completed, comprehensive debugging completed, full end-to-end CODAP integration working | AI_Agent |
+| 2025-06-19-17:30:00 | 14 | Created | New PBI for modular Tool Module system with runtime registration and lifecycle management | AI_Agent |
+| 2025-06-19-17:30:00 | 15 | Created | New PBI for universal adapter pattern enabling cross-application tool compatibility | AI_Agent |
 
 ---
 
