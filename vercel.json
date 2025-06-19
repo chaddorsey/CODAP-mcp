@@ -25,6 +25,9 @@
     },
     "api/tool-request.js": {
       "maxDuration": 10
+    },
+    "api/debug-deployment.js": {
+      "maxDuration": 10
     }
   },
   "headers": [
