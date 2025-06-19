@@ -8,7 +8,7 @@ This document lists all tasks associated with PBI 16.
 
 | Task ID | Name | Status | Description |
 | :------ | :--------------------------------------- | :------- | :--------------------------------- |
-| 16-1 | [CODAP API Research and Documentation](./16-1.md) | Proposed | Research and document all available CODAP Plugin API functions with usage patterns |
+| 16-1 | [CODAP API Research and Documentation](./16-1.md) | Done | Research and document all available CODAP Plugin API functions with usage patterns |
 | 16-2 | [Enhanced Tool Schema Architecture](./16-2.md) | Proposed | Design flexible schema system for complex tool parameters and validation |
 | 16-3 | [CRUD Operations - Update Tools](./16-3.md) | Proposed | Implement update operations for data contexts, items, and components |
 | 16-4 | [CRUD Operations - Delete Tools](./16-4.md) | Proposed | Implement delete operations with confirmation and safety checks |
