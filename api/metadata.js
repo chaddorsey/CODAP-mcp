@@ -1,6 +1,6 @@
 // Metadata endpoint for retrieving tool manifest
 // Returns JSON-Schema tool definitions for LLM agents
-const { getSession } = require("./kv-utils");
+const { withSessionValidation, createErrorResponse } = require("./_middleware/sessionValidation");
 
 /**
  * Tool registry - importing from browser worker schemas
@@ -294,24 +294,6 @@ const TOOL_MANIFEST = {
 };
 
 /**
- * Validates session code format
- */
-function isValidSessionCode(code) {
-  return typeof code === "string" && /^[A-Z2-7]{8}$/.test(code);
-}
-
-/**
- * Creates a standardized error response
- */
-function createErrorResponse(res, status, error, message, code) {
-  res.status(status).json({
-    error,
-    message,
-    code
-  });
-}
-
-/**
  * Creates a standardized success response
  */
 function createSuccessResponse(res, data, status = 200) {
@@ -319,9 +301,9 @@ function createSuccessResponse(res, data, status = 200) {
 }
 
 /**
- * Main handler function
+ * Main handler function - wrapped with session validation
  */
-export default async function handler(req, res) {
+async function handler(req, res) {
   // Set CORS headers
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
@@ -340,36 +322,16 @@ export default async function handler(req, res) {
       return;
     }
     
-    // Extract session code from URL path
-    const code = req.query.code;
-    
-    // Validate session code format
-    if (!code || !isValidSessionCode(code)) {
-      createErrorResponse(res, 400, "invalid_session_code", "Session code must be 8-character Base32 format");
-      return;
-    }
-    
-    // Validate session exists and is not expired
-    const session = await getSession(code);
-    if (!session) {
-      createErrorResponse(res, 404, "session_not_found", "Session not found or expired");
-      return;
-    }
-    
-    // Check if session is expired
-    const now = new Date();
-    const expiresAt = new Date(session.expiresAt);
-    if (now > expiresAt) {
-      createErrorResponse(res, 410, "session_expired", "Session has expired");
-      return;
-    }
+    // Session validation is handled by middleware
+    // req.session and req.sessionCode are available here
     
     // Generate response with tool manifest
+    const now = new Date();
     const response = {
       ...TOOL_MANIFEST,
-      sessionCode: code,
+      sessionCode: req.sessionCode,
       generatedAt: now.toISOString(),
-      expiresAt: session.expiresAt
+      expiresAt: req.session.expiresAt
     };
     
     createSuccessResponse(res, response);
@@ -378,4 +340,7 @@ export default async function handler(req, res) {
     console.error("Metadata endpoint error:", error);
     createErrorResponse(res, 500, "internal_server_error", "Failed to retrieve metadata");
   }
-} 
+}
+
+// Export the handler wrapped with session validation middleware
+module.exports = withSessionValidation(handler); 
