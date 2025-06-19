@@ -1,5 +1,6 @@
 // Tool request endpoint using Node.js runtime
 // Accepts tool requests from CODAP interactive
+// Updated: 2025-06-19 - KV storage enabled for full operation
 
 import { kv } from "@vercel/kv";
 
