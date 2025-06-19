@@ -10,6 +10,26 @@ const redis = new Redis({
 const SESSION_TTL = 600;
 
 /**
+ * Helper function to safely parse data from Redis
+ */
+function safeParseRedisData(data) {
+  if (!data) return null;
+  if (typeof data === "object") {
+    return data; // Already parsed
+  }
+  if (typeof data === "string") {
+    try {
+      return JSON.parse(data);
+    } catch (err) {
+      console.error("[kv-utils] JSON.parse error:", err, "Raw data:", data);
+      return null;
+    }
+  }
+  console.error("[kv-utils] Unexpected Redis data type:", typeof data, data);
+  return null;
+}
+
+/**
  * Store session data in Redis with TTL
  * @param {string} code - Session code
  * @param {Object} sessionData - Session data to store
@@ -28,30 +48,7 @@ async function getSession(code) {
   const key = `session:${code}`;
   try {
     const data = await redis.get(key);
-    if (!data) return null;
-    if (typeof data === "string") {
-      try {
-        return JSON.parse(data);
-      } catch (err) {
-        // Only log parse errors in development
-        if (process.env.NODE_ENV !== "production") {
-          console.error("[kv-utils] JSON.parse error:", err, "Raw data:", data);
-        }
-        return null;
-      }
-    }
-    if (typeof data === "object") {
-      // Only log in development
-      if (process.env.NODE_ENV !== "production") {
-        console.warn("[kv-utils] Redis returned object, not string:", data);
-      }
-      return data;
-    }
-    // Unexpected type
-    if (process.env.NODE_ENV !== "production") {
-      console.error("[kv-utils] Unexpected Redis data type:", typeof data, data);
-    }
-    return null;
+    return safeParseRedisData(data);
   } catch (err) {
     if (process.env.NODE_ENV !== "production") {
       console.error("[kv-utils] Redis getSession error:", err);
@@ -86,7 +83,7 @@ async function enqueueRequest(code, requestData) {
 async function dequeueRequest(code) {
   const queueKey = `queue:${code}`;
   const data = await redis.rpop(queueKey);
-  return data ? JSON.parse(data) : null;
+  return safeParseRedisData(data);
 }
 
 /**
@@ -97,7 +94,9 @@ async function dequeueRequest(code) {
 async function peekQueue(code) {
   const queueKey = `queue:${code}`;
   const data = await redis.lrange(queueKey, 0, -1);
-  return data.map(item => JSON.parse(item));
+  if (!Array.isArray(data)) return [];
+  
+  return data.map(item => safeParseRedisData(item)).filter(item => item !== null);
 }
 
 /**
@@ -143,7 +142,7 @@ async function setResponse(code, responseData) {
 async function getResponse(code) {
   const key = `res:${code}`;
   const data = await redis.get(key);
-  return data ? JSON.parse(data) : null;
+  return safeParseRedisData(data);
 }
 
 /**
