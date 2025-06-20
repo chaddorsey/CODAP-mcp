@@ -1,6 +1,5 @@
 import {
   SessionData,
-  SessionCreationResponse,
   SessionServiceConfig,
   SessionServiceError,
   SessionServiceInterface,

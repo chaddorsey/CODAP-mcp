@@ -29,7 +29,7 @@ export const App = () => {
         try {
           await sendMessage("get", "interactiveFrame");
           console.log("CODAP interface is actually available despite initialization error");
-        } catch (testError) {
+        } catch {
           console.log("CODAP interface confirmed unavailable - running in standalone mode");
         }
       }

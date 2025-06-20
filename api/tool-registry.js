@@ -3,7 +3,7 @@
  * Exports the complete set of CODAP tools for registration with the MCP server
  */
 
-export const CODAP_TOOLS = [
+const CODAP_TOOLS = [
   {
     name: "initializePlugin",
     title: "Initialize CODAP Plugin",
@@ -605,4 +605,7 @@ export const CODAP_TOOLS = [
       required: ["request"]
     }
   }
-]; 
+];
+
+// Export for CommonJS compatibility
+module.exports = { CODAP_TOOLS };

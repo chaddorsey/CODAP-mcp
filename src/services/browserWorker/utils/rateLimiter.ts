@@ -113,7 +113,6 @@ export class RateLimiter {
     // Standard rate limit headers
     const rateLimit = headers["x-ratelimit-limit"] || headers["ratelimit-limit"];
     const remaining = headers["x-ratelimit-remaining"] || headers["ratelimit-remaining"];
-    const reset = headers["x-ratelimit-reset"] || headers["ratelimit-reset"];
     const retryAfter = headers["retry-after"];
 
     if (rateLimit) {

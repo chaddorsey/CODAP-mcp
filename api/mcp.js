@@ -1,20 +1,17 @@
 /**
- * MCP Server Endpoint - JSON-RPC 2.0 + StreamableHTTP Transport
- * PBI 18 - Task 18-2: Core MCP server implementation
+ * MCP Server Endpoint - JSON-RPC 2.0 Compatible
+ * PBI 18 - Task 18-5: Simplified MCP implementation for Vercel
  * 
- * This endpoint provides full MCP protocol compliance using the @modelcontextprotocol/sdk
- * with StreamableHTTP transport, while maintaining backward compatibility with the
- * existing browser worker system.
+ * This endpoint provides MCP protocol compliance using manual JSON-RPC 2.0 handling
+ * instead of the full @modelcontextprotocol/sdk for better Vercel compatibility.
  */
 
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { kv } from '@vercel/kv';
-import { z } from 'zod';
+const { kv } = require('@vercel/kv');
 
 // Import existing tool registry and utilities
-import { CODAP_TOOLS } from './tool-registry.js';
-import { queueToolRequest, getToolResponse } from './kv-utils.js';
+const { CODAP_TOOLS } = require('./tool-registry.js');
+const { queueToolRequest, getToolResponse, setToolResponse } = require('./kv-utils.js');
+const { DirectToolExecutor } = require('./mcp-tool-executor.js');
 
 // Session management utilities
 const SESSION_TTL = 10 * 60 * 1000; // 10 minutes
@@ -32,55 +29,6 @@ function generateLegacySessionCode() {
 }
 
 /**
- * Get usage examples for specific tools
- */
-function getToolExamples(toolName) {
-  const examples = {
-    'createDataContext': [{
-      description: 'Create a simple dataset with student information',
-      arguments: {
-        name: 'Students',
-        collections: [{
-          name: 'Students',
-          attrs: [
-            { name: 'Name', type: 'categorical' },
-            { name: 'Grade', type: 'numeric' },
-            { name: 'Subject', type: 'categorical' }
-          ]
-        }]
-      }
-    }],
-    'createItems': [{
-      description: 'Add student records to the dataset',
-      arguments: {
-        dataContext: 'Students',
-        items: [
-          { Name: 'Alice', Grade: 85, Subject: 'Math' },
-          { Name: 'Bob', Grade: 92, Subject: 'Science' }
-        ]
-      }
-    }],
-    'createGraph': [{
-      description: 'Create a scatter plot of two attributes',
-      arguments: {
-        dataContext: 'Students',
-        xAttributeName: 'Grade',
-        yAttributeName: 'Subject'
-      }
-    }],
-    'createTable': [{
-      description: 'Create a table to view the data',
-      arguments: {
-        dataContext: 'Students',
-        title: 'Student Data Table'
-      }
-    }]
-  };
-  
-  return examples[toolName] || [];
-}
-
-/**
  * Session mapping between MCP Session IDs and legacy codes
  */
 class SessionManager {
@@ -92,7 +40,8 @@ class SessionManager {
       mcpSessionId,
       legacyCode,
       createdAt: Date.now(),
-      expiresAt
+      expiresAt,
+      initialized: false
     };
     
     // Store bidirectional mapping
@@ -106,10 +55,6 @@ class SessionManager {
   
   async getSessionByMCP(mcpSessionId) {
     return await kv.get(`mcp:${mcpSessionId}`);
-  }
-  
-  async getSessionByLegacy(legacyCode) {
-    return await kv.get(`legacy:${legacyCode}`);
   }
   
   async updateSession(mcpSessionId, updatedData) {
@@ -126,326 +71,333 @@ class SessionManager {
       }
     }
   }
-  
-  async deleteSession(mcpSessionId) {
-    const session = await this.getSessionByMCP(mcpSessionId);
-    if (session) {
-      await Promise.all([
-        kv.del(`mcp:${mcpSessionId}`),
-        kv.del(`legacy:${session.legacyCode}`)
-      ]);
-    }
-  }
 }
 
 /**
- * MCP to Internal Tool Bridge
- * Transforms MCP tool calls to internal format and delegates to browser worker
+ * MCP JSON-RPC 2.0 Protocol Handler
  */
-class MCPToolBridge {
-  constructor(sessionManager) {
-    this.sessionManager = sessionManager;
+class MCPProtocolHandler {
+  constructor() {
+    this.sessionManager = new SessionManager();
   }
   
-  async executeTool(toolName, toolArgs, mcpSessionId, requestId) {
+  async handleRequest(request, sessionId) {
+    const { jsonrpc, method, params, id } = request;
+    
+    // Validate JSON-RPC 2.0 format
+    if (jsonrpc !== "2.0") {
+      return this.createErrorResponse(id, -32600, "Invalid Request");
+    }
+    
     try {
-      // Get session mapping
-      const session = await this.sessionManager.getSessionByMCP(mcpSessionId);
-      if (!session) {
-        throw new Error('Session expired or invalid');
+      switch (method) {
+        case 'initialize':
+          return await this.handleInitialize(params, id, sessionId);
+        case 'capabilities':
+          return await this.handleCapabilities(params, id, sessionId);
+        case 'tools/list':
+          return await this.handleToolsList(params, id, sessionId);
+        case 'tools/call':
+          return await this.handleToolCall(params, id, sessionId);
+        default:
+          return this.createErrorResponse(id, -32601, "Method not found");
+      }
+    } catch (error) {
+      console.error(`MCP method ${method} error:`, error);
+      return this.createErrorResponse(id, -32603, "Internal error", { error: error.message });
+    }
+  }
+  
+  async handleInitialize(params, id, sessionId) {
+    const { protocolVersion, capabilities, clientInfo } = params;
+    
+    // Create or get session
+    let session = await this.sessionManager.getSessionByMCP(sessionId);
+    if (!session) {
+      session = await this.sessionManager.createSession(sessionId);
+    }
+    
+    // Mark session as initialized
+    await this.sessionManager.updateSession(sessionId, { 
+      initialized: true,
+      protocolVersion,
+      clientInfo 
+    });
+    
+    return {
+      jsonrpc: "2.0",
+      result: {
+        protocolVersion: "2024-11-05",
+        capabilities: {
+          tools: {
+            listChanged: false
+          },
+          resources: {},
+          prompts: {}
+        },
+        serverInfo: {
+          name: "codap-mcp-server",
+          version: "1.0.0"
+        },
+        sessionInfo: {
+          sessionId: sessionId,
+          legacyCode: session.legacyCode,
+          expiresAt: session.expiresAt
+        }
+      },
+      id
+    };
+  }
+  
+  async handleCapabilities(params, id, sessionId) {
+    const session = await this.sessionManager.getSessionByMCP(sessionId);
+    if (!session || !session.initialized) {
+      return this.createErrorResponse(id, -32002, "Session not initialized");
+    }
+    
+    return {
+      jsonrpc: "2.0",
+      result: {
+        capabilities: {
+          tools: {
+            listChanged: false
+          },
+          resources: {},
+          prompts: {}
+        }
+      },
+      id
+    };
+  }
+  
+  async handleToolsList(params, id, sessionId) {
+    const session = await this.sessionManager.getSessionByMCP(sessionId);
+    if (!session || !session.initialized) {
+      return this.createErrorResponse(id, -32002, "Session not initialized");
+    }
+    
+    const tools = CODAP_TOOLS.map(tool => ({
+      name: tool.name,
+      description: tool.description,
+      inputSchema: tool.parameters
+    }));
+    
+    return {
+      jsonrpc: "2.0",
+      result: {
+        tools: tools
+      },
+      id
+    };
+  }
+  
+  async handleToolCall(params, id, sessionId) {
+    const session = await this.sessionManager.getSessionByMCP(sessionId);
+    if (!session || !session.initialized) {
+      return this.createErrorResponse(id, -32002, "Session not initialized");
+    }
+    
+    const { name: toolName, arguments: toolArgs } = params;
+    
+    // Validate tool exists
+    const tool = CODAP_TOOLS.find(t => t.name === toolName);
+    if (!tool) {
+      return this.createErrorResponse(id, -32602, `Tool '${toolName}' not found`);
+    }
+    
+    try {
+      // Check if session has active browser worker
+      const hasBrowserWorker = await this.checkBrowserWorkerConnection(sessionId, session.legacyCode);
+      
+      if (hasBrowserWorker) {
+        console.log(`[MCP] Using browser worker mode for session ${session.legacyCode}`);
+        return await this.executeBrowserWorkerTool(params, id, sessionId, session);
+      } else {
+        console.log(`[MCP] Using direct execution mode for session ${sessionId}`);
+        return await this.executeDirectTool(params, id, sessionId, session);
       }
       
-      // Transform MCP request to internal format
-      const internalRequest = {
-        sessionCode: session.legacyCode,
-        tool: toolName,
-        arguments: toolArgs,
-        requestId: requestId,
-        timestamp: Date.now()
-      };
+    } catch (error) {
+      console.error(`[MCP] Tool execution failed: ${toolName} - ${error.message}`);
+      return this.createErrorResponse(id, -32603, `Tool execution failed: ${error.message}`);
+    }
+  }
+  
+  /**
+   * Check if session has an active browser worker connection
+   * Simplified version to avoid timeouts - assume no browser worker for now
+   */
+  async checkBrowserWorkerConnection(sessionId, legacyCode) {
+    try {
+      // For now, always return false to force direct execution mode
+      // This eliminates potential KV timeout issues during debugging
+      console.log(`[MCP] Checking browser worker for session ${legacyCode} - forcing direct mode`);
+      return false;
       
+    } catch (error) {
+      console.error(`[MCP] Error checking browser worker connection: ${error.message}`);
+      return false;
+    }
+  }
+
+  /**
+   * Execute tool via browser worker (existing method)
+   */
+  async executeBrowserWorkerTool(params, id, sessionId, session) {
+    const { name: toolName, arguments: toolArgs } = params;
+    
+    // Generate request ID for tracking
+    const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Transform MCP request to internal format
+    const internalRequest = {
+      sessionCode: session.legacyCode,
+      tool: toolName,
+      arguments: toolArgs,
+      requestId: requestId,
+      timestamp: Date.now(),
+      mcpSessionId: sessionId
+    };
+    
+    try {
       // Queue request using existing system
+      console.log(`[MCP] Queueing tool execution: ${toolName} for session ${session.legacyCode}`);
       await queueToolRequest(internalRequest);
       
       // Wait for browser worker response
-      const result = await this.waitForResponse(requestId);
+      const startTime = Date.now();
+      const result = await this.waitForResponse(requestId, internalRequest);
+      const executionTime = Date.now() - startTime;
       
-      // Transform response to MCP format
+      // Return MCP-compliant response
       return {
-        content: [
-          {
-            type: "text",
-            text: typeof result === 'string' ? result : JSON.stringify(result)
-          }
-        ]
+        jsonrpc: "2.0",
+        result: {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                success: true,
+                result: result,
+                toolName: toolName,
+                executionTime: `${executionTime}ms`,
+                sessionCode: session.legacyCode,
+                executionMode: "browser-worker"
+              }, null, 2)
+            }
+          ]
+        },
+        id
       };
       
     } catch (error) {
-      throw new Error(`Tool execution failed: ${error.message}`);
+      console.error(`[MCP] Browser worker tool execution failed: ${toolName} - ${error.message}`);
+      throw error;
     }
   }
-  
-  async waitForResponse(requestId, timeout = 30000) {
+
+  /**
+   * Execute tool directly (server-side)
+   */
+  async executeDirectTool(params, id, sessionId, session) {
+    const { name: toolName, arguments: toolArgs } = params;
+    
+    try {
+      const startTime = Date.now();
+      const executor = new DirectToolExecutor(sessionId);
+      const result = await executor.executeTool(toolName, toolArgs);
+      const executionTime = Date.now() - startTime;
+      
+      console.log(`[MCP] Direct tool execution completed: ${toolName} in ${executionTime}ms`);
+      
+      // Return MCP-compliant response
+      return {
+        jsonrpc: "2.0",
+        result: {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                success: true,
+                result: result,
+                toolName: toolName,
+                executionTime: `${executionTime}ms`,
+                sessionId: sessionId,
+                executionMode: "direct-server"
+              }, null, 2)
+            }
+          ]
+        },
+        id
+      };
+      
+    } catch (error) {
+      console.error(`[MCP] Direct tool execution failed: ${toolName} - ${error.message}`);
+      throw error;
+    }
+  }
+
+  async waitForResponse(requestId, internalRequest, timeout = 30000) {
     const startTime = Date.now();
+    const pollInterval = 500; // Poll every 500ms
     
     while (Date.now() - startTime < timeout) {
-      const response = await getToolResponse(requestId);
-      if (response) {
-        return response;
+      try {
+        const response = await getToolResponse(requestId);
+        if (response) {
+          console.log(`[MCP] Response received for ${requestId}`);
+          return response;
+        }
+      } catch (error) {
+        console.error(`[MCP] Error checking response for ${requestId}:`, error);
       }
       
-      // Wait 100ms before polling again
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Wait before next poll
+      await new Promise(resolve => setTimeout(resolve, pollInterval));
     }
     
-    throw new Error('Tool execution timeout');
+    throw new Error(`Tool execution timeout after ${timeout}ms`);
   }
-}
-
-/**
- * Create and configure MCP Server
- */
-function createMCPServer(sessionManager, toolBridge) {
-  const server = new McpServer({
-    name: "codap-mcp-server",
-    version: "1.0.0"
-  });
   
-  // Register MCP lifecycle methods
-  server.registerInitialize(async (params, { sessionId }) => {
-    try {
-      // Validate protocol version
-      const supportedVersions = ["1.0.0", "1.0"];
-      const clientVersion = params.protocolVersion;
-      
-      if (!clientVersion || !supportedVersions.includes(clientVersion)) {
-        throw new Error(`Unsupported protocol version: ${clientVersion}. Supported versions: ${supportedVersions.join(', ')}`);
-      }
-      
-      // Update session with initialization info
-      const session = await sessionManager.getSessionByMCP(sessionId);
-      if (session) {
-        const updatedSession = {
-          ...session,
-          initialized: true,
-          clientInfo: params.clientInfo || {},
-          protocolVersion: clientVersion,
-          initializedAt: Date.now()
-        };
-        
-        await sessionManager.updateSession(sessionId, updatedSession);
-      }
-      
-      // Return server information and capabilities
-      return {
-        protocolVersion: "1.0.0",
-        serverInfo: {
-          name: "codap-mcp-server",
-          version: "1.0.0",
-          description: "CODAP MCP Server - Provides access to 33 CODAP data manipulation and visualization tools",
-          author: "Concord Consortium",
-          homepage: "https://codap.concord.org",
-          repository: "https://github.com/concord-consortium/CODAP-mcp"
-        },
-        capabilities: {
-          tools: {
-            listChanged: false // Tools list is static for now
-          },
-          resources: {
-            subscribe: false,
-            listChanged: false
-          },
-          prompts: {
-            listChanged: false
-          },
-          logging: {}
-        }
-      };
-      
-    } catch (error) {
-      throw new Error(`Initialization failed: ${error.message}`);
-    }
-  });
-  
-  server.registerCapabilities(async (params, { sessionId }) => {
-    try {
-      // Verify session is initialized
-      const session = await sessionManager.getSessionByMCP(sessionId);
-      if (!session || !session.initialized) {
-        throw new Error('Session not initialized. Call initialize method first.');
-      }
-      
-      // Return detailed capabilities
-      return {
-        capabilities: {
-          tools: {
-            listChanged: false,
-            count: CODAP_TOOLS.length,
-            categories: [
-              "data-context",
-              "data-manipulation", 
-              "visualization",
-              "components",
-              "collections",
-              "attributes",
-              "items",
-              "selection",
-              "notifications"
-            ]
-          },
-          resources: {
-            subscribe: false,
-            listChanged: false,
-            count: 0
-          },
-          prompts: {
-            listChanged: false,
-            count: 0
-          },
-          logging: {
-            level: "info"
-          }
-        },
-        meta: {
-          toolsAvailable: CODAP_TOOLS.length,
-          version: "1.0.0",
-          lastUpdated: new Date().toISOString()
-        }
-      };
-      
-    } catch (error) {
-      throw new Error(`Capabilities query failed: ${error.message}`);
-    }
-  });
-  
-  server.registerListTools(async (params, { sessionId }) => {
-    try {
-      // Verify session is initialized
-      const session = await sessionManager.getSessionByMCP(sessionId);
-      if (!session || !session.initialized) {
-        throw new Error('Session not initialized. Call initialize method first.');
-      }
-      
-      // Transform CODAP tools to MCP format
-      const mcpTools = CODAP_TOOLS.map(tool => {
-        // Determine tool category based on name and function
-        let category = 'data-manipulation';
-        if (tool.name.includes('Graph') || tool.name.includes('Table') || tool.name.includes('Slider') || 
-            tool.name.includes('Calculator') || tool.name.includes('Text') || tool.name.includes('WebView')) {
-          category = 'visualization';
-        } else if (tool.name.includes('Component') || tool.name.includes('component')) {
-          category = 'components';
-        } else if (tool.name.includes('DataContext') || tool.name.includes('dataContext')) {
-          category = 'data-context';
-        } else if (tool.name.includes('Collection') || tool.name.includes('collection')) {
-          category = 'collections';
-        } else if (tool.name.includes('Attribute') || tool.name.includes('attribute')) {
-          category = 'attributes';
-        } else if (tool.name.includes('Item') || tool.name.includes('item') || tool.name.includes('Case')) {
-          category = 'items';
-        } else if (tool.name.includes('select') || tool.name.includes('Select')) {
-          category = 'selection';
-        } else if (tool.name.includes('Notification') || tool.name.includes('notification')) {
-          category = 'notifications';
-        }
-        
-        return {
-          name: tool.name,
-          title: tool.title || tool.name,
-          description: tool.description,
-          inputSchema: tool.parameters, // Already JSON Schema Draft-7 compatible
-          category: category,
-          tags: [category, 'codap', 'data-analysis'],
-          examples: getToolExamples(tool.name)
-        };
-      });
-      
-      return {
-        tools: mcpTools,
-        meta: {
-          total: mcpTools.length,
-          categories: [
-            "data-context",
-            "data-manipulation", 
-            "visualization", 
-            "components",
-            "collections",
-            "attributes",
-            "items",
-            "selection",
-            "notifications"
-          ],
-          version: "1.0.0",
-          lastUpdated: new Date().toISOString()
-        }
-      };
-      
-    } catch (error) {
-      throw new Error(`Tool discovery failed: ${error.message}`);
-    }
-  });
-  
-  // Register all CODAP tools from existing registry
-  CODAP_TOOLS.forEach(tool => {
-    server.registerTool(
-      tool.name,
-      {
-        title: tool.title || tool.name,
-        description: tool.description,
-        inputSchema: tool.parameters // Existing JSON Schema Draft-07 compatible
+  createErrorResponse(id, code, message, data = null) {
+    const response = {
+      jsonrpc: "2.0",
+      error: {
+        code,
+        message
       },
-      async (args, { sessionId }) => {
-        // Verify session is initialized before tool execution
-        const session = await sessionManager.getSessionByMCP(sessionId);
-        if (!session || !session.initialized) {
-          throw new Error('Session not initialized. Call initialize method first.');
-        }
-        
-        return await toolBridge.executeTool(
-          tool.name, 
-          args, 
-          sessionId, 
-          `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-        );
-      }
-    );
-  });
-  
-  return server;
+      id
+    };
+    
+    if (data) {
+      response.error.data = data;
+    }
+    
+    return response;
+  }
 }
 
 /**
  * Handle POST requests - MCP JSON-RPC messages
  */
-export async function POST(req) {
+async function POST(req) {
   try {
-    const sessionManager = new SessionManager();
-    const toolBridge = new MCPToolBridge(sessionManager);
+    const body = await req.json();
     
-    // Create transport with session management
-    const transport = new StreamableHTTPServerTransport({
-      sessionIdGenerator: () => crypto.randomUUID(),
-      onsessioninitialized: async (sessionId) => {
-        // Create session mapping when MCP session is initialized
-        await sessionManager.createSession(sessionId);
+    // Generate session ID from headers or create new one
+    const sessionId = req.headers.get('mcp-session-id') || `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    const handler = new MCPProtocolHandler();
+    const response = await handler.handleRequest(body, sessionId);
+    
+    return new Response(JSON.stringify(response), {
+      status: 200,
+      headers: { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'mcp-session-id': sessionId
       }
     });
-    
-    // Create and configure MCP server
-    const server = createMCPServer(sessionManager, toolBridge);
-    
-    // Handle connection cleanup
-    const cleanup = () => {
-      server.close();
-      transport.close();
-    };
-    
-    // Connect server to transport
-    await server.connect(transport);
-    
-    // Handle the request
-    const body = await req.json();
-    return await transport.handleRequest(req, new Response(), body);
     
   } catch (error) {
     console.error('MCP Server Error:', error);
@@ -466,112 +418,38 @@ export async function POST(req) {
 }
 
 /**
- * Handle GET requests - SSE stream establishment
+ * Handle GET requests - Health check
  */
-export async function GET(req) {
-  try {
-    const sessionId = req.headers.get('mcp-session-id');
-    
-    if (!sessionId) {
-      return new Response(JSON.stringify({
-        jsonrpc: "2.0",
-        error: {
-          code: -32002,
-          message: "Missing session ID",
-        },
-        id: null
-      }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-    
-    // Verify session exists
-    const sessionManager = new SessionManager();
-    const session = await sessionManager.getSessionByMCP(sessionId);
-    
-    if (!session) {
-      return new Response(JSON.stringify({
-        jsonrpc: "2.0",
-        error: {
-          code: -32002,
-          message: "Session expired or invalid",
-        },
-        id: null
-      }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-    
-    // Return SSE stream headers
-    return new Response('', {
-      status: 200,
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-        'Access-Control-Allow-Origin': '*'
-      }
-    });
-    
-  } catch (error) {
-    console.error('MCP SSE Error:', error);
-    
-    return new Response(JSON.stringify({
-      jsonrpc: "2.0",
-      error: {
-        code: -32603,
-        message: "Internal server error"
-      },
-      id: null
-    }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
+async function GET(req) {
+  return new Response(JSON.stringify({
+    service: "CODAP MCP Server",
+    status: "operational",
+    version: "1.0.0",
+    protocol: "JSON-RPC 2.0",
+    timestamp: new Date().toISOString()
+  }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' }
+  });
 }
 
 /**
- * Handle DELETE requests - Session termination
+ * Handle OPTIONS requests - CORS
  */
-export async function DELETE(req) {
-  try {
-    const sessionId = req.headers.get('mcp-session-id');
-    
-    if (!sessionId) {
-      return new Response(JSON.stringify({
-        jsonrpc: "2.0",
-        error: {
-          code: -32002,
-          message: "Missing session ID"
-        },
-        id: null
-      }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      });
+async function OPTIONS(req) {
+  return new Response('', {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, mcp-session-id'
     }
-    
-    // Delete session
-    const sessionManager = new SessionManager();
-    await sessionManager.deleteSession(sessionId);
-    
-    return new Response('', { status: 204 });
-    
-  } catch (error) {
-    console.error('MCP Session Delete Error:', error);
-    
-    return new Response(JSON.stringify({
-      jsonrpc: "2.0",
-      error: {
-        code: -32603,
-        message: "Internal server error"
-      },
-      id: null
-    }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-} 
+  });
+}
+
+// Export functions for Vercel serverless
+module.exports = {
+  POST,
+  GET,
+  OPTIONS
+};

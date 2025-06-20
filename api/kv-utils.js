@@ -146,6 +146,45 @@ async function getResponse(code) {
 }
 
 /**
+ * Queue a tool request for processing
+ * @param {Object} toolRequest - Tool request with sessionCode, tool, arguments, requestId
+ */
+async function queueToolRequest(toolRequest) {
+  const { sessionCode, requestId } = toolRequest;
+  
+  // Add to session queue
+  await enqueueRequest(sessionCode, toolRequest);
+  
+  // Also store by requestId for response lookup
+  const requestKey = `toolreq:${requestId}`;
+  await redis.setex(requestKey, SESSION_TTL, JSON.stringify(toolRequest));
+  
+  console.log(`[kv-utils] Queued tool request: ${toolRequest.tool} (${requestId})`);
+}
+
+/**
+ * Get tool response by request ID
+ * @param {string} requestId - Request ID
+ * @returns {Object|null} Tool response or null if not found
+ */
+async function getToolResponse(requestId) {
+  const responseKey = `toolres:${requestId}`;
+  const data = await redis.get(responseKey);
+  return safeParseRedisData(data);
+}
+
+/**
+ * Store tool response by request ID
+ * @param {string} requestId - Request ID
+ * @param {Object} response - Tool response data
+ */
+async function setToolResponse(requestId, response) {
+  const responseKey = `toolres:${requestId}`;
+  await redis.setex(responseKey, SESSION_TTL, JSON.stringify(response));
+  console.log(`[kv-utils] Stored tool response for request: ${requestId}`);
+}
+
+/**
  * Delete all data for a session
  * @param {string} code - Session code
  */
@@ -168,6 +207,9 @@ module.exports = {
   getRequest, // Legacy
   setResponse,
   getResponse,
+  queueToolRequest,
+  getToolResponse,
+  setToolResponse,
   deleteSession,
   SESSION_TTL
 }; 

@@ -1,7 +1,7 @@
 // Tool response endpoint using Node.js runtime
 // Accepts tool responses from MCP server and retrieves stored responses
 
-const { getSession, setResponse, getResponse } = require("./kv-utils");
+const { getSession, setResponse, getResponse, setToolResponse, getToolResponse } = require("./kv-utils");
 
 /**
  * Validates session code format
@@ -57,7 +57,14 @@ async function storeToolResponse(code, responseData) {
     timestamp: new Date().toISOString()
   };
   
+  // Store by session code (legacy)
   await setResponse(code, response);
+  
+  // Also store by request ID for MCP system
+  if (responseData.id) {
+    await setToolResponse(responseData.id, response);
+    console.log(`[response.js] Stored tool response by request ID: ${responseData.id}`);
+  }
 }
 
 /**
@@ -97,16 +104,28 @@ export default async function handler(req, res) {
         return;
       }
       
-      // Get stored response
-      const storedResponse = await getResponse(sessionCode);
+      // Try to get response by request ID first (MCP system)
+      let storedResponse = null;
+      
+      if (requestId) {
+        storedResponse = await getToolResponse(requestId);
+        console.log(`[response.js] Looking for response by request ID: ${requestId}, found: ${!!storedResponse}`);
+      }
+      
+      // If not found by request ID, try by session code (legacy system)
+      if (!storedResponse) {
+        storedResponse = await getResponse(sessionCode);
+        console.log(`[response.js] Looking for response by session: ${sessionCode}, found: ${!!storedResponse}`);
+      }
       
       if (!storedResponse) {
-        createErrorResponse(res, 404, "response_not_found", "No response found for this session");
+        createErrorResponse(res, 404, "response_not_found", 
+          requestId ? `No response found for request ID: ${requestId}` : "No response found for this session");
         return;
       }
       
-      // If requestId is specified, check if it matches
-      if (requestId && storedResponse.id !== requestId) {
+      // If requestId is specified but response doesn't match, check if it's from legacy system
+      if (requestId && storedResponse.id && storedResponse.id !== requestId) {
         createErrorResponse(res, 404, "response_not_found", `No response found for request ID: ${requestId}`);
         return;
       }

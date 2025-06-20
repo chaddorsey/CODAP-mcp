@@ -9,7 +9,6 @@ import {
   DEFAULT_PARSER_CONFIG,
   ParseResult,
   ParseError,
-  ParsedToolRequest,
   ToolRequest
 } from "./types";
 
@@ -23,7 +22,6 @@ import {
 } from "./utils/validation";
 
 import {
-  DEFAULT_TOOL_REGISTRY,
   getToolSchema,
   isToolSupported,
   getSupportedTools

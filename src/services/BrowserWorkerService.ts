@@ -17,8 +17,6 @@ import { ConnectionManager } from "./browserWorker/ConnectionManager";
 import { ResponseHandler } from "./browserWorker/ResponseHandler";
 import { BrowserWorkerConfig, SSEEvent } from "./browserWorker/types";
 import { 
-  createDataContext, 
-  createNewCollection, 
   createItems,
   createTable,
   sendMessage
@@ -637,7 +635,7 @@ export class BrowserWorkerService {
 
       // Component Tools
       create_table: async (args: any) => {
-        const { dataContextName, title, position, dimensions } = args;
+        const { dataContextName, title } = args;
         return await createTable(dataContextName, title || `${dataContextName} Table`);
       },
 

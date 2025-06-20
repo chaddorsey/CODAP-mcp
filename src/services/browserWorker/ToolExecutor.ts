@@ -7,8 +7,7 @@ import {
   ToolExecutorInterface, 
   ToolRequest, 
   ToolResponse, 
-  ExecutionStatus,
-  ParsedToolRequest
+  ExecutionStatus
 } from "./types";
 
 import { ExecutionQueue, ExecutionQueueConfig } from "./ExecutionQueue";
@@ -18,9 +17,7 @@ import { getSupportedTools, isToolSupported } from "./schemas/toolSchemas";
 import { 
   sendMessage, 
   createTable, 
-  createItems,
-  createDataContext,
-  initializePlugin 
+  createItems
 } from "@concord-consortium/codap-plugin-api";
 
 /**
