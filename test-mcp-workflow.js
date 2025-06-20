@@ -3,10 +3,10 @@
  * Tests: initialize -> capabilities -> list_tools -> call_tool workflow
  */
 
-const baseUrl = 'https://codap-jtzd2eyua-cdorsey-concordorgs-projects.vercel.app';
+const baseUrl = "https://codap-jtzd2eyua-cdorsey-concordorgs-projects.vercel.app";
 
 async function testMCPWorkflow() {
-  console.log('🧪 Testing MCP Tool Execution Implementation...\n');
+  console.log("🧪 Testing MCP Tool Execution Implementation...\n");
   
   // Generate unique session ID for this test
   const sessionId = `test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -14,13 +14,13 @@ async function testMCPWorkflow() {
   
   try {
     // Step 1: Test MCP Initialize
-    console.log('\n📡 Step 1: Testing MCP Initialize...');
+    console.log("\n📡 Step 1: Testing MCP Initialize...");
     const initResponse = await fetch(`${baseUrl}/api/mcp`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'mcp-session-id': sessionId,
-        'x-vercel-protection-bypass': 'pAg5Eon3T8qOwMaWKzo9k6T4pdbYiCye'
+        "Content-Type": "application/json",
+        "mcp-session-id": sessionId,
+        "x-vercel-protection-bypass": "pAg5Eon3T8qOwMaWKzo9k6T4pdbYiCye"
       },
       body: JSON.stringify({
         jsonrpc: "2.0",
@@ -41,20 +41,20 @@ async function testMCPWorkflow() {
     }
     
     const initResult = await initResponse.json();
-    console.log('✅ Initialize Success:', {
+    console.log("✅ Initialize Success:", {
       protocolVersion: initResult.result?.protocolVersion,
       serverName: initResult.result?.serverInfo?.name,
       capabilities: Object.keys(initResult.result?.capabilities || {})
     });
 
     // Step 2: Test capabilities
-    console.log('\n🔧 Step 2: Testing capabilities method...');
+    console.log("\n🔧 Step 2: Testing capabilities method...");
     const capResponse = await fetch(`${baseUrl}/api/mcp`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'mcp-session-id': sessionId,
-        'x-vercel-protection-bypass': 'pAg5Eon3T8qOwMaWKzo9k6T4pdbYiCye'
+        "Content-Type": "application/json",
+        "mcp-session-id": sessionId,
+        "x-vercel-protection-bypass": "pAg5Eon3T8qOwMaWKzo9k6T4pdbYiCye"
       },
       body: JSON.stringify({
         jsonrpc: "2.0",
@@ -69,19 +69,19 @@ async function testMCPWorkflow() {
     }
 
     const capResult = await capResponse.json();
-    console.log('✅ Capabilities Success:', {
+    console.log("✅ Capabilities Success:", {
       toolCount: capResult.result?.meta?.toolsAvailable,
       categories: capResult.result?.capabilities?.tools?.categories?.length || 0
     });
 
     // Step 3: Test tools/list
-    console.log('\n📋 Step 3: Testing tools/list method...');
+    console.log("\n📋 Step 3: Testing tools/list method...");
     const toolsResponse = await fetch(`${baseUrl}/api/mcp`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'mcp-session-id': sessionId,
-        'x-vercel-protection-bypass': 'pAg5Eon3T8qOwMaWKzo9k6T4pdbYiCye'
+        "Content-Type": "application/json",
+        "mcp-session-id": sessionId,
+        "x-vercel-protection-bypass": "pAg5Eon3T8qOwMaWKzo9k6T4pdbYiCye"
       },
       body: JSON.stringify({
         jsonrpc: "2.0",
@@ -97,31 +97,31 @@ async function testMCPWorkflow() {
 
     const toolsResult = await toolsResponse.json();
     const tools = toolsResult.result?.tools || [];
-    console.log('✅ Tools List Success:', {
+    console.log("✅ Tools List Success:", {
       totalTools: tools.length,
       sampleTools: tools.slice(0, 3).map(t => t.name)
     });
 
     // Find createDataContext tool for testing
-    const createDataContextTool = tools.find(tool => tool.name === 'createDataContext');
+    const createDataContextTool = tools.find(tool => tool.name === "createDataContext");
     if (!createDataContextTool) {
-      throw new Error('createDataContext tool not found');
+      throw new Error("createDataContext tool not found");
     }
 
-    console.log('🔧 Found createDataContext tool:', {
+    console.log("🔧 Found createDataContext tool:", {
       name: createDataContextTool.name,
       category: createDataContextTool.category,
       hasInputSchema: !!createDataContextTool.inputSchema
     });
 
     // Step 4: Test tools/call (tool execution)
-    console.log('\n⚡ Step 4: Testing tools/call (createDataContext)...');
+    console.log("\n⚡ Step 4: Testing tools/call (createDataContext)...");
     const toolCallResponse = await fetch(`${baseUrl}/api/mcp`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'mcp-session-id': sessionId,
-        'x-vercel-protection-bypass': 'pAg5Eon3T8qOwMaWKzo9k6T4pdbYiCye'
+        "Content-Type": "application/json",
+        "mcp-session-id": sessionId,
+        "x-vercel-protection-bypass": "pAg5Eon3T8qOwMaWKzo9k6T4pdbYiCye"
       },
       body: JSON.stringify({
         jsonrpc: "2.0",
@@ -151,60 +151,60 @@ async function testMCPWorkflow() {
     }
 
     const toolCallResult = await toolCallResponse.json();
-    console.log('🎯 Tool Call Response:', {
+    console.log("🎯 Tool Call Response:", {
       id: toolCallResult.id,
       hasResult: !!toolCallResult.result,
       hasError: !!toolCallResult.error
     });
 
     if (toolCallResult.error) {
-      console.error('❌ Tool execution error:', toolCallResult.error);
+      console.error("❌ Tool execution error:", toolCallResult.error);
       return false;
     }
 
     if (toolCallResult.result) {
       const content = toolCallResult.result.content;
       if (content && content.length > 0) {
-        console.log('📄 Tool execution content:', {
+        console.log("📄 Tool execution content:", {
           type: content[0].type,
           textLength: content[0].text?.length || 0,
           isError: toolCallResult.result.isError || false
         });
         
         if (content[0].text) {
-          console.log('📝 Sample response text:', content[0].text.substring(0, 200) + '...');
+          console.log("📝 Sample response text:", content[0].text.substring(0, 200) + "...");
         }
       }
 
-      console.log('\n🎉 MCP Tool Execution Test PASSED!');
-      console.log('✅ All MCP methods working correctly');
+      console.log("\n🎉 MCP Tool Execution Test PASSED!");
+      console.log("✅ All MCP methods working correctly");
       return true;
     } else {
-      console.warn('⚠️  Tool execution completed but no result returned');
+      console.warn("⚠️  Tool execution completed but no result returned");
       return false;
     }
 
   } catch (error) {
-    console.error('\n❌ MCP Test FAILED:', error.message);
+    console.error("\n❌ MCP Test FAILED:", error.message);
     return false;
   }
 }
 
 // Test error scenarios
 async function testMCPErrorScenarios() {
-  console.log('\n🧪 Testing MCP Error Scenarios...\n');
+  console.log("\n🧪 Testing MCP Error Scenarios...\n");
   
   const sessionId = `error_test_${Date.now()}`;
   
   try {
     // Test 1: Tool call without initialization
-    console.log('🔍 Test 1: Tool call without initialization...');
+    console.log("🔍 Test 1: Tool call without initialization...");
     const uninitResponse = await fetch(`${baseUrl}/api/mcp`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'mcp-session-id': sessionId,
-        'x-vercel-protection-bypass': 'pAg5Eon3T8qOwMaWKzo9k6T4pdbYiCye'
+        "Content-Type": "application/json",
+        "mcp-session-id": sessionId,
+        "x-vercel-protection-bypass": "pAg5Eon3T8qOwMaWKzo9k6T4pdbYiCye"
       },
       body: JSON.stringify({
         jsonrpc: "2.0",
@@ -219,21 +219,21 @@ async function testMCPErrorScenarios() {
 
     const uninitResult = await uninitResponse.json();
     if (uninitResult.error) {
-      console.log('✅ Correctly rejected uninitialized tool call');
+      console.log("✅ Correctly rejected uninitialized tool call");
     } else {
-      console.log('⚠️  Tool call succeeded without initialization (unexpected)');
+      console.log("⚠️  Tool call succeeded without initialization (unexpected)");
     }
 
     // Test 2: Invalid tool name (after initialization)
-    console.log('\n🔍 Test 2: Invalid tool name...');
+    console.log("\n🔍 Test 2: Invalid tool name...");
     
     // First initialize
     await fetch(`${baseUrl}/api/mcp`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'mcp-session-id': sessionId,
-        'x-vercel-protection-bypass': 'pAg5Eon3T8qOwMaWKzo9k6T4pdbYiCye'
+        "Content-Type": "application/json",
+        "mcp-session-id": sessionId,
+        "x-vercel-protection-bypass": "pAg5Eon3T8qOwMaWKzo9k6T4pdbYiCye"
       },
       body: JSON.stringify({
         jsonrpc: "2.0",
@@ -248,11 +248,11 @@ async function testMCPErrorScenarios() {
 
     // Then try invalid tool
     const invalidToolResponse = await fetch(`${baseUrl}/api/mcp`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'mcp-session-id': sessionId,
-        'x-vercel-protection-bypass': 'pAg5Eon3T8qOwMaWKzo9k6T4pdbYiCye'
+        "Content-Type": "application/json",
+        "mcp-session-id": sessionId,
+        "x-vercel-protection-bypass": "pAg5Eon3T8qOwMaWKzo9k6T4pdbYiCye"
       },
       body: JSON.stringify({
         jsonrpc: "2.0",
@@ -267,48 +267,48 @@ async function testMCPErrorScenarios() {
 
     const invalidResult = await invalidToolResponse.json();
     if (invalidResult.result?.isError || invalidResult.error) {
-      console.log('✅ Correctly rejected invalid tool name');
+      console.log("✅ Correctly rejected invalid tool name");
     } else {
-      console.log('⚠️  Invalid tool call succeeded (unexpected)');
+      console.log("⚠️  Invalid tool call succeeded (unexpected)");
     }
 
-    console.log('\n✅ Error scenario testing complete');
+    console.log("\n✅ Error scenario testing complete");
 
   } catch (error) {
-    console.error('❌ Error scenario test failed:', error.message);
+    console.error("❌ Error scenario test failed:", error.message);
   }
 }
 
 // Run all tests
 async function runAllTests() {
-  console.log('🚀 Starting MCP Implementation Tests\n');
-  console.log('=' .repeat(60));
+  console.log("🚀 Starting MCP Implementation Tests\n");
+  console.log("=".repeat(60));
   
   const workflowSuccess = await testMCPWorkflow();
   
-  console.log('\n' + '=' .repeat(60));
+  console.log("\n" + "=".repeat(60));
   await testMCPErrorScenarios();
   
-  console.log('\n' + '=' .repeat(60));
-  console.log('🏁 Test Summary:');
-  console.log(`Core Workflow: ${workflowSuccess ? '✅ PASS' : '❌ FAIL'}`);
-  console.log('Error Handling: ✅ TESTED');
+  console.log("\n" + "=".repeat(60));
+  console.log("🏁 Test Summary:");
+  console.log(`Core Workflow: ${workflowSuccess ? "✅ PASS" : "❌ FAIL"}`);
+  console.log("Error Handling: ✅ TESTED");
   
   if (workflowSuccess) {
-    console.log('\n🎉 MCP Implementation is READY!');
-    console.log('💡 Next step: Deploy to test with real MCP clients');
+    console.log("\n🎉 MCP Implementation is READY!");
+    console.log("💡 Next step: Deploy to test with real MCP clients");
   } else {
-    console.log('\n🔧 MCP Implementation needs fixes before deployment');
+    console.log("\n🔧 MCP Implementation needs fixes before deployment");
   }
 }
 
 // Execute tests
 runAllTests()
   .then(() => {
-    console.log('\n✨ All tests completed');
+    console.log("\n✨ All tests completed");
     process.exit(0);
   })
   .catch((error) => {
-    console.error('\n💥 Test execution failed:', error);
+    console.error("\n💥 Test execution failed:", error);
     process.exit(1);
   }); 

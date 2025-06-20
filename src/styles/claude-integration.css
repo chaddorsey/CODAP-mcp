@@ -1,0 +1,279 @@
+/* Streamlined Claude Integration UI Styles */
+
+.codap-ai-assistant {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  padding: 24px;
+  color: white;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.codap-ai-assistant .header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.codap-ai-assistant .header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.session-section {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 16px;
+  backdrop-filter: blur(10px);
+}
+
+.session-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.session-label {
+  font-size: 16px;
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.session-id {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 20px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 8px 16px;
+  border-radius: 6px;
+  letter-spacing: 1px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.copy-instructions-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 20px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.copy-instructions-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.copy-instructions-btn:focus {
+  outline: 2px solid white;
+  outline-offset: 2px;
+}
+
+.copy-instructions-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.copy-instructions-btn.primary {
+  background: rgba(59, 130, 246, 0.8);
+  border-color: rgba(59, 130, 246, 0.9);
+}
+
+.copy-instructions-btn.primary:hover:not(:disabled) {
+  background: rgba(59, 130, 246, 0.9);
+  border-color: rgba(59, 130, 246, 1);
+}
+
+.status-section {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.connection-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.connection-status.waiting {
+  color: #fbbf24;
+}
+
+.connection-status.connected {
+  color: #10b981;
+}
+
+.connection-status.error {
+  color: #ef4444;
+}
+
+.help-section {
+  text-align: center;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.setup-link {
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.setup-link:hover {
+  color: white;
+  text-decoration: underline;
+}
+
+.setup-link:focus {
+  outline: 2px solid white;
+  outline-offset: 2px;
+  border-radius: 4px;
+  padding: 2px 4px;
+}
+
+.setup-link.subtle {
+  opacity: 0.7;
+  font-size: 13px;
+}
+
+/* Copy feedback animation */
+.copy-feedback {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: #10b981;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  font-weight: 500;
+  z-index: 1000;
+  animation: slideInFadeOut 3s ease forwards;
+}
+
+@keyframes slideInFadeOut {
+  0% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  15%, 85% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .codap-ai-assistant {
+    padding: 20px;
+    margin: 10px;
+  }
+  
+  .codap-ai-assistant .header h2 {
+    font-size: 20px;
+  }
+  
+  .session-display {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .session-id {
+    font-size: 18px;
+    padding: 6px 12px;
+  }
+  
+  .copy-instructions-btn {
+    font-size: 14px;
+    padding: 10px 16px;
+  }
+}
+
+/* UI Toggle Button */
+.ui-toggle-section {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.ui-toggle-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  color: #475569;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ui-toggle-button:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.ui-toggle-button:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .codap-ai-assistant {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  }
+  
+  .ui-toggle-button {
+    background: #1e293b;
+    border-color: #334155;
+    color: #cbd5e1;
+  }
+  
+  .ui-toggle-button:hover {
+    background: #334155;
+    border-color: #475569;
+    color: #e2e8f0;
+  }
+} 

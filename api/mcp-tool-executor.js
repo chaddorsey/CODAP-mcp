@@ -7,7 +7,7 @@
  * using KV storage for state management.
  */
 
-const { CODAPStateManager } = require('./codap-state-manager.js');
+const { CODAPStateManager } = require("./codap-state-manager.js");
 
 /**
  * Direct Tool Executor for Server-Side CODAP Tool Execution
@@ -24,7 +24,7 @@ class DirectToolExecutor {
     const { name, title, collections = [] } = args;
     
     if (!name) {
-      throw new Error('Data context name is required');
+      throw new Error("Data context name is required");
     }
 
     // Check if data context already exists
@@ -60,11 +60,11 @@ class DirectToolExecutor {
     const { dataContext, items } = args;
     
     if (!dataContext) {
-      throw new Error('dataContext is required');
+      throw new Error("dataContext is required");
     }
     
     if (!items || !Array.isArray(items) || items.length === 0) {
-      throw new Error('items array is required and must not be empty');
+      throw new Error("items array is required and must not be empty");
     }
 
     // Verify data context exists
@@ -88,7 +88,7 @@ class DirectToolExecutor {
     const { dataContext, title, position, dimensions } = args;
     
     if (!dataContext) {
-      throw new Error('dataContext is required');
+      throw new Error("dataContext is required");
     }
 
     // Verify data context exists
@@ -97,7 +97,7 @@ class DirectToolExecutor {
       throw new Error(`Data context '${dataContext}' not found`);
     }
 
-    const component = await this.stateManager.createComponent('caseTable', title, dataContext, {
+    const component = await this.stateManager.createComponent("caseTable", title, dataContext, {
       position,
       dimensions
     });
@@ -114,10 +114,10 @@ class DirectToolExecutor {
   }
 
   async executeCreateGraph(args) {
-    const { dataContext, title, xAttribute, yAttribute, graphType = 'scatterPlot', position, dimensions } = args;
+    const { dataContext, title, xAttribute, yAttribute, graphType = "scatterPlot", position, dimensions } = args;
     
     if (!dataContext) {
-      throw new Error('dataContext is required');
+      throw new Error("dataContext is required");
     }
 
     // Verify data context exists
@@ -126,7 +126,7 @@ class DirectToolExecutor {
       throw new Error(`Data context '${dataContext}' not found`);
     }
 
-    const component = await this.stateManager.createComponent('graph', title, dataContext, {
+    const component = await this.stateManager.createComponent("graph", title, dataContext, {
       xAttribute,
       yAttribute,
       graphType,
@@ -174,7 +174,7 @@ class DirectToolExecutor {
     const { dataContext } = args;
     
     if (!dataContext) {
-      throw new Error('dataContext is required');
+      throw new Error("dataContext is required");
     }
 
     const context = await this.stateManager.getDataContext(dataContext);
@@ -197,7 +197,7 @@ class DirectToolExecutor {
     const { dataContext, limit } = args;
     
     if (!dataContext) {
-      throw new Error('dataContext is required');
+      throw new Error("dataContext is required");
     }
 
     // Verify data context exists
@@ -211,7 +211,7 @@ class DirectToolExecutor {
     return {
       success: true,
       values: {
-        items: items
+        items
       }
     };
   }
@@ -220,11 +220,11 @@ class DirectToolExecutor {
     const { dataContext, caseIds, extend = false } = args;
     
     if (!dataContext) {
-      throw new Error('dataContext is required');
+      throw new Error("dataContext is required");
     }
 
     if (!caseIds || !Array.isArray(caseIds)) {
-      throw new Error('caseIds array is required');
+      throw new Error("caseIds array is required");
     }
 
     // Verify data context exists
@@ -257,7 +257,7 @@ class DirectToolExecutor {
     const { dataContext } = args;
     
     if (!dataContext) {
-      throw new Error('dataContext is required');
+      throw new Error("dataContext is required");
     }
 
     // Verify data context exists
@@ -280,7 +280,7 @@ class DirectToolExecutor {
     const { dataContext } = args;
     
     if (!dataContext) {
-      throw new Error('dataContext is required');
+      throw new Error("dataContext is required");
     }
 
     await this.stateManager.clearSelection(dataContext);
@@ -311,11 +311,11 @@ class DirectToolExecutor {
     const { dataContext, confirmDelete } = args;
     
     if (!dataContext) {
-      throw new Error('dataContext is required');
+      throw new Error("dataContext is required");
     }
 
     if (!confirmDelete) {
-      throw new Error('Delete confirmation required');
+      throw new Error("Delete confirmation required");
     }
 
     // Verify data context exists
@@ -338,7 +338,7 @@ class DirectToolExecutor {
     const { componentId, title, position, dimensions } = args;
     
     if (!componentId) {
-      throw new Error('componentId is required');
+      throw new Error("componentId is required");
     }
 
     const updates = {};
@@ -362,11 +362,11 @@ class DirectToolExecutor {
     const { componentId, confirmDelete } = args;
     
     if (!componentId) {
-      throw new Error('componentId is required');
+      throw new Error("componentId is required");
     }
 
     if (!confirmDelete) {
-      throw new Error('Delete confirmation required');
+      throw new Error("Delete confirmation required");
     }
 
     // Verify component exists
@@ -394,46 +394,46 @@ class DirectToolExecutor {
       let result;
       
       switch (toolName) {
-        case 'createDataContext':
+        case "createDataContext":
           result = await this.executeCreateDataContext(toolArgs);
           break;
-        case 'createItems':
+        case "createItems":
           result = await this.executeCreateItems(toolArgs);
           break;
-        case 'createTable':
+        case "createTable":
           result = await this.executeCreateTable(toolArgs);
           break;
-        case 'createGraph':
+        case "createGraph":
           result = await this.executeCreateGraph(toolArgs);
           break;
-        case 'getListOfDataContexts':
+        case "getListOfDataContexts":
           result = await this.executeGetListOfDataContexts(toolArgs);
           break;
-        case 'getDataContext':
+        case "getDataContext":
           result = await this.executeGetDataContext(toolArgs);
           break;
-        case 'getItems':
+        case "getItems":
           result = await this.executeGetItems(toolArgs);
           break;
-        case 'selectCases':
+        case "selectCases":
           result = await this.executeSelectCases(toolArgs);
           break;
-        case 'getSelection':
+        case "getSelection":
           result = await this.executeGetSelection(toolArgs);
           break;
-        case 'clearSelection':
+        case "clearSelection":
           result = await this.executeClearSelection(toolArgs);
           break;
-        case 'getComponents':
+        case "getComponents":
           result = await this.executeGetComponents(toolArgs);
           break;
-        case 'deleteDataContext':
+        case "deleteDataContext":
           result = await this.executeDeleteDataContext(toolArgs);
           break;
-        case 'updateComponent':
+        case "updateComponent":
           result = await this.executeUpdateComponent(toolArgs);
           break;
-        case 'deleteComponent':
+        case "deleteComponent":
           result = await this.executeDeleteComponent(toolArgs);
           break;
         default:

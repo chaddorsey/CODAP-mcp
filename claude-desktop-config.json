@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "codap-mcp": {
+      "command": "node",
+      "args": [
+        "/Users/chaddorsey/Dropbox/dev/MCP/CODAP-mcp/server/relay/http-relay-client.js"
+      ],
+      "env": {
+        "MCP_SERVER_URL": "https://codap-mcp-stable.vercel.app/api/mcp",
+        "MCP_SESSION_ID": "claude-desktop-session"
+      }
+    }
+  }
+} 

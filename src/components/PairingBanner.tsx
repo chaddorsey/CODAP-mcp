@@ -17,11 +17,14 @@ import { useBrowserWorker } from "../hooks/useBrowserWorker";
 import { ConnectionStatus } from "./ConnectionStatus";
 import { ToolExecutionStatus } from "./ToolExecutionStatus";
 import { ConnectionMetrics } from "./ConnectionMetrics";
+import { ClaudeSetupModal } from "./ClaudeSetupModal";
 import { useExecutionHistory } from "../hooks/useExecutionHistory";
 import { usePerformanceMetrics } from "../hooks/usePerformanceMetrics";
 import { ConnectionType } from "../services/browserWorker";
+import { generateClaudeConnectionInstructions } from "../utils/claudeInstructions";
 import "./PairingBanner.css";
 import "../styles/browserWorker.scss";
+import "../styles/claude-integration.css";
 
 /**
  * Default relay base URL - can be overridden via props
@@ -111,6 +114,11 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
     error?: string;
     timestamp: string;
   }[]>([]);
+
+  // Claude integration state
+  const [showClaudeSetupModal, setShowClaudeSetupModal] = useState(false);
+  const [claudeConnectionStatus] = useState<"waiting" | "connected" | "error">("waiting");
+  const [showStreamlinedUI, setShowStreamlinedUI] = useState(false);
   
   // Refs for ARIA relationships and focus management
   const bannerRef = useRef<HTMLDivElement>(null);
@@ -295,6 +303,36 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
   }, []);
 
   /**
+   * Claude integration handlers
+   */
+  const handleCopyClaudeInstructions = useCallback(async () => {
+    if (!bannerState.sessionData?.code) return;
+    
+    const instructions = generateClaudeConnectionInstructions(bannerState.sessionData.code);
+    const result = await clipboard.copyToClipboard(instructions);
+    
+    if (result.success) {
+      setCopyFeedback("Instructions copied! Paste into Claude Desktop to connect.");
+      setAnnouncement("Claude connection instructions copied to clipboard");
+    } else {
+      setCopyFeedback(`Failed to copy: ${result.error || "Unknown error"}`);
+      setAnnouncement("Failed to copy instructions");
+    }
+  }, [bannerState.sessionData?.code, clipboard]);
+
+  const handleShowClaudeSetup = useCallback(() => {
+    setShowClaudeSetupModal(true);
+  }, []);
+
+  const handleCloseClaudeSetup = useCallback(() => {
+    setShowClaudeSetupModal(false);
+  }, []);
+
+  const toggleStreamlinedUI = useCallback(() => {
+    setShowStreamlinedUI(prev => !prev);
+  }, []);
+
+  /**
    * Developer tool testing functions - makes REAL CODAP API calls
    */
   const runTestTool = useCallback(async (toolName: string, params: any) => {
@@ -319,8 +357,7 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
         sendMessage, 
         createTable, 
         createItems,
-        createDataContext,
-        initializePlugin 
+        createDataContext
       } = await import("@concord-consortium/codap-plugin-api");
 
       // Execute the actual tool based on tool name
@@ -990,9 +1027,80 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
   );
 
   /**
+   * Renders streamlined Claude integration UI
+   */
+  const renderStreamlinedClaudeUI = () => {
+    const { sessionData } = bannerState;
+    if (!sessionData) return null;
+
+    return (
+      <div className="codap-ai-assistant">
+        <div className="header">
+          <h2>🤖 CODAP AI Assistant</h2>
+        </div>
+        
+        <div className="session-section">
+          <div className="session-display">
+            <span className="session-label">Session:</span>
+            <span className="session-id">{sessionData.code}</span>
+          </div>
+          <button 
+            className="copy-instructions-btn primary"
+            onClick={handleCopyClaudeInstructions}
+            disabled={clipboard.state.isLoading}
+            aria-label={`Copy Claude connection instructions for session ${sessionData.code}`}
+          >
+            <span aria-hidden="true">
+              {clipboard.state.isLoading ? "⏳" : "📋"}
+            </span>
+            Copy Claude Connection Instructions
+          </button>
+        </div>
+        
+        <div className="status-section">
+          <div className={`connection-status ${claudeConnectionStatus}`}>
+            <span aria-hidden="true">
+              {claudeConnectionStatus === "waiting" && "⏳"}
+              {claudeConnectionStatus === "connected" && "🟢"}
+              {claudeConnectionStatus === "error" && "🔴"}
+            </span>
+            Status: {claudeConnectionStatus === "waiting" && "Waiting for Claude..."}
+            {claudeConnectionStatus === "connected" && "Connected to Claude"}
+            {claudeConnectionStatus === "error" && "Connection Error"}
+          </div>
+        </div>
+        
+        <div className="help-section">
+          <a 
+            href="#" 
+            className="setup-link subtle"
+            onClick={(e) => {
+              e.preventDefault();
+              handleShowClaudeSetup();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                handleShowClaudeSetup();
+              }
+            }}
+          >
+            Need help? Set up Claude MCP ↗
+          </a>
+        </div>
+      </div>
+    );
+  };
+
+  /**
    * Renders the appropriate content based on current state
    */
   const renderContent = () => {
+    // Show streamlined UI for success state if enabled
+    if (showStreamlinedUI && bannerState.state === BannerState.SUCCESS) {
+      return renderStreamlinedClaudeUI();
+    }
+
     switch (bannerState.state) {
       case BannerState.LOADING:
         return renderLoadingState();
@@ -1016,6 +1124,20 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
       aria-describedby={ariaIds.description}
       data-testid="pairing-banner"
     >
+      {/* UI Toggle Button (only show when session is ready) */}
+      {bannerState.state === BannerState.SUCCESS && (
+        <div className="ui-toggle-section">
+          <button
+            type="button"
+            className="ui-toggle-button"
+            onClick={toggleStreamlinedUI}
+            aria-label={showStreamlinedUI ? "Switch to detailed view" : "Switch to streamlined Claude view"}
+          >
+            {showStreamlinedUI ? "📊 Detailed View" : "🤖 Claude View"}
+          </button>
+        </div>
+      )}
+      
       {renderContent()}
       
       {/* Accessibility announcement region */}
@@ -1064,6 +1186,14 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
           </span>
         </div>
       )}
+      
+      {/* Claude Setup Modal */}
+      <ClaudeSetupModal
+        sessionId={bannerState.sessionData?.code || ""}
+        isOpen={showClaudeSetupModal}
+        onClose={handleCloseClaudeSetup}
+        relayBaseUrl={relayBaseUrl}
+      />
     </div>
   );
 };

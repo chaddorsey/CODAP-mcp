@@ -6,12 +6,12 @@
  * instead of the full @modelcontextprotocol/sdk for better Vercel compatibility.
  */
 
-const { kv } = require('@vercel/kv');
+const { kv } = require("@vercel/kv");
 
 // Import existing tool registry and utilities
-const { CODAP_TOOLS } = require('./tool-registry.js');
-const { queueToolRequest, getToolResponse, setToolResponse } = require('./kv-utils.js');
-const { DirectToolExecutor } = require('./mcp-tool-executor.js');
+const { CODAP_TOOLS } = require("./tool-registry.js");
+const { queueToolRequest, getToolResponse, setToolResponse } = require("./kv-utils.js");
+const { DirectToolExecutor } = require("./mcp-tool-executor.js");
 
 // Session management utilities
 const SESSION_TTL = 10 * 60 * 1000; // 10 minutes
@@ -20,8 +20,8 @@ const SESSION_TTL = 10 * 60 * 1000; // 10 minutes
  * Generate legacy 8-character session code for backward compatibility
  */
 function generateLegacySessionCode() {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let result = '';
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let result = "";
   for (let i = 0; i < 8; i++) {
     result += chars.charAt(Math.floor(Math.random() * chars.length));
   }
@@ -71,7 +71,7 @@ class SessionManager {
       clientInfo: clientInfo || {},
       requestCount: 0,
       toolCallCount: 0,
-      status: 'created'
+      status: "created"
     };
     
     try {
@@ -109,7 +109,7 @@ class SessionManager {
     const updatedSession = {
       ...existingSession,
       lastAccessedAt: now,
-      status: 'resumed'
+      status: "resumed"
     };
     
     await this.updateSession(mcpSessionId, updatedSession);
@@ -241,7 +241,7 @@ class SessionManager {
    * Validate session ID format
    */
   validateSessionId(sessionId) {
-    if (!sessionId || typeof sessionId !== 'string') {
+    if (!sessionId || typeof sessionId !== "string") {
       return false;
     }
     
@@ -307,7 +307,7 @@ class MCPProtocolHandler {
     }
     
     // Validate required method field
-    if (!method || typeof method !== 'string') {
+    if (!method || typeof method !== "string") {
       return this.createErrorResponse(id, -32600, "Invalid Request");
     }
     
@@ -317,25 +317,25 @@ class MCPProtocolHandler {
     try {
       let result;
       switch (method) {
-        case 'initialize':
+        case "initialize":
           result = await this.handleInitialize(params, id, sessionId, headers);
           break;
-        case 'initialized':
+        case "initialized":
           result = await this.handleInitialized(params, id, sessionId, headers);
           break;
-        case 'capabilities':
+        case "capabilities":
           result = await this.handleCapabilities(params, id, sessionId, headers);
           break;
-        case 'tools/list':
+        case "tools/list":
           result = await this.handleToolsList(params, id, sessionId, headers);
           break;
-        case 'tools/call':
+        case "tools/call":
           result = await this.handleToolCall(params, id, sessionId, headers);
           break;
-        case 'ping':
+        case "ping":
           result = await this.handlePing(params, id, sessionId, headers);
           break;
-        case 'logging/setLevel':
+        case "logging/setLevel":
           result = await this.handleSetLogLevel(params, id, sessionId, headers);
           break;
         default:
@@ -377,21 +377,39 @@ class MCPProtocolHandler {
       headerClientInfo: headers.clientInfo ? JSON.parse(headers.clientInfo) : null
     };
     
-    // Create or get session with enhanced info
-    let session = await this.sessionManager.getSessionByMCP(sessionId);
-    if (!session) {
-      session = await this.sessionManager.createSession(sessionId, combinedClientInfo);
+    // Allow initialize without session ID (session-agnostic connection)
+    let sessionInfo = {
+      connected: false,
+      message: "Use 'connect_to_session' tool to establish CODAP connection"
+    };
+    
+    if (sessionId) {
+      // Session ID provided - create or get session
+      let session = await this.sessionManager.getSessionByMCP(sessionId);
+      if (!session) {
+        session = await this.sessionManager.createSession(sessionId, combinedClientInfo);
+      }
+      
+      // Mark session as initialized with comprehensive info
+      await this.sessionManager.updateSession(sessionId, { 
+        initialized: true,
+        protocolVersion,
+        clientInfo: combinedClientInfo,
+        initializationTime: Date.now()
+      });
+      
+      sessionInfo = {
+        sessionId,
+        legacyCode: session.legacyCode,
+        expiresAt: session.expiresAt,
+        status: session.status,
+        connected: true
+      };
+      
+      console.log(`[MCP] Session initialized: ${sessionId} with client: ${combinedClientInfo.userAgent || "unknown"}`);
+    } else {
+      console.log(`[MCP] Session-agnostic connection initialized with client: ${combinedClientInfo.userAgent || "unknown"}`);
     }
-    
-    // Mark session as initialized with comprehensive info
-    await this.sessionManager.updateSession(sessionId, { 
-      initialized: true,
-      protocolVersion,
-      clientInfo: combinedClientInfo,
-      initializationTime: Date.now()
-    });
-    
-    console.log(`[MCP] Session initialized: ${sessionId} with client: ${combinedClientInfo.userAgent || 'unknown'}`);
     
     return {
       jsonrpc: "2.0",
@@ -409,12 +427,7 @@ class MCPProtocolHandler {
           name: "codap-mcp-server",
           version: "1.0.0"
         },
-        sessionInfo: {
-          sessionId: sessionId,
-          legacyCode: session.legacyCode,
-          expiresAt: session.expiresAt,
-          status: session.status
-        }
+        sessionInfo
       },
       id
     };
@@ -427,14 +440,20 @@ class MCPProtocolHandler {
   }
   
   async handlePing(params, id, sessionId, headers = {}) {
-    const session = await this.sessionManager.getSessionByMCP(sessionId);
-    if (!session) {
-      return this.createErrorResponse(id, -32002, "Session not found");
+    // Ping works with or without session
+    if (sessionId) {
+      const session = await this.sessionManager.getSessionByMCP(sessionId);
+      if (!session) {
+        return this.createErrorResponse(id, -32002, "Session not found");
+      }
     }
     
     return {
       jsonrpc: "2.0",
-      result: {},
+      result: { 
+        status: sessionId ? "session-connected" : "session-agnostic",
+        timestamp: new Date().toISOString()
+      },
       id
     };
   }
@@ -457,11 +476,7 @@ class MCPProtocolHandler {
   }
   
   async handleCapabilities(params, id, sessionId, headers = {}) {
-    const session = await this.sessionManager.getSessionByMCP(sessionId);
-    if (!session || !session.initialized) {
-      return this.createErrorResponse(id, -32002, "Session not initialized");
-    }
-    
+    // Capabilities work with or without session
     return {
       jsonrpc: "2.0",
       result: {
@@ -470,7 +485,13 @@ class MCPProtocolHandler {
             listChanged: false
           },
           resources: {},
-          prompts: {}
+          prompts: {},
+          logging: {}
+        },
+        serverInfo: {
+          name: "codap-mcp-server",
+          version: "1.0.0",
+          sessionMode: sessionId ? "session-connected" : "session-agnostic"
         }
       },
       id
@@ -478,35 +499,115 @@ class MCPProtocolHandler {
   }
   
   async handleToolsList(params, id, sessionId, headers = {}) {
-    const session = await this.sessionManager.getSessionByMCP(sessionId);
-    if (!session || !session.initialized) {
-      return this.createErrorResponse(id, -32002, "Session not initialized");
+    // Always allow tools list, but include session connection tool if no session
+    let tools = [];
+    
+    if (!sessionId) {
+      // No session - only provide connection tool
+      tools = [{
+        name: "connect_to_session",
+        description: "Connect to a CODAP session using a session ID from the CODAP plugin",
+        inputSchema: {
+          type: "object",
+          properties: {
+            sessionId: {
+              type: "string",
+              description: "The session ID from your CODAP plugin (e.g., 'ABC12345')"
+            }
+          },
+          required: ["sessionId"]
+        }
+      }];
+    } else {
+      // Session exists - provide all CODAP tools
+      const session = await this.sessionManager.getSessionByMCP(sessionId);
+      if (!session || !session.initialized) {
+        return this.createErrorResponse(id, -32002, "Session not initialized");
+      }
+      
+      tools = CODAP_TOOLS.map(tool => ({
+        name: tool.name,
+        description: tool.description,
+        inputSchema: tool.parameters
+      }));
     }
     
-    const tools = CODAP_TOOLS.map(tool => ({
-      name: tool.name,
-      description: tool.description,
-      inputSchema: tool.parameters
-    }));
-    
-    console.log(`[MCP] Listed ${tools.length} tools for session ${sessionId}`);
+    console.log(`[MCP] Listed ${tools.length} tools for session ${sessionId || 'no-session'}`);
     
     return {
       jsonrpc: "2.0",
       result: {
-        tools: tools
+        tools
       },
       id
     };
   }
   
   async handleToolCall(params, id, sessionId, headers = {}) {
-    const session = await this.sessionManager.getSessionByMCP(sessionId);
-    if (!session || !session.initialized) {
-      return this.createErrorResponse(id, -32002, "Session not initialized");
+    const { name: toolName, arguments: toolArgs } = params;
+    
+    // Handle special "connect_to_session" tool
+    if (toolName === "connect_to_session") {
+      const targetSessionId = toolArgs.sessionId;
+      if (!targetSessionId) {
+        return this.createErrorResponse(id, -32602, "Session ID is required");
+      }
+      
+      try {
+        // Check if target session exists in MCP system first
+        let targetSession = await this.sessionManager.getSessionByMCP(targetSessionId);
+        
+        if (!targetSession) {
+          // Check legacy session store
+          const { getSession } = require("./kv-utils.js");
+          const legacySession = await getSession(targetSessionId);
+          
+          if (!legacySession) {
+            return this.createErrorResponse(id, -32602, `CODAP session '${targetSessionId}' not found. Make sure the CODAP plugin is running with this session ID.`);
+          }
+          
+          // Create MCP session from legacy session
+          targetSession = await this.sessionManager.createSession(targetSessionId, {
+            legacySession: true,
+            originalCode: targetSessionId,
+            createdAt: legacySession.createdAt
+          });
+          
+          // Mark the session as initialized since it's coming from a valid legacy session
+          await this.sessionManager.updateSession(targetSessionId, {
+            initialized: true,
+            protocolVersion: "2025-03-26",
+            initializationTime: Date.now()
+          });
+          
+          console.log(`[MCP] Created and initialized MCP session from legacy session: ${targetSessionId}`);
+        }
+        
+        return {
+          jsonrpc: "2.0",
+          result: {
+            content: [
+              {
+                type: "text",
+                text: `Successfully connected to CODAP session '${targetSessionId}'!\n\nNow you can use any of the 34 CODAP tools to interact with your CODAP workspace.\n\nSession Details:\n- Session ID: ${targetSessionId}\n- Legacy Code: ${targetSession.legacyCode}\n- Status: ${targetSession.status}\n- Created: ${new Date(targetSession.createdAt).toLocaleString()}\n\nTo continue using CODAP tools, include the session ID '${targetSessionId}' in future requests by setting the 'mcp-session-id' header.`
+              }
+            ],
+            isError: false,
+            sessionEstablished: true,
+            sessionId: targetSessionId
+          },
+          id
+        };
+      } catch (error) {
+        return this.createErrorResponse(id, -32603, `Connection failed: ${error.message}`);
+      }
     }
     
-    const { name: toolName, arguments: toolArgs } = params;
+    // Regular CODAP tools require an established session
+    const session = await this.sessionManager.getSessionByMCP(sessionId);
+    if (!session || !session.initialized) {
+      return this.createErrorResponse(id, -32002, "No CODAP session established. Use 'connect_to_session' tool first.");
+    }
     
     // Validate tool exists
     const tool = CODAP_TOOLS.find(t => t.name === toolName);
@@ -582,7 +683,7 @@ class MCPProtocolHandler {
       sessionCode: session.legacyCode,
       tool: toolName,
       arguments: toolArgs,
-      requestId: requestId,
+      requestId,
       timestamp: Date.now(),
       mcpSessionId: sessionId
     };
@@ -700,22 +801,21 @@ function parseHeaders(req) {
   const headers = {};
   
   // Standard MCP headers
-  headers.sessionId = req.headers.get('mcp-session-id') || req.headers.get('x-mcp-session-id');
-  headers.clientInfo = req.headers.get('mcp-client-info') || req.headers.get('x-mcp-client-info');
-  headers.protocolVersion = req.headers.get('mcp-protocol-version') || req.headers.get('x-mcp-protocol-version');
+  headers.sessionId = req.headers.get("mcp-session-id") || req.headers.get("x-mcp-session-id");
+  headers.clientInfo = req.headers.get("mcp-client-info") || req.headers.get("x-mcp-client-info");
+  headers.protocolVersion = req.headers.get("mcp-protocol-version") || req.headers.get("x-mcp-protocol-version");
   
   // Legacy CODAP headers for backward compatibility
-  headers.legacySessionCode = req.headers.get('x-session-code') || req.headers.get('session-code');
+  headers.legacySessionCode = req.headers.get("x-session-code") || req.headers.get("session-code");
   
   // Security headers
-  headers.userAgent = req.headers.get('user-agent');
-  headers.origin = req.headers.get('origin');
-  headers.referer = req.headers.get('referer');
+  headers.userAgent = req.headers.get("user-agent");
+  headers.origin = req.headers.get("origin");
+  headers.referer = req.headers.get("referer");
   
-  // Generate session ID if not provided
-  if (!headers.sessionId) {
-    headers.sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  }
+  // For session-agnostic approach: allow null session ID
+  // Session ID will only be set when explicitly provided via headers
+  headers.isDynamicSession = !headers.sessionId;
   
   return headers;
 }
@@ -728,7 +828,7 @@ function validateHeaders(headers) {
   
   // Validate session ID format
   if (headers.sessionId && !/^[a-zA-Z0-9_-]+$/.test(headers.sessionId)) {
-    errors.push('Invalid session ID format');
+    errors.push("Invalid session ID format");
   }
   
   // Validate client info if provided
@@ -736,7 +836,7 @@ function validateHeaders(headers) {
     try {
       JSON.parse(headers.clientInfo);
     } catch (e) {
-      errors.push('Invalid client info JSON format');
+      errors.push("Invalid client info JSON format");
     }
   }
   
@@ -758,7 +858,7 @@ async function handleBatchRequest(requests, sessionId, headers, startTime) {
       id: null
     }), {
       status: 400,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { "Content-Type": "application/json" }
     });
   }
   
@@ -807,8 +907,8 @@ async function handleBatchRequest(requests, sessionId, headers, startTime) {
     return new Response(null, {
       status: 204,
       headers: {
-        'Access-Control-Allow-Origin': '*',
-        'x-processing-time-ms': processingTime.toString()
+        "Access-Control-Allow-Origin": "*",
+        "x-processing-time-ms": processingTime.toString()
       }
     });
   }
@@ -817,11 +917,11 @@ async function handleBatchRequest(requests, sessionId, headers, startTime) {
   return new Response(JSON.stringify(responses), {
     status: 200,
     headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-      'mcp-session-id': sessionId,
-      'x-processing-time-ms': processingTime.toString(),
-      'x-batch-size': requests.length.toString()
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*",
+      "mcp-session-id": sessionId,
+      "x-processing-time-ms": processingTime.toString(),
+      "x-batch-size": requests.length.toString()
     }
   });
 }
@@ -850,7 +950,7 @@ async function POST(req) {
         id: null
       }), {
         status: 400,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { "Content-Type": "application/json" }
       });
     }
     
@@ -865,24 +965,26 @@ async function POST(req) {
     // Create handler with enhanced session manager
     const handler = new MCPProtocolHandler();
     
-    // Check rate limiting before processing
-    const rateLimitOk = await handler.sessionManager.checkRateLimit(sessionId);
-    if (!rateLimitOk) {
-      return new Response(JSON.stringify({
-        jsonrpc: "2.0",
-        error: {
-          code: -32429,
-          message: "Rate limit exceeded",
-          data: { sessionId: sessionId }
-        },
-        id: body.id || null
-      }), {
-        status: 429,
-        headers: { 
-          'Content-Type': 'application/json',
-          'Retry-After': '60'
-        }
-      });
+    // Check rate limiting before processing (skip if no session ID)
+    if (sessionId && !headers.isDynamicSession) {
+      const rateLimitOk = await handler.sessionManager.checkRateLimit(sessionId);
+      if (!rateLimitOk) {
+        return new Response(JSON.stringify({
+          jsonrpc: "2.0",
+          error: {
+            code: -32429,
+            message: "Rate limit exceeded",
+            data: { sessionId }
+          },
+          id: body.id || null
+        }), {
+          status: 429,
+          headers: { 
+            "Content-Type": "application/json",
+            "Retry-After": "60"
+          }
+        });
+      }
     }
     
     // Process the request
@@ -891,42 +993,56 @@ async function POST(req) {
     
     // Handle null response (notifications)
     if (response === null) {
+      const notificationHeaders = {
+        "Access-Control-Allow-Origin": "*",
+        "x-processing-time-ms": processingTime.toString()
+      };
+      
+      if (sessionId) {
+        notificationHeaders["mcp-session-id"] = sessionId;
+      }
+      
       return new Response(null, {
         status: 204,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'mcp-session-id': sessionId,
-          'x-processing-time-ms': processingTime.toString()
-        }
+        headers: notificationHeaders
       });
     }
     
     // Check if this is a JSON-RPC format error that should return 400
     if (response.error && response.error.code === -32600) {
+      const errorHeaders = {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+        "x-processing-time-ms": processingTime.toString()
+      };
+      
+      if (sessionId) {
+        errorHeaders["mcp-session-id"] = sessionId;
+      }
+      
       return new Response(JSON.stringify(response), {
         status: 400,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'mcp-session-id': sessionId,
-          'x-processing-time-ms': processingTime.toString()
-        }
+        headers: errorHeaders
       });
     }
     
     // Enhanced response headers
     const responseHeaders = {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type, mcp-session-id, mcp-client-info, x-mcp-session-id, x-mcp-client-info',
-      'mcp-session-id': sessionId,
-      'x-processing-time-ms': processingTime.toString(),
-      'x-server-version': '1.0.0'
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Headers": "Content-Type, mcp-session-id, mcp-client-info, x-mcp-session-id, x-mcp-client-info",
+      "x-processing-time-ms": processingTime.toString(),
+      "x-server-version": "1.0.0"
     };
+    
+    // Only include session ID header if we have one
+    if (sessionId) {
+      responseHeaders["mcp-session-id"] = sessionId;
+    }
     
     // Include client info in response if provided
     if (headers.clientInfo) {
-      responseHeaders['mcp-client-info'] = headers.clientInfo;
+      responseHeaders["mcp-client-info"] = headers.clientInfo;
     }
     
     console.log(`[MCP] Request processed in ${processingTime}ms for session ${sessionId}`);
@@ -948,7 +1064,7 @@ async function POST(req) {
         message: "Internal server error",
         data: { 
           error: error.message,
-          sessionId: sessionId,
+          sessionId,
           processingTimeMs: processingTime
         }
       },
@@ -958,9 +1074,9 @@ async function POST(req) {
     return new Response(JSON.stringify(errorResponse), {
       status: 500,
       headers: { 
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'x-processing-time-ms': processingTime.toString()
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+        "x-processing-time-ms": processingTime.toString()
       }
     });
   }
@@ -974,8 +1090,8 @@ async function GET(req) {
   const pathname = url.pathname;
   
   // Session metrics endpoint
-  if (pathname.includes('/metrics')) {
-    const sessionId = url.searchParams.get('session') || req.headers.get('mcp-session-id');
+  if (pathname.includes("/metrics")) {
+    const sessionId = url.searchParams.get("session") || req.headers.get("mcp-session-id");
     
     if (sessionId) {
       try {
@@ -984,7 +1100,7 @@ async function GET(req) {
         const metrics = handler.sessionManager.getMetrics();
         
         return new Response(JSON.stringify({
-          sessionId: sessionId,
+          sessionId,
           session: session ? {
             status: session.status,
             createdAt: session.createdAt,
@@ -997,7 +1113,7 @@ async function GET(req) {
           timestamp: new Date().toISOString()
         }), {
           status: 200,
-          headers: { 'Content-Type': 'application/json' }
+          headers: { "Content-Type": "application/json" }
         });
       } catch (error) {
         return new Response(JSON.stringify({
@@ -1005,7 +1121,7 @@ async function GET(req) {
           message: error.message
         }), {
           status: 500,
-          headers: { 'Content-Type': 'application/json' }
+          headers: { "Content-Type": "application/json" }
         });
       }
     }
@@ -1020,7 +1136,7 @@ async function GET(req) {
         timestamp: new Date().toISOString()
       }), {
         status: 200,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { "Content-Type": "application/json" }
       });
     } catch (error) {
       return new Response(JSON.stringify({
@@ -1028,7 +1144,7 @@ async function GET(req) {
         message: error.message
       }), {
         status: 500,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { "Content-Type": "application/json" }
       });
     }
   }
@@ -1053,7 +1169,7 @@ async function GET(req) {
     timestamp: new Date().toISOString()
   }), {
     status: 200,
-    headers: { 'Content-Type': 'application/json' }
+    headers: { "Content-Type": "application/json" }
   });
 }
 
@@ -1061,16 +1177,52 @@ async function GET(req) {
  * Handle OPTIONS requests - Enhanced CORS with comprehensive header support
  */
 async function OPTIONS(req) {
-  return new Response('', {
+  return new Response("", {
     status: 200,
     headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, mcp-session-id, mcp-client-info, mcp-protocol-version, x-mcp-session-id, x-mcp-client-info, x-session-code, session-code',
-      'Access-Control-Expose-Headers': 'mcp-session-id, x-processing-time-ms, x-server-version',
-      'Access-Control-Max-Age': '86400'
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, mcp-session-id, mcp-client-info, mcp-protocol-version, x-mcp-session-id, x-mcp-client-info, x-session-code, session-code",
+      "Access-Control-Expose-Headers": "mcp-session-id, x-processing-time-ms, x-server-version",
+      "Access-Control-Max-Age": "86400"
     }
   });
+}
+
+/**
+ * Extract session ID from natural language command or tool arguments
+ */
+function extractSessionIdFromCommand(toolName, arguments_obj) {
+  // Check if this is a connection establishment command
+  if (arguments_obj && typeof arguments_obj === 'object') {
+    // Direct session ID in arguments
+    if (arguments_obj.sessionId) {
+      return arguments_obj.sessionId;
+    }
+    
+    // Check for natural language patterns in various argument fields
+    const textFields = ['instruction', 'command', 'message', 'text', 'description'];
+    for (const field of textFields) {
+      if (arguments_obj[field] && typeof arguments_obj[field] === 'string') {
+        const sessionMatch = arguments_obj[field].match(/(?:connect to|session)\s+(?:codap\s+)?session\s+([A-Z0-9]{8})/i);
+        if (sessionMatch) {
+          return sessionMatch[1].toUpperCase();
+        }
+      }
+    }
+    
+    // Check all string values for session patterns
+    for (const [key, value] of Object.entries(arguments_obj)) {
+      if (typeof value === 'string') {
+        const sessionMatch = value.match(/(?:connect to|session)\s+(?:codap\s+)?session\s+([A-Z0-9]{8})/i);
+        if (sessionMatch) {
+          return sessionMatch[1].toUpperCase();
+        }
+      }
+    }
+  }
+  
+  return null;
 }
 
 // Export functions for Vercel serverless

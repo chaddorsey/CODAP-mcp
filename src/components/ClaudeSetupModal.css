@@ -1,0 +1,235 @@
+/* Claude Setup Modal Styles */
+
+.claude-setup-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.claude-setup-modal {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.claude-setup-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.claude-setup-modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.claude-setup-modal-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.claude-setup-modal-close:hover {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.claude-setup-modal-close:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.claude-setup-modal-content {
+  padding: 20px 24px 24px;
+}
+
+.claude-setup-description {
+  margin-bottom: 20px;
+}
+
+.claude-setup-description p {
+  margin: 0;
+  color: #374151;
+  line-height: 1.5;
+}
+
+.claude-setup-config-section {
+  margin-bottom: 24px;
+}
+
+.claude-setup-config-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.claude-setup-config-header span {
+  font-weight: 500;
+  color: #374151;
+}
+
+.claude-setup-copy-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.claude-setup-copy-button:hover:not(:disabled) {
+  background-color: #2563eb;
+}
+
+.claude-setup-copy-button:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.claude-setup-copy-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.claude-setup-config-block {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 16px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 13px;
+  line-height: 1.4;
+  overflow-x: auto;
+  white-space: pre;
+  color: #1e293b;
+  margin: 0;
+}
+
+.claude-setup-copy-feedback {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background-color: #dcfce7;
+  border: 1px solid #bbf7d0;
+  border-radius: 6px;
+  color: #166534;
+  font-size: 14px;
+}
+
+.claude-setup-instructions {
+  border-top: 1px solid #e5e7eb;
+  padding-top: 20px;
+}
+
+.claude-setup-instructions h4 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.claude-setup-file-locations {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 20px 0;
+}
+
+.claude-setup-file-locations li {
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  background-color: #f8fafc;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.claude-setup-file-locations strong {
+  color: #374151;
+  margin-right: 8px;
+}
+
+.claude-setup-file-locations code {
+  background-color: #e2e8f0;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 13px;
+  color: #1e293b;
+}
+
+.claude-setup-final-steps h4 {
+  margin: 20px 0 12px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.claude-setup-final-steps ol {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.claude-setup-final-steps li {
+  margin-bottom: 6px;
+  color: #374151;
+  line-height: 1.5;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .claude-setup-modal-backdrop {
+    padding: 10px;
+  }
+  
+  .claude-setup-modal {
+    max-height: 95vh;
+  }
+  
+  .claude-setup-modal-header,
+  .claude-setup-modal-content {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  
+  .claude-setup-config-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  
+  .claude-setup-copy-button {
+    justify-content: center;
+  }
+  
+  .claude-setup-config-block {
+    font-size: 12px;
+    padding: 12px;
+  }
+} 

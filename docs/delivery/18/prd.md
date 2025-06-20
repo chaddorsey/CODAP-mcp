@@ -237,6 +237,47 @@ function handleToolError(error: Error, requestId: string) {
 - **Monitoring Integration**: Standard MCP metrics and health checks
 - **Security Compliance**: Standard MCP security practices and audit trails
 
+### **Claude Desktop Integration UX Design**
+
+**Streamlined Two-Phase User Experience:**
+
+**Phase 1: One-Time Claude Setup (Hidden Until Needed)**
+- Small, unobtrusive "Set up Claude MCP" link in plugin UI
+- Clicking reveals modal with Claude Desktop configuration JSON
+- "Copy Configuration" button with clear instructions for pasting into Claude config file
+- Only shown when user needs initial setup
+
+**Phase 2: Regular Session Connection (Primary UI)**
+- Prominent session ID display with clear visual hierarchy
+- Large "Copy Claude Connection Instructions" button
+- Copy action provides complete instruction text for pasting into Claude
+- Confirmation message: "Instructions copied! Paste into Claude Desktop to connect."
+- Real-time connection status updates
+
+**UI Flow Design:**
+```
+┌─────────────────────────────────────┐
+│ 🤖 CODAP AI Assistant              │
+│                                     │
+│ Session: ABC12345 [📋 Copy Instructions] │
+│                                     │
+│ Status: ⏳ Waiting for Claude...    │
+│                                     │
+│ ──────────────────────────────────  │
+│ Need help? Set up Claude MCP ↗      │
+└─────────────────────────────────────┘
+```
+
+**Connection Instructions Template:**
+```
+Connect to CODAP session ABC12345
+
+Tell Claude: "Connect to CODAP session ABC12345"
+
+Or add this to your Claude Desktop configuration:
+[JSON configuration provided]
+```
+
 ## Acceptance Criteria
 
 ### **Core MCP Compliance**
@@ -302,6 +343,29 @@ function handleToolError(error: Error, requestId: string) {
 7. **Performance Monitoring**: How to instrument MCP protocol for observability?
 8. **Version Management**: How to handle MCP protocol version evolution?
 
+## Implementation Notes and Scope Changes
+
+### **Task 18-7 Scope Extension (January 21, 2025)**
+
+During implementation of task 18-7 (StreamableHTTP transport), a comprehensive MCP protocol compliance analysis revealed multiple gaps beyond transport. Rather than implementing partial compliance, the scope was extended to achieve **complete MCP protocol compliance** in a single comprehensive task.
+
+**Extended Scope Included:**
+- Missing MCP methods (`ping`, `logging/setLevel`, `initialized`)
+- JSON-RPC notification support and batch processing  
+- MCP content format compliance for tool responses
+- Enhanced error handling with proper JSON-RPC codes
+- Complete CORS support for all MCP headers
+- Protocol version update to MCP 2025-03-26
+
+**Impact on Subsequent Tasks:**
+- **Task 18-8** (JSON-RPC error handling): **COMPLETED** as part of 18-7
+- **Task 18-9** (Backward compatibility): **PARTIALLY COMPLETED** - existing APIs maintained
+- **Tasks 18-10-18-12** (Client testing): Ready for execution with complete MCP server
+- **Task 18-13** (Performance): Foundation established for optimization
+- **Task 18-14** (Documentation): Can document complete implementation
+
+**Rationale:** This approach was more efficient than fragmenting compliance across multiple tasks and ensures PBI 18's core objective of full MCP compliance is achieved comprehensively.
+
 ## Related Tasks
 
 This PBI will be broken down into specific implementation tasks covering:
@@ -341,4 +405,140 @@ This PBI represents a critical architectural decision that transforms CODAP-MCP 
 - **Future-Proofing**: Standard compliance ensures compatibility with future MCP developments
 - **Maintenance Reduction**: Less custom protocol maintenance, more focus on CODAP functionality
 
-The timing is optimal: implementing this after PBI 16 (comprehensive tools) provides immediate value to a complete tool set, while positioning for PBI 17 (dynamic registration) creates the foundation for the ultimate plugin ecosystem vision. 
+The timing is optimal: implementing this after PBI 16 (comprehensive tools) provides immediate value to a complete tool set, while positioning for PBI 17 (dynamic registration) creates the foundation for the ultimate plugin ecosystem vision.
+
+---
+
+## Extended Scope: Direct Tool Execution (Task 18-5 Extension)
+
+### **Critical Implementation Gap Identified**
+
+During task 18-5 implementation, a critical gap was identified in the MCP tool execution pipeline. The current implementation successfully handles:
+
+✅ MCP protocol compliance (JSON-RPC 2.0)
+✅ Tool discovery and registration 
+✅ Session management with MCP headers
+✅ Tool request queuing and response polling
+
+❌ **Missing**: Actual tool execution without browser worker dependency
+
+### **Problem Statement**
+
+The current architecture assumes MCP clients will use the existing browser worker system (pairing banner → SSE stream → browser worker). However, MCP clients expect **direct API-based tool execution** without UI dependencies.
+
+**Current Flow** (Incomplete for MCP):
+```
+MCP Client → /api/mcp → Queue Tool Request → ⏳ Wait for Browser Worker → Timeout (30s)
+```
+
+**Required Flow** (Complete for MCP):
+```
+MCP Client → /api/mcp → Direct Tool Execution → Return Results
+```
+
+### **Solution: Hybrid Execution System**
+
+Extend task 18-5 to implement a **dual-mode tool execution system**:
+
+1. **Browser Worker Mode** (Existing): For pairing banner users
+2. **Direct Execution Mode** (New): For MCP clients
+
+**Implementation Strategy:**
+
+```typescript
+// Extended MCPProtocolHandler in api/mcp.js
+async handleToolCall(params, id, sessionId) {
+  const { name: toolName, arguments: toolArgs } = params;
+  
+  // Check if session has active browser worker
+  const hasBrowserWorker = await this.checkBrowserWorkerConnection(sessionId);
+  
+  if (hasBrowserWorker) {
+    // Route to existing browser worker system
+    return await this.executeBrowserWorkerTool(toolName, toolArgs, sessionId);
+  } else {
+    // Execute directly using server-side CODAP API simulation
+    return await this.executeDirectTool(toolName, toolArgs, sessionId);
+  }
+}
+```
+
+### **Direct Tool Execution Implementation**
+
+**Approach**: Create server-side implementations of the 33 CODAP tools using the existing `api/codap-tools.js` implementations, but modify them to work without browser dependency.
+
+**Key Changes:**
+1. **Mock CODAP API**: Implement server-side CODAP API simulation for MCP clients
+2. **State Management**: Store CODAP state (data contexts, components) in KV storage
+3. **Response Formatting**: Return MCP-compliant responses with simulated CODAP results
+
+**Example Implementation:**
+```typescript
+// New: api/mcp-tool-executor.js
+class DirectToolExecutor {
+  async executeCreateDataContext(args, sessionId) {
+    // Store data context in KV storage
+    const dataContext = {
+      name: args.name,
+      collections: args.collections,
+      created: Date.now(),
+      sessionId
+    };
+    
+    await kv.set(`session:${sessionId}:dataContext:${args.name}`, dataContext);
+    
+    return {
+      success: true,
+      values: {
+        id: Math.floor(Math.random() * 1000),
+        name: args.name,
+        title: args.name,
+        collections: args.collections.map(c => ({ id: Math.floor(Math.random() * 1000), name: c.name }))
+      }
+    };
+  }
+  
+  async executeCreateItems(args, sessionId) {
+    // Add items to stored data context
+    const items = args.items.map(item => ({
+      ...item,
+      id: Math.floor(Math.random() * 1000)
+    }));
+    
+    await kv.lpush(`session:${sessionId}:items:${args.dataContext}`, ...items.map(JSON.stringify));
+    
+    return {
+      success: true,
+      values: { itemIDs: items.map(i => i.id) }
+    };
+  }
+}
+```
+
+### **Benefits of Extended Approach**
+
+1. **Complete MCP Compatibility**: MCP clients get immediate tool execution
+2. **Backward Compatibility**: Browser worker system unchanged
+3. **Progressive Enhancement**: Sessions can upgrade from direct to browser worker mode
+4. **Testing Capability**: Full end-to-end testing possible without browser dependency
+5. **Demonstration Value**: MCP tools work immediately for evaluation
+
+### **Implementation Notes**
+
+- **Task 18-5 Extension**: Add direct tool execution mode alongside existing browser worker integration
+- **KV Storage Schema**: Design session-based storage for CODAP state simulation
+- **Error Handling**: Ensure both execution modes have consistent error responses
+- **Performance**: Direct mode should be faster than browser worker for simple operations
+- **Limitations**: Direct mode may not support all CODAP visualization features initially
+
+### **Acceptance Criteria Updates**
+
+Add to existing task 18-5 acceptance criteria:
+
+26. **Direct Tool Execution**: MCP clients can execute tools without browser worker dependency
+27. **Hybrid Mode Detection**: System automatically chooses execution mode based on session state
+28. **State Persistence**: CODAP state maintained in KV storage for direct execution sessions
+29. **Mode Transparency**: MCP clients receive consistent responses regardless of execution mode
+30. **Performance Equivalence**: Direct execution mode performs at least as fast as browser worker mode for basic operations
+
+This extension ensures PBI 18 delivers complete MCP compliance while maintaining all existing functionality. 

@@ -6,7 +6,7 @@
  * in KV storage for MCP clients that don't use the browser worker interface.
  */
 
-const { kv } = require('@vercel/kv');
+const { kv } = require("@vercel/kv");
 
 /**
  * Generate unique IDs for CODAP entities
@@ -38,9 +38,9 @@ class CODAPStateManager {
         attrs: (collection.attrs || []).map(attr => ({
           id: generateId(),
           name: attr.name,
-          type: attr.type || 'categorical',
+          type: attr.type || "categorical",
           title: attr.title || attr.name,
-          description: attr.description || ''
+          description: attr.description || ""
         }))
       })),
       created: Date.now(),
@@ -110,9 +110,9 @@ class CODAPStateManager {
       attrs: (collection.attrs || []).map(attr => ({
         id: generateId(),
         name: attr.name,
-        type: attr.type || 'categorical',
+        type: attr.type || "categorical",
         title: attr.title || attr.name,
-        description: attr.description || ''
+        description: attr.description || ""
       }))
     };
 
@@ -147,9 +147,9 @@ class CODAPStateManager {
     const newAttribute = {
       id: generateId(),
       name: attribute.name,
-      type: attribute.type || 'categorical',
+      type: attribute.type || "categorical",
       title: attribute.title || attribute.name,
-      description: attribute.description || ''
+      description: attribute.description || ""
     };
 
     collection.attrs.push(newAttribute);
