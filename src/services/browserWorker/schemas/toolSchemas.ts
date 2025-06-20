@@ -242,56 +242,8 @@ const createTableSchema: ToolSchema = {
   }
 };
 
-/**
- * Schema for creating a CODAP component (generic)
- * Maps to: action: "create", resource: "component"
- */
-const createComponentSchema: ToolSchema = {
-  name: "create_component",
-  description: "Create a new component (graph, table, etc.) in CODAP",
-  parameters: {
-    type: "object",
-    properties: {
-      type: {
-        type: "string",
-        description: "Type of component to create",
-        required: true,
-        enum: ["graph", "caseTable", "map", "slider", "calculator", "text"]
-      },
-      dataContext: {
-        type: "string",
-        description: "Name of data context to connect to"
-      },
-      name: {
-        type: "string",
-        description: "Name for the component"
-      },
-      title: {
-        type: "string",
-        description: "Title for the component"
-      },
-      position: {
-        type: "object",
-        description: "Position and size of the component",
-        properties: {
-          x: { type: "number" },
-          y: { type: "number" },
-          width: { type: "number" },
-          height: { type: "number" }
-        }
-      },
-      configuration: {
-        type: "object",
-        description: "Component-specific configuration (e.g., xAttributeName/yAttributeName for graphs)",
-        properties: {
-          xAttributeName: { type: "string" },
-          yAttributeName: { type: "string" }
-        }
-      }
-    },
-    required: ["type"]
-  }
-};
+// Removed createComponentSchema - not a valid CODAP API call
+// Use specific tools like create_graph, create_table, create_map instead
 
 /**
  * Schema for getting CODAP data contexts
@@ -371,7 +323,6 @@ export const DEFAULT_TOOL_REGISTRY: ToolRegistry = {
   create_data_context: createDataContextSchema,
   create_items: createItemsSchema,
   create_table: createTableSchema,
-  create_component: createComponentSchema,
   get_data_contexts: getDataContextsSchema,
   get_components: getComponentsSchema,
   get_data_context: getDataContextSchema

@@ -201,10 +201,9 @@ export class ToolExecutor implements ToolExecutorInterface {
       const response: ToolResponse = {
         requestId: queuedRequest.request.id,
         success: result.success,
-        result: result.result,
-        error: result.error,
         timestamp: result.timestamp,
-        duration
+        duration,
+        ...(result.success ? { result: result.result } : { error: result.error })
       };
 
       this.queue.markProcessed(queuedRequest.request.id, duration);
@@ -220,13 +219,13 @@ export class ToolExecutor implements ToolExecutorInterface {
       const errorResponse: ToolResponse = {
         requestId: queuedRequest.request.id,
         success: false,
+        timestamp: new Date().toISOString(),
+        duration,
         error: {
           type: "execution_error",
           message: error instanceof Error ? error.message : "Unknown execution error",
           details: error
-        },
-        timestamp: new Date().toISOString(),
-        duration
+        }
       };
 
       this.queue.markFailed(queuedRequest.request.id, error instanceof Error ? error : new Error(String(error)));
@@ -267,16 +266,16 @@ export class ToolExecutor implements ToolExecutorInterface {
           result = await this.createDataContext(request.args);
           break;
           
+        case "create_collection":
+          result = await this.createCollection(request.args);
+          break;
+          
         case "create_items":
           result = await this.createItems(request.args);
           break;
           
         case "create_table":
           result = await this.createTable(request.args);
-          break;
-          
-        case "create_component":
-          result = await this.createComponent(request.args);
           break;
           
         case "get_data_contexts":
@@ -289,6 +288,10 @@ export class ToolExecutor implements ToolExecutorInterface {
           
         case "get_data_context":
           result = await this.getDataContext(request.args);
+          break;
+          
+        case "update_component":
+          result = await this.updateComponent(request.args);
           break;
           
         default:
@@ -356,36 +359,61 @@ export class ToolExecutor implements ToolExecutorInterface {
   }
 
   /**
-   * Create graph with axis assignments
+   * Create graph with optimal two-step approach for axis assignments
    */
   private async createGraph(args: any): Promise<any> {
     const { 
       dataContext, 
-      graphType, 
+      dataContextName,
+      graphType = "scatterPlot", 
       xAttribute, 
       yAttribute, 
       title, 
       width = 400, 
       height = 300,
-      position = { x: 50, y: 50 }
+      position = { x: 50, y: 50 },
+      dimensions
     } = args;
 
+    // Step 1: Create empty graph component (proven optimal approach)
     const componentValues: any = {
       type: "graph",
-      dataContext,
-      title: title || `${graphType} of ${dataContext}`,
-      dimensions: { width, height },
+      dataContext: dataContext || dataContextName,
+      graphType,
+      dimensions: dimensions || { width, height },
       position
     };
 
-    // Add axis configuration
-    if (xAttribute || yAttribute) {
-      componentValues.configuration = {};
-      if (xAttribute) componentValues.configuration.xAttributeName = xAttribute;
-      if (yAttribute) componentValues.configuration.yAttributeName = yAttribute;
+    if (title) componentValues.name = title;
+
+    console.log("Browser worker creating empty graph:", componentValues);
+    const graphResult = await sendMessage("create", "component", componentValues);
+
+    // Step 2: If axes are specified, update the graph with axis assignments (proven fastest method)
+    if ((xAttribute || yAttribute) && graphResult.success && graphResult.values) {
+      const componentId = graphResult.values.id;
+      if (componentId) {
+        const updateValues: any = {};
+        if (xAttribute) updateValues.xAttributeName = xAttribute;
+        if (yAttribute) updateValues.yAttributeName = yAttribute;
+
+        console.log("Browser worker updating graph axes:", { componentId, updateValues });
+        const updateResult = await sendMessage("update", `component[${componentId}]`, updateValues);
+
+        // Return combined result
+        return {
+          success: graphResult.success && updateResult.success,
+          values: {
+            ...graphResult.values,
+            axesAssigned: updateResult.success,
+            xAttributeName: xAttribute,
+            yAttributeName: yAttribute
+          }
+        };
+      }
     }
 
-    return await sendMessage("create", "component", componentValues);
+    return graphResult;
   }
 
   /**
@@ -393,6 +421,24 @@ export class ToolExecutor implements ToolExecutorInterface {
    */
   private async createDataContext(args: any): Promise<any> {
     return await sendMessage("create", "dataContext", args);
+  }
+
+  /**
+   * Create collection in data context
+   */
+  private async createCollection(args: any): Promise<any> {
+    const { dataContextName, collectionName, attributes, parent } = args;
+    const values: any = {
+      name: collectionName,
+      title: collectionName,
+      attrs: attributes
+    };
+    
+    if (parent) {
+      values.parent = parent;
+    }
+    
+    return await sendMessage("create", `dataContext[${dataContextName}].collection`, values);
   }
 
   /**
@@ -411,11 +457,20 @@ export class ToolExecutor implements ToolExecutorInterface {
     return await createTable(dataContext, name);
   }
 
+  // Removed createComponent - not a valid CODAP API call
+  // Use specific tools like create_graph, create_table, create_map instead
+
   /**
-   * Create generic component
+   * Update component (for graph axis assignment)
    */
-  private async createComponent(args: any): Promise<any> {
-    return await sendMessage("create", "component", args);
+  private async updateComponent(args: any): Promise<any> {
+    const { componentId, values, ...updateValues } = args;
+    
+    // If values object is provided, use it; otherwise use the direct properties
+    const updateData = values || updateValues;
+    
+    // Use component[id] resource format for updates
+    return await sendMessage("update", `component[${componentId}]`, updateData);
   }
 
   /**

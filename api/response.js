@@ -1,7 +1,7 @@
 // Tool response endpoint using Node.js runtime
-// Accepts tool responses from MCP server
+// Accepts tool responses from MCP server and retrieves stored responses
 
-const { getSession, setResponse } = require("./kv-utils");
+const { getSession, setResponse, getResponse } = require("./kv-utils");
 
 /**
  * Validates session code format
@@ -66,8 +66,8 @@ async function storeToolResponse(code, responseData) {
 export default async function handler(req, res) {
   // Set CORS headers
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, x-sso-bypass");
 
   try {
     // Handle CORS preflight
@@ -76,9 +76,48 @@ export default async function handler(req, res) {
       return;
     }
     
-    // Only allow POST method
+    // Handle GET requests (retrieve responses)
+    if (req.method === "GET") {
+      const { sessionCode, requestId } = req.query;
+      
+      if (!sessionCode) {
+        createErrorResponse(res, 400, "missing_session_code", "Session code is required");
+        return;
+      }
+      
+      if (!isValidSessionCode(sessionCode)) {
+        createErrorResponse(res, 400, "invalid_session_code", "Session code must be 8 characters (A-Z, 2-7)");
+        return;
+      }
+      
+      // Validate session exists and is not expired
+      const sessionValid = await validateSession(sessionCode);
+      if (!sessionValid) {
+        createErrorResponse(res, 404, "session_not_found", "Session not found or expired");
+        return;
+      }
+      
+      // Get stored response
+      const storedResponse = await getResponse(sessionCode);
+      
+      if (!storedResponse) {
+        createErrorResponse(res, 404, "response_not_found", "No response found for this session");
+        return;
+      }
+      
+      // If requestId is specified, check if it matches
+      if (requestId && storedResponse.id !== requestId) {
+        createErrorResponse(res, 404, "response_not_found", `No response found for request ID: ${requestId}`);
+        return;
+      }
+      
+      createSuccessResponse(res, storedResponse);
+      return;
+    }
+    
+    // Handle POST requests (store responses)
     if (req.method !== "POST") {
-      createErrorResponse(res, 405, "method_not_allowed", "Only POST method is allowed");
+      createErrorResponse(res, 405, "method_not_allowed", "Only GET and POST methods are allowed");
       return;
     }
     

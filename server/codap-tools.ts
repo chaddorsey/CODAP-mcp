@@ -801,7 +801,7 @@ export const componentTools = [
   },
   {
     name: "update_component",
-    description: "Update component properties",
+    description: "Update component properties, including graph axis assignments",
     inputSchema: {
       type: "object",
       properties: {
@@ -828,6 +828,14 @@ export const componentTools = [
             height: { type: "number" }
           },
           description: "New dimensions for the component"
+        },
+        xAttributeName: {
+          type: "string",
+          description: "Attribute name for X-axis (for graphs)"
+        },
+        yAttributeName: {
+          type: "string",
+          description: "Attribute name for Y-axis (for graphs)"
         }
       },
       required: ["componentId"]
@@ -1102,20 +1110,47 @@ export const toolHandlers = {
   },
 
   create_graph: async (args: any) => {
-    const { dataContextName, title, xAttribute, yAttribute, graphType = "scatterPlot", position, dimensions } = args;
-    const values: any = {
+    const { dataContextName, dataContext, title, xAttribute, yAttribute, graphType = "scatterPlot", position, dimensions } = args;
+    
+    // Step 1: Create empty graph component (optimal approach based on testing)
+    const graphValues: any = {
       type: "graph",
-      dataContext: dataContextName,
+      dataContext: dataContext || dataContextName,
       graphType
     };
     
-    if (title) values.name = title;
-    if (xAttribute) values.xAttribute = xAttribute;
-    if (yAttribute) values.yAttribute = yAttribute;
-    if (position) values.position = position;
-    if (dimensions) values.dimensions = dimensions;
+    if (title) graphValues.name = title;
+    if (position) graphValues.position = position;
+    if (dimensions) graphValues.dimensions = dimensions;
     
-    return await sendMessage("create", "component", values);
+    console.log("Server creating empty graph:", graphValues);
+    const graphResult = await sendMessage("create", "component", graphValues);
+    
+    // Step 2: If axes are specified, update the graph with axis assignments (proven optimal approach)
+    if ((xAttribute || yAttribute) && graphResult.success && graphResult.values) {
+      const componentId = graphResult.values.id;
+      if (componentId) {
+        const updateValues: any = {};
+        if (xAttribute) updateValues.xAttributeName = xAttribute;
+        if (yAttribute) updateValues.yAttributeName = yAttribute;
+        
+        console.log("Server updating graph axes:", { componentId, updateValues });
+        const updateResult = await sendMessage("update", `component[${componentId}]`, updateValues);
+        
+        // Return combined result
+        return {
+          success: graphResult.success && updateResult.success,
+          values: {
+            ...graphResult.values,
+            axesAssigned: updateResult.success,
+            xAttributeName: xAttribute,
+            yAttributeName: yAttribute
+          }
+        };
+      }
+    }
+    
+    return graphResult;
   },
 
   create_map: async (args: any) => {
@@ -1139,12 +1174,27 @@ export const toolHandlers = {
   },
 
   update_component: async (args: any) => {
-    const { componentId, title, position, dimensions } = args;
+    const { componentId, title, position, dimensions, xAttributeName, yAttributeName, values, ...otherProps } = args;
     const updateValues: any = {};
+    
+    // Handle basic component properties
     if (title) updateValues.name = title;
     if (position) updateValues.position = position;
     if (dimensions) updateValues.dimensions = dimensions;
     
+    // Handle graph axis assignments
+    if (xAttributeName) updateValues.xAttributeName = xAttributeName;
+    if (yAttributeName) updateValues.yAttributeName = yAttributeName;
+    
+    // Handle values object or any other properties
+    if (values) {
+      Object.assign(updateValues, values);
+    }
+    
+    // Handle any other properties passed directly
+    Object.assign(updateValues, otherProps);
+    
+    console.log("Server updating component with values:", updateValues);
     return await sendMessage("update", `component[${componentId}]`, updateValues);
   },
 

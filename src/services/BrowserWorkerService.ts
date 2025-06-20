@@ -14,6 +14,7 @@ import {
   BrowserWorkerErrorSystem
 } from "./browserWorker";
 import { ConnectionManager } from "./browserWorker/ConnectionManager";
+import { ResponseHandler } from "./browserWorker/ResponseHandler";
 import { BrowserWorkerConfig, SSEEvent } from "./browserWorker/types";
 import { 
   createDataContext, 
@@ -22,6 +23,9 @@ import {
   createTable,
   sendMessage
 } from "@concord-consortium/codap-plugin-api";
+
+// Import comprehensive tool handlers for dynamic execution
+// Using dynamic import for compiled JavaScript module
 
 /**
  * Browser worker service configuration
@@ -40,7 +44,9 @@ export class BrowserWorkerService {
   private config: BrowserWorkerServiceConfig;
   private errorSystem: BrowserWorkerErrorSystem;
   private connectionManager: ConnectionManager | null = null;
+  private responseHandler: ResponseHandler | null = null;
   private isStarted = false;
+  private comprehensiveToolHandlers: Record<string, (args: any) => Promise<any>> | null = null;
 
   private connectionStatus: ConnectionStatus = {
     state: ConnectionState.DISCONNECTED,
@@ -60,6 +66,17 @@ export class BrowserWorkerService {
     };
     
     this.connectionManager = new ConnectionManager(connectionConfig);
+    
+    // Initialize ResponseHandler
+    this.responseHandler = new ResponseHandler({
+      relayBaseUrl: config.relayBaseUrl,
+      responseEndpoint: "/api/response",
+      headers: {
+        "Content-Type": "application/json",
+        "x-sso-bypass": "pAg5Eon3T8qOwMaWKzo9k6T4pdbYiCye"
+      },
+      debug: config.debug || false
+    });
     
     // Listen to status changes from ConnectionManager
     this.connectionManager.addEventListener("status-change", (status: ConnectionStatus) => {
@@ -87,14 +104,20 @@ export class BrowserWorkerService {
         this.handleToolRequest(event);
       }
     });
+
+    // Load comprehensive tool handlers
+    this.loadComprehensiveToolHandlers();
   }
 
   /**
    * Handle incoming tool request from SSE stream
    */
   private async handleToolRequest(event: SSEEvent): Promise<void> {
+    const startTime = Date.now();
+    let toolRequest: ToolRequest | null = null;
+    
     try {
-      const toolRequest = event.data as ToolRequest;
+      toolRequest = event.data as ToolRequest;
       
       if (this.config.debug) {
         console.log("Processing tool request:", toolRequest);
@@ -107,22 +130,167 @@ export class BrowserWorkerService {
         arguments: toolRequest.args
       });
 
-      // Execute the tool based on the tool name
-      if (toolRequest.tool === "create_dataset_with_table") {
-        await this.executeCreateDatasetWithTable(toolRequest);
-      } else {
-        console.warn("Unsupported tool:", toolRequest.tool);
+      // Execute the tool using dynamic handler system
+      const result = await this.executeToolRequest(toolRequest.tool, toolRequest.args, toolRequest.id);
+      
+      // Create successful response
+      const response: ToolResponse = {
+        requestId: toolRequest.id,
+        success: true,
+        result,
+        timestamp: new Date().toISOString(),
+        duration: Date.now() - startTime
+      };
+      
+      // Post response back to server
+      if (this.responseHandler) {
+        await this.postToolResponse(response);
+      }
+      
+      if (this.config.debug) {
+        console.log("🎉 Tool execution completed:", {
+          tool: toolRequest.tool,
+          requestId: toolRequest.id,
+          result
+        });
       }
       
     } catch (error) {
+      console.error("❌ Failed to process tool request:", {
+        tool: toolRequest?.tool,
+        requestId: toolRequest?.id,
+        error: error instanceof Error ? error.message : error
+      });
+      
+      // Create error response
+      if (toolRequest && this.responseHandler) {
+        const errorResponse: ToolResponse = {
+          requestId: toolRequest.id,
+          success: false,
+          timestamp: new Date().toISOString(),
+          duration: Date.now() - startTime,
+          error: {
+            type: "execution_error",
+            message: error instanceof Error ? error.message : "Unknown execution error",
+            details: error
+          }
+        };
+        
+        try {
+          await this.postToolResponse(errorResponse);
+        } catch (postError) {
+          console.error("❌ Failed to post error response:", postError);
+        }
+      }
+      
       if (this.config.debug) {
-        console.error("Failed to process tool request:", error);
+        console.error("Full error details:", error);
       }
     }
   }
 
   /**
-   * Execute create_dataset_with_table tool
+   * Post tool response back to server
+   */
+  private async postToolResponse(response: ToolResponse): Promise<void> {
+    try {
+      if (!this.responseHandler) {
+        throw new Error("Response handler not initialized");
+      }
+
+      // Transform response to match API format
+      const apiPayload = {
+        sessionCode: this.config.sessionCode,
+        requestId: response.requestId,
+        ...(response.success ? { result: response.result } : { error: response.error })
+      };
+
+      console.log("📤 Posting tool response:", {
+        requestId: response.requestId,
+        success: response.success,
+        duration: response.duration
+      });
+
+      // Use fetch directly since ResponseHandler expects batching
+      const response_result = await fetch(`${this.config.relayBaseUrl}/api/response`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-sso-bypass": "pAg5Eon3T8qOwMaWKzo9k6T4pdbYiCye"
+        },
+        body: JSON.stringify(apiPayload)
+      });
+
+      if (!response_result.ok) {
+        const errorText = await response_result.text();
+        throw new Error(`HTTP ${response_result.status}: ${errorText}`);
+      }
+
+      console.log("✅ Tool response posted successfully:", response.requestId);
+      
+    } catch (error) {
+      console.error("❌ Failed to post tool response:", {
+        requestId: response.requestId,
+        error: error instanceof Error ? error.message : error
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Execute tool request using dynamic handler system
+   */
+  private async executeToolRequest(toolName: string, args: any, requestId: string): Promise<any> {
+    try {
+      console.log(`🔧 Executing tool: ${toolName}`, {
+        requestId,
+        args,
+        availableHandlers: this.comprehensiveToolHandlers ? Object.keys(this.comprehensiveToolHandlers).length : 0
+      });
+
+      // Check if we have a comprehensive tool handler
+      if (this.comprehensiveToolHandlers && this.comprehensiveToolHandlers[toolName]) {
+        console.log(`✅ Found comprehensive handler for: ${toolName}`);
+        
+        // Execute the comprehensive tool handler
+        const result = await this.comprehensiveToolHandlers[toolName](args);
+        
+        console.log(`🎉 Comprehensive tool execution completed: ${toolName}`, {
+          requestId,
+          success: result?.success,
+          result
+        });
+        
+        return result;
+      }
+      
+      // Fallback to legacy tool handling for backwards compatibility
+      if (toolName === "create_dataset_with_table") {
+        console.log(`🔄 Using legacy handler for: ${toolName}`);
+        const legacyRequest: ToolRequest = {
+          id: requestId,
+          tool: toolName,
+          args,
+          timestamp: new Date().toISOString(),
+          sessionCode: this.config.sessionCode
+        };
+        return await this.executeCreateDatasetWithTable(legacyRequest);
+      }
+      
+      // Tool not found
+      throw new Error(`Unknown tool: ${toolName}. Available tools: ${Object.keys(this.comprehensiveToolHandlers || {}).join(", ")}`);
+      
+    } catch (error) {
+      console.error(`❌ Tool execution failed: ${toolName}`, {
+        requestId,
+        error: error instanceof Error ? error.message : error
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Legacy implementation for create_dataset_with_table (backwards compatibility)
    */
   private async executeCreateDatasetWithTable(toolRequest: ToolRequest): Promise<void> {
     try {
@@ -199,6 +367,367 @@ export class BrowserWorkerService {
       console.error("❌ Failed to create dataset and table:", error);
       throw error;
     }
+  }
+
+  /**
+   * Load comprehensive tool handlers dynamically
+   */
+  private async loadComprehensiveToolHandlers(): Promise<void> {
+    try {
+      // For now, since we can't easily import the compiled CommonJS module in the browser,
+      // we'll create a minimal set of handlers that use the CODAP Plugin API directly
+      // In the future, this could load from a server endpoint or be packaged differently
+      
+      if (this.config.debug) {
+        console.log("🔧 Loading comprehensive tool handlers...");
+      }
+
+      // Create comprehensive tool handlers using CODAP Plugin API
+      this.comprehensiveToolHandlers = this.createComprehensiveToolHandlers();
+      
+              if (this.config.debug) {
+          console.log("✅ Comprehensive tool handlers loaded:", {
+            count: this.comprehensiveToolHandlers ? Object.keys(this.comprehensiveToolHandlers).length : 0
+          });
+        }
+      
+    } catch (error) {
+      if (this.config.debug) {
+        console.error("❌ Failed to load comprehensive tool handlers:", error);
+      }
+      // Set to empty object as fallback
+      this.comprehensiveToolHandlers = {};
+    }
+  }
+
+  /**
+   * Create comprehensive tool handlers using CODAP Plugin API
+   */
+  private createComprehensiveToolHandlers(): Record<string, (args: any) => Promise<any>> {
+    return {
+      // Data Context Tools
+      create_data_context: async (args: any) => {
+        const { name, title, description } = args;
+        return await sendMessage("create", "dataContext", {
+          name,
+          title: title || name,
+          description: description || ""
+        });
+      },
+
+      get_data_contexts: async () => {
+        return await sendMessage("get", "dataContextList");
+      },
+
+      get_data_context: async (args: any) => {
+        const { name } = args;
+        return await sendMessage("get", `dataContext[${name}]`);
+      },
+
+      update_data_context: async (args: any) => {
+        const { name, newName, title, description } = args;
+        const updateValues: any = {};
+        if (newName) updateValues.name = newName;
+        if (title) updateValues.title = title;
+        if (description) updateValues.description = description;
+        
+        return await sendMessage("update", `dataContext[${name}]`, updateValues);
+      },
+
+      delete_data_context: async (args: any) => {
+        const { name, confirmDelete } = args;
+        if (!confirmDelete) {
+          throw new Error("Delete confirmation required");
+        }
+        return await sendMessage("delete", `dataContext[${name}]`);
+      },
+
+      // Collection Tools
+      create_collection: async (args: any) => {
+        const { dataContextName, collectionName, attributes, parent } = args;
+        const values: any = {
+          name: collectionName,
+          title: collectionName
+        };
+        
+        if (parent) values.parent = parent;
+        if (attributes) values.attrs = attributes;
+        
+        return await sendMessage("create", `dataContext[${dataContextName}].collection`, values);
+      },
+
+      get_collections: async (args: any) => {
+        const { dataContextName } = args;
+        return await sendMessage("get", `dataContext[${dataContextName}].collectionList`);
+      },
+
+      get_collection: async (args: any) => {
+        const { dataContextName, collectionName } = args;
+        return await sendMessage("get", `dataContext[${dataContextName}].collection[${collectionName}]`);
+      },
+
+      update_collection: async (args: any) => {
+        const { dataContextName, collectionName, newName, title } = args;
+        const updateValues: any = {};
+        if (newName) updateValues.name = newName;
+        if (title) updateValues.title = title;
+        
+        return await sendMessage("update", `dataContext[${dataContextName}].collection[${collectionName}]`, updateValues);
+      },
+
+      delete_collection: async (args: any) => {
+        const { dataContextName, collectionName, confirmDelete } = args;
+        if (!confirmDelete) {
+          throw new Error("Delete confirmation required");
+        }
+        return await sendMessage("delete", `dataContext[${dataContextName}].collection[${collectionName}]`);
+      },
+
+      // Attribute Tools
+      create_attribute: async (args: any) => {
+        const { dataContextName, collectionName, attributeName, type, description, formula } = args;
+        const values: any = {
+          name: attributeName,
+          type,
+          title: attributeName
+        };
+        
+        if (description) values.description = description;
+        if (formula) values.formula = formula;
+        
+        return await sendMessage("create", `dataContext[${dataContextName}].collection[${collectionName}].attribute`, values);
+      },
+
+      get_attributes: async (args: any) => {
+        const { dataContextName, collectionName } = args;
+        return await sendMessage("get", `dataContext[${dataContextName}].collection[${collectionName}].attributeList`);
+      },
+
+      get_attribute: async (args: any) => {
+        const { dataContextName, collectionName, attributeName } = args;
+        return await sendMessage("get", `dataContext[${dataContextName}].collection[${collectionName}].attribute[${attributeName}]`);
+      },
+
+      update_attribute: async (args: any) => {
+        const { dataContextName, collectionName, attributeName, newName, type, description, formula } = args;
+        const updateValues: any = {};
+        if (newName) updateValues.name = newName;
+        if (type) updateValues.type = type;
+        if (description) updateValues.description = description;
+        if (formula) updateValues.formula = formula;
+        
+        return await sendMessage("update", `dataContext[${dataContextName}].collection[${collectionName}].attribute[${attributeName}]`, updateValues);
+      },
+
+      delete_attribute: async (args: any) => {
+        const { dataContextName, collectionName, attributeName, confirmDelete } = args;
+        if (!confirmDelete) {
+          throw new Error("Delete confirmation required");
+        }
+        return await sendMessage("delete", `dataContext[${dataContextName}].collection[${collectionName}].attribute[${attributeName}]`);
+      },
+
+      reorder_attributes: async (args: any) => {
+        const { dataContextName, collectionName, attributeName, newPosition } = args;
+        return await sendMessage("update", `dataContext[${dataContextName}].collection[${collectionName}].attributeLocation[${attributeName}]`, {
+          collection: collectionName,
+          position: newPosition
+        });
+      },
+
+      // Case and Item Tools
+      create_items: async (args: any) => {
+        const { dataContextName, items } = args;
+        return await createItems(dataContextName, items);
+      },
+
+      get_items: async (args: any) => {
+        const { dataContextName, limit } = args;
+        const resource = limit ? 
+          `dataContext[${dataContextName}].item[0..${limit-1}]` : 
+          `dataContext[${dataContextName}].itemSearch[*]`;
+        return await sendMessage("get", resource);
+      },
+
+      get_item_by_id: async (args: any) => {
+        const { dataContextName, itemId } = args;
+        return await sendMessage("get", `dataContext[${dataContextName}].itemByID[${itemId}]`);
+      },
+
+      update_items: async (args: any) => {
+        const { dataContextName, updates } = args;
+        // Process each update individually
+        const results = [];
+        for (const update of updates) {
+          const result = await sendMessage("update", `dataContext[${dataContextName}].itemByID[${update.id}]`, update.values);
+          results.push(result);
+        }
+        return { success: true, values: { results } };
+      },
+
+      delete_items: async (args: any) => {
+        const { dataContextName, itemIds, confirmDelete } = args;
+        if (!confirmDelete) {
+          throw new Error("Delete confirmation required");
+        }
+        
+        // Delete each item individually
+        const results = [];
+        for (const itemId of itemIds) {
+          const result = await sendMessage("delete", `dataContext[${dataContextName}].itemByID[${itemId}]`);
+          results.push(result);
+        }
+        return { success: true, values: { results } };
+      },
+
+      get_case_count: async (args: any) => {
+        const { dataContextName, collectionName } = args;
+        return await sendMessage("get", `dataContext[${dataContextName}].collection[${collectionName}].caseCount`);
+      },
+
+      get_case_by_index: async (args: any) => {
+        const { dataContextName, collectionName, index } = args;
+        return await sendMessage("get", `dataContext[${dataContextName}].collection[${collectionName}].caseByIndex[${index}]`);
+      },
+
+      search_cases: async (args: any) => {
+        const { dataContextName, collectionName, searchCriteria, limit = 100 } = args;
+        const { attributeName, value, operator = "equals" } = searchCriteria;
+        
+        // Build search query based on operator
+        let searchQuery: string;
+        switch (operator) {
+          case "contains":
+            searchQuery = `${attributeName} contains "${value}"`;
+            break;
+          case "startsWith":
+            searchQuery = `${attributeName} startsWith "${value}"`;
+            break;
+          case "endsWith":
+            searchQuery = `${attributeName} endsWith "${value}"`;
+            break;
+          case "greaterThan":
+            searchQuery = `${attributeName} > ${value}`;
+            break;
+          case "lessThan":
+            searchQuery = `${attributeName} < ${value}`;
+            break;
+          default:
+            searchQuery = `${attributeName} = "${value}"`;
+        }
+        return await sendMessage("get", `dataContext[${dataContextName}].collection[${collectionName}].caseBySearch[${searchQuery}]`, { limit });
+      },
+
+      // Selection Tools
+      get_selection: async (args: any) => {
+        const { dataContextName } = args;
+        return await sendMessage("get", `dataContext[${dataContextName}].selectionList`);
+      },
+
+      select_cases: async (args: any) => {
+        const { dataContextName, caseIds, extend = false } = args;
+        const action = extend ? "update" : "create";
+        return await sendMessage(action, `dataContext[${dataContextName}].selectionList`, caseIds);
+      },
+
+      clear_selection: async (args: any) => {
+        const { dataContextName } = args;
+        return await sendMessage("create", `dataContext[${dataContextName}].selectionList`, []);
+      },
+
+      // Component Tools
+      create_table: async (args: any) => {
+        const { dataContextName, title, position, dimensions } = args;
+        return await createTable(dataContextName, title || `${dataContextName} Table`);
+      },
+
+      create_graph: async (args: any) => {
+        const { dataContextName, title, xAttribute, yAttribute, graphType = "scatterPlot", position, dimensions } = args;
+        
+        // Step 1: Create empty graph component (proven optimal approach)
+        const graphValues: any = {
+          type: "graph",
+          dataContext: dataContextName,
+          graphType
+        };
+        
+        if (title) graphValues.name = title;
+        if (position) graphValues.position = position;
+        if (dimensions) graphValues.dimensions = dimensions;
+        
+        console.log("Browser worker service creating empty graph:", graphValues);
+        const graphResult = await sendMessage("create", "component", graphValues);
+        
+        // Step 2: If axes are specified, update the graph with axis assignments (proven fastest method)
+        if ((xAttribute || yAttribute) && graphResult.success && graphResult.values) {
+          const componentId = graphResult.values.id;
+          if (componentId) {
+            const updateValues: any = {};
+            if (xAttribute) updateValues.xAttributeName = xAttribute;
+            if (yAttribute) updateValues.yAttributeName = yAttribute;
+            
+            console.log("Browser worker service updating graph axes:", { componentId, updateValues });
+            const updateResult = await sendMessage("update", `component[${componentId}]`, updateValues);
+            
+            // Return combined result
+            return {
+              success: graphResult.success && updateResult.success,
+              values: {
+                ...graphResult.values,
+                axesAssigned: updateResult.success,
+                xAttributeName: xAttribute,
+                yAttributeName: yAttribute
+              }
+            };
+          }
+        }
+        
+        return graphResult;
+      },
+
+      create_map: async (args: any) => {
+        const { dataContextName, title, latitudeAttribute, longitudeAttribute, position, dimensions } = args;
+        const values: any = {
+          type: "map",
+          dataContext: dataContextName
+        };
+        
+        if (title) values.name = title;
+        if (latitudeAttribute) values.latitudeAttribute = latitudeAttribute;
+        if (longitudeAttribute) values.longitudeAttribute = longitudeAttribute;
+        if (position) values.position = position;
+        if (dimensions) values.dimensions = dimensions;
+        
+        return await sendMessage("create", "component", values);
+      },
+
+      get_components: async () => {
+        return await sendMessage("get", "componentList");
+      },
+
+      update_component: async (args: any) => {
+        const { componentId, title, position, dimensions, xAttributeName, yAttributeName, values } = args;
+        
+        // If values object is provided, use it; otherwise build from individual properties
+        const updateValues: any = values || {};
+        
+        if (title) updateValues.name = title;
+        if (position) updateValues.position = position;
+        if (dimensions) updateValues.dimensions = dimensions;
+        if (xAttributeName) updateValues.xAttributeName = xAttributeName;
+        if (yAttributeName) updateValues.yAttributeName = yAttributeName;
+        
+        return await sendMessage("update", `component[${componentId}]`, updateValues);
+      },
+
+      delete_component: async (args: any) => {
+        const { componentId, confirmDelete } = args;
+        if (!confirmDelete) {
+          throw new Error("Delete confirmation required");
+        }
+        return await sendMessage("delete", `component[${componentId}]`);
+      }
+    };
   }
 
   async start(): Promise<void> {

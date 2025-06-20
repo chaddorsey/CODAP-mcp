@@ -27,6 +27,6 @@ This document lists all tasks associated with PBI 16.
 | 16-17 | [Tool Testing Infrastructure](./16-17.md) | Proposed | Build comprehensive test suite for all new tool implementations |
 | 16-18 | [E2E CoS Integration Test](./16-18.md) | Proposed | End-to-end testing to verify all acceptance criteria are met |
 | 16-19 | [Vercel Server Integration](./16-19.md) | Done | Integrate comprehensive tools into Vercel server metadata endpoint |
-| 16-20 | [Browser Worker Tool Handler Integration](./16-20.md) | Proposed | Update browser worker to process comprehensive tools using toolHandlers |
+| 16-20 | [Browser Worker Tool Handler Integration](./16-20.md) | Review | Update browser worker to process comprehensive tools using toolHandlers |
 | 16-21 | [Build System Integration](./16-21.md) | Done | Ensure comprehensive tools are available in Vercel deployment environment |
 | 16-22 | [Integration Testing and Verification](./16-22.md) | Proposed | Verify all 33 tools work correctly in the integrated system | 

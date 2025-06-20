@@ -215,7 +215,8 @@ export class PollingManager implements PollingManagerInterface {
       method: "GET",
       headers: {
         Accept: "application/json",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "x-sso-bypass": "pAg5Eon3T8qOwMaWKzo9k6T4pdbYiCye"
       }
     });
 

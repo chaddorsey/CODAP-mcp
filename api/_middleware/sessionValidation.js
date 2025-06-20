@@ -36,7 +36,7 @@ function createErrorResponse(res, status, error, message, code) {
 async function validateSession(req, res, next = null) {
   try {
     // Extract session code from URL path or query params
-    const code = req.query.code || req.params.code;
+    const code = req.query.code || req.query.sessionCode || req.params.code;
     
     // Validate session code format
     if (!code || !isValidSessionCode(code)) {

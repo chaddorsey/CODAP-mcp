@@ -64,7 +64,7 @@ export default async function handler(req, res) {
   // Set CORS headers
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, x-sso-bypass");
 
   try {
     // Handle CORS preflight
@@ -118,7 +118,7 @@ export default async function handler(req, res) {
       "Connection": "keep-alive",
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type"
+      "Access-Control-Allow-Headers": "Content-Type, x-sso-bypass"
     });
     
     // Helper function to send SSE events with proper format
