@@ -6,15 +6,18 @@
 
 Dramatically expand the platform's CODAP tool coverage from the current 9 tools (12% API utilization) to 35+ tools covering 90%+ of the CODAP Plugin API. This will transform the platform from a basic data creation tool into a comprehensive CODAP automation and analysis platform.
 
+**Current Implementation Status**: 33 comprehensive tools have been implemented in `server/codap-tools.ts` but require integration into the existing Vercel server architecture to work with the browser worker system.
+
 ## Problem Statement
 
 ### Current State Analysis
 
 The current implementation severely underutilizes the CODAP Plugin API:
 
-- **Current Tools**: 9 implemented tools
-- **API Utilization**: 12% (5 of 40+ available CODAP functions)
-- **Missing Categories**: Collections, Attributes, Cases, Selection, Events, Advanced Components
+- **Current Vercel Tools**: 9 implemented tools in `api/metadata.js`
+- **Comprehensive Tools**: 33 tools implemented in `server/codap-tools.ts` (not integrated)
+- **API Utilization**: 12% (9 of 75+ available CODAP functions)
+- **Integration Gap**: Comprehensive tools exist but are not accessible via the Vercel server
 
 ### Key Limitations
 
@@ -24,6 +27,7 @@ The current implementation severely underutilizes the CODAP Plugin API:
 4. **No Selection Tools**: Cannot highlight or filter specific data points
 5. **No Event Handling**: No real-time updates or user interaction capabilities
 6. **Limited Query Capabilities**: Cannot search or filter data effectively
+7. **Architecture Gap**: Comprehensive tools exist but require integration with Vercel server
 
 ### Impact on User Experience
 
@@ -45,7 +49,68 @@ The current implementation severely underutilizes the CODAP Plugin API:
 
 ## Technical Approach
 
-### Coverage Expansion Strategy
+### Integration Architecture
+
+The core challenge is integrating the comprehensive tools from `server/codap-tools.ts` into the existing Vercel server architecture:
+
+```typescript
+// Current Architecture
+Vercel Server (api/metadata.js) → 9 Basic Tools → Browser Worker → CODAP
+
+// Target Architecture  
+Vercel Server (api/metadata.js) → 33 Comprehensive Tools → Browser Worker → CODAP
+                                     ↑
+                               Import from server/codap-tools.ts
+```
+
+### Implementation Strategy
+
+#### **Phase 1: Tool Integration**
+Replace the basic tool manifest in `api/metadata.js` with comprehensive tools from `server/codap-tools.ts`:
+
+```javascript
+// Current: api/metadata.js
+const TOOL_MANIFEST = {
+  tools: [
+    // 9 basic tools hardcoded here
+  ]
+};
+
+// Target: api/metadata.js  
+const { allCODAPTools } = require('../server/codap-tools.js');
+const TOOL_MANIFEST = {
+  tools: allCODAPTools
+};
+```
+
+#### **Phase 2: Tool Execution Integration**
+Integrate tool handlers into the browser worker processing:
+
+```javascript
+// Current: BrowserWorkerService processes basic tools
+// Target: BrowserWorkerService processes comprehensive tools using toolHandlers
+
+const { toolHandlers } = require('../server/codap-tools.js');
+
+// In tool processing:
+const handler = toolHandlers[toolName];
+const result = await handler(arguments);
+```
+
+#### **Phase 3: Verification and Testing**
+Ensure all 33 tools work correctly in the browser worker environment:
+
+```typescript
+// Test categories:
+- Data Context Tools: 5 (create, get, update, delete, list)
+- Collection Tools: 5 (create, get, update, delete, list)  
+- Attribute Tools: 6 (create, get, update, delete, list, reorder)
+- Case/Item Tools: 8 (create, get, update, delete, search, count)
+- Selection Tools: 3 (get, select, clear)
+- Component Tools: 6 (create table/graph/map, get, update, delete)
+```
+
+### Coverage Expansion Details
 
 Transform from basic tool coverage to comprehensive API utilization:
 
@@ -57,235 +122,81 @@ const currentTools = [
   "get_data_contexts", "get_components", "get_data_context"
 ];
 
-// Target: 35+ comprehensive tools (90% coverage)
+// Target: 33 comprehensive tools (90% coverage)
 const targetTools = [
-  // CRUD Operations (8 tools)
-  ...currentTools, "update_data_context", "delete_data_context",
-  "update_items", "delete_items", "update_component", "delete_component",
+  // Data Context Tools (5)
+  "create_data_context", "get_data_contexts", "get_data_context",
+  "update_data_context", "delete_data_context",
   
-  // Collection Management (6 tools)
-  "create_collection", "create_parent_collection", "create_child_collection",
-  "get_collection_list", "get_collection", "delete_collection",
+  // Collection Tools (5)
+  "create_collection", "get_collections", "get_collection",
+  "update_collection", "delete_collection",
   
-  // Attribute Management (8 tools)
-  "create_attribute", "update_attribute", "delete_attribute",
-  "get_attribute_list", "get_attribute", "update_attribute_position",
-  "create_collection_from_attribute", "ensure_unique_attribute_name",
+  // Attribute Tools (6)
+  "create_attribute", "get_attributes", "get_attribute",
+  "update_attribute", "delete_attribute", "reorder_attributes",
   
-  // Case/Item Management (10 tools)
-  "get_case_count", "get_case_by_index", "get_case_by_id", 
-  "get_case_by_search", "get_case_by_formula_search",
-  "create_parent_case", "create_child_case", "update_case_by_id",
-  "get_item_count", "get_all_items",
+  // Case/Item Tools (8)
+  "create_items", "get_items", "get_item_by_id",
+  "update_items", "delete_items", "get_case_count",
+  "get_case_by_index", "search_cases",
   
-  // Selection & Interaction (5 tools)
-  "get_selection_list", "select_cases", "add_cases_to_selection",
-  "clear_selection", "get_selected_cases",
+  // Selection Tools (3)
+  "get_selection", "select_cases", "clear_selection",
   
-  // Event Listeners (4 tools)
-  "add_data_context_listener", "add_component_listener",
-  "add_selection_listener", "remove_listener"
+  // Component Tools (6)
+  "create_table", "create_graph", "create_map",
+  "get_components", "update_component", "delete_component"
 ];
 ```
 
-### Tool Category Implementation
+### Key Integration Points
 
-#### **1. CRUD Operations Completion**
+#### **1. Metadata Endpoint Integration**
+Update `api/metadata.js` to serve comprehensive tools:
 
-```typescript
-// Update operations
-const updateDataContextSchema: ToolSchema = {
-  name: "update_data_context",
-  description: "Update properties of an existing data context",
-  parameters: {
-    type: "object",
-    properties: {
-      name: { type: "string", required: true },
-      newName: { type: "string" },
-      title: { type: "string" },
-      description: { type: "string" }
-    },
-    required: ["name"]
-  }
-};
+```javascript
+// Replace hardcoded tool manifest with dynamic import
+const { allCODAPTools, TOTAL_TOOL_COUNT } = require('../server/codap-tools.js');
 
-// Delete operations
-const deleteDataContextSchema: ToolSchema = {
-  name: "delete_data_context",
-  description: "Delete a data context and all its data",
-  parameters: {
-    type: "object",
-    properties: {
-      name: { type: "string", required: true },
-      confirmDelete: { type: "boolean", required: true }
-    },
-    required: ["name", "confirmDelete"]
-  }
+const TOOL_MANIFEST = {
+  version: TOOL_MANIFEST_VERSION,
+  tools: allCODAPTools,
+  toolCount: TOTAL_TOOL_COUNT
 };
 ```
 
-#### **2. Collection Management**
+#### **2. Tool Execution Integration**
+Update browser worker to use comprehensive tool handlers:
 
-```typescript
-const createParentCollectionSchema: ToolSchema = {
-  name: "create_parent_collection",
-  description: "Create a parent collection in hierarchical data structure",
-  parameters: {
-    type: "object",
-    properties: {
-      dataContextName: { type: "string", required: true },
-      collectionName: { type: "string", required: true },
-      attributes: {
-        type: "array",
-        items: {
-          type: "object",
-          properties: {
-            name: { type: "string", required: true },
-            type: { type: "string", enum: ["numeric", "categorical", "date", "boundary"] },
-            description: { type: "string" }
-          }
-        }
-      },
-      title: { type: "string" }
-    },
-    required: ["dataContextName", "collectionName"]
+```javascript
+// In BrowserWorkerService.ts or equivalent
+const { toolHandlers } = require('../server/codap-tools.js');
+
+async function processToolRequest(toolName, args) {
+  if (toolHandlers[toolName]) {
+    return await toolHandlers[toolName](args);
   }
-};
-```
-
-#### **3. Advanced Case Management**
-
-```typescript
-const getCaseBySearchSchema: ToolSchema = {
-  name: "get_case_by_search",
-  description: "Search for cases using attribute values",
-  parameters: {
-    type: "object",
-    properties: {
-      dataContextName: { type: "string", required: true },
-      collectionName: { type: "string", required: true },
-      searchCriteria: {
-        type: "object",
-        properties: {
-          attributeName: { type: "string", required: true },
-          value: { type: "string", required: true },
-          operator: { 
-            type: "string", 
-            enum: ["equals", "contains", "startsWith", "endsWith", "greaterThan", "lessThan"],
-            default: "equals"
-          }
-        },
-        required: ["attributeName", "value"]
-      },
-      limit: { type: "number", default: 100 }
-    },
-    required: ["dataContextName", "collectionName", "searchCriteria"]
-  }
-};
-```
-
-#### **4. Selection and Interaction**
-
-```typescript
-const selectCasesSchema: ToolSchema = {
-  name: "select_cases",
-  description: "Select specific cases in CODAP interface",
-  parameters: {
-    type: "object",
-    properties: {
-      dataContextName: { type: "string", required: true },
-      caseIds: {
-        type: "array",
-        items: { type: ["string", "number"] },
-        required: true
-      },
-      extend: { 
-        type: "boolean", 
-        default: false,
-        description: "Add to existing selection instead of replacing"
-      }
-    },
-    required: ["dataContextName", "caseIds"]
-  }
-};
-```
-
-#### **5. Event Listeners**
-
-```typescript
-const addDataContextListenerSchema: ToolSchema = {
-  name: "add_data_context_listener",
-  description: "Listen for changes to a data context",
-  parameters: {
-    type: "object",
-    properties: {
-      dataContextName: { type: "string", required: true },
-      eventTypes: {
-        type: "array",
-        items: { 
-          type: "string", 
-          enum: ["createItems", "updateItems", "deleteItems", "createCollection", "updateCollection"] 
-        },
-        default: ["createItems", "updateItems", "deleteItems"]
-      },
-      callbackEndpoint: { 
-        type: "string", 
-        description: "Webhook URL to receive event notifications" 
-      }
-    },
-    required: ["dataContextName"]
-  }
-};
-```
-
-### Implementation Architecture
-
-#### **Tool Implementation Pattern**
-
-```typescript
-// Example: Update data context implementation
-private async updateDataContext(args: any): Promise<any> {
-  const { name, newName, title, description } = args;
-  
-  const updateValues: any = {};
-  if (newName) updateValues.name = newName;
-  if (title) updateValues.title = title;
-  if (description) updateValues.description = description;
-
-  return await sendMessage("update", `dataContext[${name}]`, updateValues);
+  throw new Error(`Unknown tool: ${toolName}`);
 }
+```
 
-// Example: Search cases implementation
-private async getCaseBySearch(args: any): Promise<any> {
-  const { dataContextName, collectionName, searchCriteria, limit = 100 } = args;
-  const { attributeName, value, operator = "equals" } = searchCriteria;
-  
-  // Build search query based on operator
-  let searchQuery: string;
-  switch (operator) {
-    case "contains":
-      searchQuery = `${attributeName} contains "${value}"`;
-      break;
-    case "greaterThan":
-      searchQuery = `${attributeName} > ${value}`;
-      break;
-    case "lessThan":
-      searchQuery = `${attributeName} < ${value}`;
-      break;
-    default:
-      searchQuery = `${attributeName} = "${value}"`;
+#### **3. Build System Integration**
+Ensure the comprehensive tools are available in the Vercel environment:
+
+```json
+// In package.json or build configuration
+{
+  "scripts": {
+    "build:vercel": "tsc server/codap-tools.ts --outDir api/lib/"
   }
-
-  return await sendMessage("get", 
-    `dataContext[${dataContextName}].collection[${collectionName}].caseBySearch[${searchQuery}]`,
-    { limit }
-  );
 }
 ```
 
 ## UX/UI Considerations
 
 ### Enhanced Tool Discovery
+- Tool count increases from 9 to 33+ tools
 - Categorized tool browser with search and filtering
 - Tool documentation with examples and use cases
 - Interactive tool builder for complex operations
@@ -302,49 +213,51 @@ private async getCaseBySearch(args: any): Promise<any> {
 
 ## Acceptance Criteria
 
-### **Core Requirements**
-1. **CRUD Completeness**: All CODAP entities support Create, Read, Update, Delete operations
-2. **Collection Management**: Full hierarchical data structure creation and management
-3. **Attribute Management**: Dynamic attribute creation, modification, and positioning
-4. **Case Manipulation**: Advanced case querying, filtering, and bulk operations
-5. **Selection Tools**: Interactive case selection and highlighting capabilities
-6. **Event System**: Real-time event listeners for all major CODAP changes
-7. **API Coverage**: 90%+ of CODAP Plugin API functions implemented as tools
-8. **Performance**: All new tools execute within 2 seconds for typical operations
+### **Integration Requirements**
+1. **Tool Availability**: All 33 comprehensive tools accessible via `/api/metadata` endpoint
+2. **Tool Execution**: All tools execute correctly through browser worker system
+3. **Backwards Compatibility**: All existing 9 tools continue to work unchanged
+4. **Performance**: Tool execution within 2 seconds for typical operations
+5. **Error Handling**: Graceful failure with informative error messages
+
+### **Core Functionality Requirements**
+6. **CRUD Completeness**: All CODAP entities support Create, Read, Update, Delete operations
+7. **Collection Management**: Full hierarchical data structure creation and management
+8. **Attribute Management**: Dynamic attribute creation, modification, and positioning
+9. **Case Manipulation**: Advanced case querying, filtering, and bulk operations
+10. **Selection Tools**: Interactive case selection and highlighting capabilities
+11. **Component Tools**: Advanced component creation including maps, graphs, tables
 
 ### **Quality Requirements**
-9. **Schema Validation**: All new tools have comprehensive parameter validation
-10. **Error Handling**: Graceful failure with informative error messages
-11. **Test Coverage**: 95%+ test coverage for all new tool implementations
-12. **Documentation**: Complete API documentation with examples for each tool
-13. **Backwards Compatibility**: All existing tools continue to work unchanged
-14. **Type Safety**: Full TypeScript implementation with proper type definitions
+12. **Schema Validation**: All tools have comprehensive parameter validation
+13. **Test Coverage**: 95%+ test coverage for all tool integrations
+14. **Documentation**: Complete API documentation with examples for each tool
+15. **Type Safety**: Full TypeScript implementation with proper type definitions
 
-### **Advanced Features**
-15. **Batch Operations**: Support for bulk case/item operations
-16. **Transaction Support**: Atomic operations that can be rolled back on failure
-17. **Event Webhooks**: External webhook notifications for CODAP events
-18. **Query Language**: Advanced filtering and search capabilities
-19. **Collection Templates**: Reusable collection structures for common patterns
-20. **Data Validation**: Attribute-level validation rules and enforcement
+### **System Integration**
+16. **Vercel Deployment**: All tools work correctly in Vercel serverless environment
+17. **Browser Worker**: Seamless integration with existing browser worker system
+18. **Session Management**: Tools work correctly with session-based architecture
+19. **Real-time Updates**: Tool results appear immediately in CODAP interface
+20. **API Coverage**: 90%+ of CODAP Plugin API functions implemented as tools
 
 ## Dependencies
 
-- **Foundational**: Requires current tool system (PBI-4) to be fully operational
-- **Architecture**: Benefits from Tool Module system (PBI-14) for better organization
+- **Foundational**: Requires current Vercel server system (PBI-1, PBI-4) to be fully operational
+- **Implementation**: Comprehensive tools already implemented in `server/codap-tools.ts`
+- **Integration**: Requires modification of `api/metadata.js` and browser worker system
 - **Testing**: Depends on comprehensive test infrastructure
-- **Documentation**: Requires API documentation system for user guidance
 
 ## Open Questions
 
-1. **Event Handling**: Should event listeners use webhooks, SSE, or database polling?
-2. **Transaction Management**: How to handle complex multi-step operations that might fail?
-3. **Performance Optimization**: How to handle bulk operations on large datasets efficiently?
-4. **User Permissions**: Should some destructive operations require additional authorization?
-5. **Data Validation**: How extensive should client-side vs server-side validation be?
+1. **Build System**: How to ensure `server/codap-tools.js` is available in Vercel environment?
+2. **Tool Handlers**: Should tool handlers be integrated into browser worker or remain server-side?
+3. **Error Handling**: How to handle tool execution errors in the browser worker context?
+4. **Performance**: Will 33 tools impact metadata endpoint performance?
+5. **Versioning**: How to manage tool versions during the integration process?
 
 ## Related Tasks
 
 [View Tasks](./tasks.md)
 
-Tasks will be defined when this PBI moves from Proposed to Agreed status, following the established task breakdown and documentation process. 
+The comprehensive tool implementation is complete. The remaining work focuses on integration with the existing Vercel server architecture to make all 33 tools available through the browser worker system. 
