@@ -186,7 +186,7 @@ async function main() {
                 content: [
                   {
                     type: "text",
-                    text: `❌ Error executing CODAP tool '${name}': ${error instanceof Error ? error.message : 'Unknown error'}`
+                    text: `❌ Error executing CODAP tool '${name}': ${error instanceof Error ? error.message : "Unknown error"}`
                   }
                 ]
               };
@@ -215,7 +215,7 @@ async function main() {
       await transport.handleRequest(req, res, req.body);
     } else if (isInitializeRequest(req.body)) {
       // Handle initialization
-      let newSessionId = sessionId || randomUUID();
+      const newSessionId = sessionId || randomUUID();
       console.log(`[${requestId}] Initialization request with session ID: ${newSessionId}`);
       
       // Remove old transport if exists

@@ -863,11 +863,11 @@ exports.toolHandlers = {
         const { name, newName, title, description } = args;
         const updateValues = {};
         if (newName)
-            updateValues.name = newName;
+            {updateValues.name = newName;}
         if (title)
-            updateValues.title = title;
+            {updateValues.title = title;}
         if (description)
-            updateValues.description = description;
+            {updateValues.description = description;}
         return await sendMessage("update", `dataContext[${name}]`, updateValues);
     },
     delete_data_context: async (args) => {
@@ -885,9 +885,9 @@ exports.toolHandlers = {
             title: collectionName
         };
         if (parent)
-            values.parent = parent;
+            {values.parent = parent;}
         if (attributes)
-            values.attrs = attributes;
+            {values.attrs = attributes;}
         return await sendMessage("create", `dataContext[${dataContextName}].collection`, values);
     },
     get_collections: async (args) => {
@@ -902,9 +902,9 @@ exports.toolHandlers = {
         const { dataContextName, collectionName, newName, title } = args;
         const updateValues = {};
         if (newName)
-            updateValues.name = newName;
+            {updateValues.name = newName;}
         if (title)
-            updateValues.title = title;
+            {updateValues.title = title;}
         return await sendMessage("update", `dataContext[${dataContextName}].collection[${collectionName}]`, updateValues);
     },
     delete_collection: async (args) => {
@@ -923,9 +923,9 @@ exports.toolHandlers = {
             title: attributeName
         };
         if (description)
-            values.description = description;
+            {values.description = description;}
         if (formula)
-            values.formula = formula;
+            {values.formula = formula;}
         return await sendMessage("create", `dataContext[${dataContextName}].collection[${collectionName}].attribute`, values);
     },
     get_attributes: async (args) => {
@@ -940,13 +940,13 @@ exports.toolHandlers = {
         const { dataContextName, collectionName, attributeName, newName, type, description, formula } = args;
         const updateValues = {};
         if (newName)
-            updateValues.name = newName;
+            {updateValues.name = newName;}
         if (type)
-            updateValues.type = type;
+            {updateValues.type = type;}
         if (description)
-            updateValues.description = description;
+            {updateValues.description = description;}
         if (formula)
-            updateValues.formula = formula;
+            {updateValues.formula = formula;}
         return await sendMessage("update", `dataContext[${dataContextName}].collection[${collectionName}].attribute[${attributeName}]`, updateValues);
     },
     delete_attribute: async (args) => {
@@ -1058,11 +1058,11 @@ exports.toolHandlers = {
             dataContext: dataContextName
         };
         if (title)
-            values.name = title;
+            {values.name = title;}
         if (position)
-            values.position = position;
+            {values.position = position;}
         if (dimensions)
-            values.dimensions = dimensions;
+            {values.dimensions = dimensions;}
         return await sendMessage("create", "component", values);
     },
     create_graph: async (args) => {
@@ -1073,15 +1073,15 @@ exports.toolHandlers = {
             graphType
         };
         if (title)
-            values.name = title;
+            {values.name = title;}
         if (xAttribute)
-            values.xAttribute = xAttribute;
+            {values.xAttribute = xAttribute;}
         if (yAttribute)
-            values.yAttribute = yAttribute;
+            {values.yAttribute = yAttribute;}
         if (position)
-            values.position = position;
+            {values.position = position;}
         if (dimensions)
-            values.dimensions = dimensions;
+            {values.dimensions = dimensions;}
         return await sendMessage("create", "component", values);
     },
     create_map: async (args) => {
@@ -1091,15 +1091,15 @@ exports.toolHandlers = {
             dataContext: dataContextName
         };
         if (title)
-            values.name = title;
+            {values.name = title;}
         if (latitudeAttribute)
-            values.latitudeAttribute = latitudeAttribute;
+            {values.latitudeAttribute = latitudeAttribute;}
         if (longitudeAttribute)
-            values.longitudeAttribute = longitudeAttribute;
+            {values.longitudeAttribute = longitudeAttribute;}
         if (position)
-            values.position = position;
+            {values.position = position;}
         if (dimensions)
-            values.dimensions = dimensions;
+            {values.dimensions = dimensions;}
         return await sendMessage("create", "component", values);
     },
     get_components: async () => {
@@ -1109,11 +1109,11 @@ exports.toolHandlers = {
         const { componentId, title, position, dimensions } = args;
         const updateValues = {};
         if (title)
-            updateValues.name = title;
+            {updateValues.name = title;}
         if (position)
-            updateValues.position = position;
+            {updateValues.position = position;}
         if (dimensions)
-            updateValues.dimensions = dimensions;
+            {updateValues.dimensions = dimensions;}
         return await sendMessage("update", `component[${componentId}]`, updateValues);
     },
     delete_component: async (args) => {

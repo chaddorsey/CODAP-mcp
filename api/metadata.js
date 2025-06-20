@@ -5,7 +5,7 @@ const { withSessionValidation, createErrorResponse } = require("./_middleware/se
 // Import comprehensive CODAP tools
 let allCODAPTools, TOTAL_TOOL_COUNT;
 try {
-  const toolsModule = require('./codap-tools.js');
+  const toolsModule = require("./codap-tools.js");
   allCODAPTools = toolsModule.allCODAPTools;
   TOTAL_TOOL_COUNT = toolsModule.TOTAL_TOOL_COUNT;
   console.log(`✅ Comprehensive CODAP tools loaded: ${TOTAL_TOOL_COUNT} tools available`);
@@ -356,7 +356,7 @@ async function handler(req, res) {
     }
 
     // Optional: Check version negotiation
-    const acceptVersion = req.headers['accept-version'];
+    const acceptVersion = req.headers["accept-version"];
     if (acceptVersion && !SUPPORTED_API_VERSIONS.includes(acceptVersion)) {
       createErrorResponse(res, 406, "version_not_acceptable", 
         `Requested version ${acceptVersion} not supported. Supported versions: ${SUPPORTED_API_VERSIONS.join(", ")}`);

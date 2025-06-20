@@ -1,24 +1,24 @@
-import { test, expect, Page } from '@playwright/test';
+import { test, expect, Page } from "@playwright/test";
 
-test.describe('Browser Worker E2E Tests', () => {
-  test('should establish connection and execute basic tool', async ({ page }) => {
+test.describe("Browser Worker E2E Tests", () => {
+  test("should establish connection and execute basic tool", async ({ page }) => {
     // Navigate to application
-    await page.goto('/');
+    await page.goto("/");
     
     // Take screenshot to see what's actually rendered
-    await page.screenshot({ path: 'test-results/page-screenshot.png', fullPage: true });
+    await page.screenshot({ path: "test-results/page-screenshot.png", fullPage: true });
     
     // Wait for any content to load - use a more general selector
-    await page.waitForSelector('body', { timeout: 10000 });
+    await page.waitForSelector("body", { timeout: 10000 });
     
     // Check if pairing banner exists with different selectors
-    const pairingBanner = await page.locator('.pairing-banner').first();
+    const pairingBanner = page.locator(".pairing-banner").first();
     if (!(await pairingBanner.isVisible())) {
       // Try other possible selectors
-      const bannerByClass = await page.locator('[class*="pairing"]').first();
-      const bannerByText = await page.locator('text=Session').first();
-      console.log('Pairing banner found by class:', await bannerByClass.isVisible());
-      console.log('Banner found by text:', await bannerByText.isVisible());
+      const bannerByClass = page.locator('[class*="pairing"]').first();
+      const bannerByText = page.locator("text=Session").first();
+      console.log("Pairing banner found by class:", await bannerByClass.isVisible());
+      console.log("Banner found by text:", await bannerByText.isVisible());
     }
     
     // Create a test session (if session creation UI exists)
@@ -45,8 +45,8 @@ test.describe('Browser Worker E2E Tests', () => {
     expect(true).toBe(true);
   });
 
-  test('should display connection status indicators', async ({ page }) => {
-    await page.goto('/');
+  test("should display connection status indicators", async ({ page }) => {
+    await page.goto("/");
     await page.waitForSelector('[data-testid="pairing-banner"]', { timeout: 10000 });
     
     // Check for connection status elements
@@ -66,8 +66,8 @@ test.describe('Browser Worker E2E Tests', () => {
     expect(true).toBe(true);
   });
 
-  test('should handle browser worker controls', async ({ page }) => {
-    await page.goto('/');
+  test("should handle browser worker controls", async ({ page }) => {
+    await page.goto("/");
     await page.waitForSelector('[data-testid="pairing-banner"]', { timeout: 10000 });
     
     // Test enable/disable functionality if controls exist
@@ -97,8 +97,8 @@ test.describe('Browser Worker E2E Tests', () => {
     expect(true).toBe(true);
   });
 
-  test('should display performance metrics', async ({ page }) => {
-    await page.goto('/');
+  test("should display performance metrics", async ({ page }) => {
+    await page.goto("/");
     await page.waitForSelector('[data-testid="pairing-banner"]', { timeout: 10000 });
     
     // Enable browser worker
@@ -131,20 +131,20 @@ test.describe('Browser Worker E2E Tests', () => {
     expect(true).toBe(true);
   });
 
-  test('should be accessible via keyboard navigation', async ({ page }) => {
-    await page.goto('/');
+  test("should be accessible via keyboard navigation", async ({ page }) => {
+    await page.goto("/");
     await page.waitForSelector('[data-testid="pairing-banner"]', { timeout: 10000 });
     
     // Test keyboard navigation
-    await page.keyboard.press('Tab');
-    await page.keyboard.press('Tab');
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Tab");
     
     // Check if elements are focusable
-    const focusedElement = await page.locator(':focus').isVisible();
-    expect(focusedElement).toBe(true);
+    const focusedElement = page.locator(":focus");
+    await expect(focusedElement).toBeVisible();
     
     // Test keyboard activation
-    await page.keyboard.press('Enter');
+    await page.keyboard.press("Enter");
     
     // Keyboard navigation test passed
     expect(true).toBe(true);

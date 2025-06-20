@@ -1,14 +1,14 @@
-const fetch = require('node-fetch');
+const fetch = require("node-fetch");
 
 async function debugSession() {
-  console.log('🔍 Debug Session KD73EKT5 - Full Pipeline Analysis');
-  console.log('====================================================\n');
+  console.log("🔍 Debug Session KD73EKT5 - Full Pipeline Analysis");
+  console.log("====================================================\n");
   
-  const sessionCode = 'KD73EKT5';
-  const baseUrl = 'https://codap-9801yonhe-cdorsey-concordorgs-projects.vercel.app';
+  const sessionCode = "KD73EKT5";
+  const baseUrl = "https://codap-9801yonhe-cdorsey-concordorgs-projects.vercel.app";
   const headers = {
-    'Content-Type': 'application/json',
-    'x-vercel-protection-bypass': 'pAg5Eon3T8qOwMaWKzo9k6T4pdbYiCye'
+    "Content-Type": "application/json",
+    "x-vercel-protection-bypass": "pAg5Eon3T8qOwMaWKzo9k6T4pdbYiCye"
   };
   
   try {
@@ -18,31 +18,31 @@ async function debugSession() {
       headers
     });
     const metadata = await metadataResponse.json();
-    console.log('Session metadata:', JSON.stringify(metadata, null, 2));
+    console.log("Session metadata:", JSON.stringify(metadata, null, 2));
     
     // Step 2: Send a simple test request to see detailed response
     console.log(`\n🧪 Step 2: Sending simple test request...`);
     const testRequest = {
-      sessionCode: sessionCode,
+      sessionCode,
       requestId: `debug-test-${Date.now()}`,
-      toolName: 'get_data_contexts',
+      toolName: "get_data_contexts",
       params: {}
     };
     
     const testResponse = await fetch(`${baseUrl}/api/request`, {
-      method: 'POST',
+      method: "POST",
       headers,
       body: JSON.stringify(testRequest)
     });
     const testResult = await testResponse.json();
-    console.log('Test request result:', JSON.stringify(testResult, null, 2));
+    console.log("Test request result:", JSON.stringify(testResult, null, 2));
     
     // Step 3: Check if there are any pending requests in KV
     console.log(`\n📋 Step 3: Checking for any existing requests...`);
     const existingRequests = [
-      'create-dataset-1750338778553',
-      'create-graph-1750338781778', 
-      'verify-1750338785001',
+      "create-dataset-1750338778553",
+      "create-graph-1750338781778", 
+      "verify-1750338785001",
       testResult.id
     ];
     
@@ -50,11 +50,11 @@ async function debugSession() {
       if (requestId) {
         try {
           const checkResponse = await fetch(`${baseUrl}/api/response`, {
-            method: 'POST',
+            method: "POST",
             headers,
             body: JSON.stringify({
-              sessionCode: sessionCode,
-              requestId: requestId
+              sessionCode,
+              requestId
             })
           });
           const checkResult = await checkResponse.json();
@@ -71,38 +71,38 @@ async function debugSession() {
     // Step 4: Test stream endpoint with longer monitoring
     console.log(`\n📡 Step 4: Testing stream endpoint...`);
     console.log(`Stream URL: ${baseUrl}/api/stream?sessionCode=${sessionCode}`);
-    console.log('You should manually check this URL in a browser or curl it to see live updates.\n');
+    console.log("You should manually check this URL in a browser or curl it to see live updates.\n");
     
     // Step 5: Send a very simple request that should definitely work
     console.log(`🔧 Step 5: Sending minimal test request...`);
     const minimalRequest = {
-      sessionCode: sessionCode,
+      sessionCode,
       requestId: `minimal-${Date.now()}`,
-      toolName: 'get_data_contexts',
+      toolName: "get_data_contexts",
       params: {}
     };
     
     const minimalResponse = await fetch(`${baseUrl}/api/request`, {
-      method: 'POST',
+      method: "POST",
       headers,
       body: JSON.stringify(minimalRequest)
     });
     const minimalResult = await minimalResponse.json();
-    console.log('Minimal request result:', JSON.stringify(minimalResult, null, 2));
+    console.log("Minimal request result:", JSON.stringify(minimalResult, null, 2));
     
     // Step 6: Check deployment and connectivity
     console.log(`\n🌐 Step 6: Verifying deployment info...`);
     const healthResponse = await fetch(`${baseUrl}/api/health`, { headers });
     if (healthResponse.ok) {
       const healthData = await healthResponse.json();
-      console.log('Health check:', JSON.stringify(healthData, null, 2));
+      console.log("Health check:", JSON.stringify(healthData, null, 2));
     } else {
-      console.log('Health check failed:', healthResponse.status, healthResponse.statusText);
+      console.log("Health check failed:", healthResponse.status, healthResponse.statusText);
     }
     
     // Step 7: Debugging suggestions
     console.log(`\n🛠️  TROUBLESHOOTING STEPS:`);
-    console.log('=========================');
+    console.log("=========================");
     console.log(`1. 🌐 Check CODAP Plugin Console:`);
     console.log(`   - Open browser dev tools (F12) in your CODAP tab`);
     console.log(`   - Look for console logs, errors, or network activity`);
@@ -134,8 +134,8 @@ async function debugSession() {
     console.log(`   ${baseUrl}/api/metadata?code=${sessionCode}`);
     
   } catch (error) {
-    console.error('❌ Debug failed:', error);
-    console.error('Stack trace:', error.stack);
+    console.error("❌ Debug failed:", error);
+    console.error("Stack trace:", error.stack);
   }
 }
 

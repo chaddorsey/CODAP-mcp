@@ -128,7 +128,7 @@ export default async function handler(req, res) {
       status: "queued",
       message: "🎉 QUEUE-BASED JOB PROCESSING - KV STORAGE WORKING! 🎉",
       timestamp: new Date().toISOString(),
-      sessionCode: sessionCode,
+      sessionCode,
       deploymentTest: "QUEUE_FIXED_VERSION_JUN_2025"
     }, 202);
     

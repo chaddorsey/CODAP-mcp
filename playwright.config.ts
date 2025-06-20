@@ -82,7 +82,7 @@ export default defineConfig<PlaywrightCoverageOptions>({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: 'https://localhost:8088/',
+    baseURL: "https://localhost:8088/",
 
     /* Collect trace. See https://playwright.dev/docs/trace-viewer
        The default value of this is "on-first-retry". This is recommended because recording traces

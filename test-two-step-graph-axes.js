@@ -4,9 +4,9 @@
  * Step 2: Update/assign axes in subsequent API calls
  */
 
-const SESSION_CODE = 'YZLUCZUJ';
-const BASE_URL = 'https://codap-e9fut2tgz-cdorsey-concordorgs-projects.vercel.app';
-const BYPASS_HEADER = 'pAg5Eon3T8qOwMaWKzo9k6T4pdbYiCye';
+const SESSION_CODE = "YZLUCZUJ";
+const BASE_URL = "https://codap-e9fut2tgz-cdorsey-concordorgs-projects.vercel.app";
+const BYPASS_HEADER = "pAg5Eon3T8qOwMaWKzo9k6T4pdbYiCye";
 
 async function makeRequest(url, options) {
   try {
@@ -28,7 +28,7 @@ async function makeRequest(url, options) {
   } catch (error) {
     return {
       status: 0,
-      statusText: 'Network Error',
+      statusText: "Network Error",
       data: { error: error.message }
     };
   }
@@ -41,16 +41,16 @@ async function submitToolRequest(toolName, params) {
   
   // Submit request
   const submitResponse = await makeRequest(`${BASE_URL}/api/request`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
-      'x-sso-bypass': BYPASS_HEADER
+      "Content-Type": "application/json",
+      "x-sso-bypass": BYPASS_HEADER
     },
     body: JSON.stringify({
       sessionCode: SESSION_CODE,
-      toolName: toolName,
-      params: params,
-      requestId: requestId
+      toolName,
+      params,
+      requestId
     })
   });
 
@@ -68,9 +68,9 @@ async function submitToolRequest(toolName, params) {
     attempts++;
 
     const pollResponse = await makeRequest(`${BASE_URL}/api/response?sessionCode=${SESSION_CODE}&requestId=${requestId}`, {
-      method: 'GET',
+      method: "GET",
       headers: {
-        'x-sso-bypass': BYPASS_HEADER
+        "x-sso-bypass": BYPASS_HEADER
       }
     });
 
@@ -78,7 +78,7 @@ async function submitToolRequest(toolName, params) {
       const result = pollResponse.data;
       if (result.result && result.result.success) {
         const valuesStr = JSON.stringify(result.result.values || result.result);
-        console.log(`   ✅ Success: ${valuesStr.substring(0, 80)}${valuesStr.length > 80 ? '...' : ''}`);
+        console.log(`   ✅ Success: ${valuesStr.substring(0, 80)}${valuesStr.length > 80 ? "..." : ""}`);
         return { success: true, data: result.result.values || result.result };
       } else if (result.result && !result.result.success) {
         console.log(`   ❌ Failed: ${JSON.stringify(result.result.values || result.result)}`);
@@ -88,7 +88,7 @@ async function submitToolRequest(toolName, params) {
   }
 
   console.log(`   ⏰ Timeout after ${maxAttempts} seconds`);
-  return { success: false, error: 'Timeout' };
+  return { success: false, error: "Timeout" };
 }
 
 async function pause(seconds, message) {
@@ -97,47 +97,47 @@ async function pause(seconds, message) {
 }
 
 async function testTwoStepGraphAxes() {
-  console.log('🎯 TWO-STEP GRAPH AXES ASSIGNMENT TEST');
+  console.log("🎯 TWO-STEP GRAPH AXES ASSIGNMENT TEST");
   console.log(`📋 Session: ${SESSION_CODE}`);
-  console.log('🎯 Goal: Create graph first, then assign axes in separate API calls');
-  console.log('==================================================\n');
+  console.log("🎯 Goal: Create graph first, then assign axes in separate API calls");
+  console.log("==================================================\n");
 
   try {
     // Step 1: Create data context
-    console.log('1️⃣ Creating data context...');
-    const dataContext = await submitToolRequest('create_data_context', {
-      name: 'TwoStepTest',
-      title: 'Two-Step Graph Test'
+    console.log("1️⃣ Creating data context...");
+    const dataContext = await submitToolRequest("create_data_context", {
+      name: "TwoStepTest",
+      title: "Two-Step Graph Test"
     });
 
     if (!dataContext.success) {
-      console.log('❌ Failed to create data context');
+      console.log("❌ Failed to create data context");
       return;
     }
 
     // Step 2: Create collection with attributes
-    console.log('\n2️⃣ Creating collection with attributes...');
-    const collection = await submitToolRequest('create_collection', {
-      dataContextName: 'TwoStepTest',
-      collectionName: 'Experiments',
+    console.log("\n2️⃣ Creating collection with attributes...");
+    const collection = await submitToolRequest("create_collection", {
+      dataContextName: "TwoStepTest",
+      collectionName: "Experiments",
       attributes: [
-        { name: 'trial', type: 'numeric', title: 'Trial Number' },
-        { name: 'voltage', type: 'numeric', title: 'Voltage (V)' },
-        { name: 'current', type: 'numeric', title: 'Current (A)' },
-        { name: 'resistance', type: 'numeric', title: 'Resistance (Ω)' }
+        { name: "trial", type: "numeric", title: "Trial Number" },
+        { name: "voltage", type: "numeric", title: "Voltage (V)" },
+        { name: "current", type: "numeric", title: "Current (A)" },
+        { name: "resistance", type: "numeric", title: "Resistance (Ω)" }
       ]
     });
 
     if (!collection.success) {
-      console.log('❌ Failed to create collection');
+      console.log("❌ Failed to create collection");
       return;
     }
 
     // Step 3: Add sample data
-    console.log('\n3️⃣ Adding sample data...');
-    const items = await submitToolRequest('create_items', {
-      dataContextName: 'TwoStepTest',
-      collectionName: 'Experiments',
+    console.log("\n3️⃣ Adding sample data...");
+    const items = await submitToolRequest("create_items", {
+      dataContextName: "TwoStepTest",
+      collectionName: "Experiments",
       items: [
         { trial: 1, voltage: 1.5, current: 0.15, resistance: 10 },
         { trial: 2, voltage: 3.0, current: 0.30, resistance: 10 },
@@ -148,15 +148,15 @@ async function testTwoStepGraphAxes() {
     });
 
     if (!items.success) {
-      console.log('❌ Failed to create items');
+      console.log("❌ Failed to create items");
       return;
     }
 
     // Step 3b: Create data table to make data visible
-    console.log('\n3️⃣b Creating data table...');
-    const dataTable = await submitToolRequest('create_table', {
-      dataContextName: 'TwoStepTest',
-      title: 'Electrical Experiments Data',
+    console.log("\n3️⃣b Creating data table...");
+    const dataTable = await submitToolRequest("create_table", {
+      dataContextName: "TwoStepTest",
+      title: "Electrical Experiments Data",
       position: { x: 50, y: 50 },
       dimensions: { width: 500, height: 200 }
     });
@@ -165,66 +165,66 @@ async function testTwoStepGraphAxes() {
       console.log(`   📋 Data table created with ID: ${dataTable.data.id}`);
     }
 
-    await pause(3, '🔍 CHECK: Data table should be visible with 5 experiment records');
+    await pause(3, "🔍 CHECK: Data table should be visible with 5 experiment records");
 
     // Step 4: Create empty graph component (no axes assigned yet)
-    console.log('\n4️⃣ Creating empty graph component...');
-    const emptyGraph = await submitToolRequest('create_graph', {
-      dataContextName: 'TwoStepTest',
-      title: 'Voltage vs Current (Two-Step)',
+    console.log("\n4️⃣ Creating empty graph component...");
+    const emptyGraph = await submitToolRequest("create_graph", {
+      dataContextName: "TwoStepTest",
+      title: "Voltage vs Current (Two-Step)",
       position: { x: 50, y: 280 },
       dimensions: { width: 400, height: 300 }
     });
 
     if (!emptyGraph.success) {
-      console.log('❌ Failed to create empty graph');
+      console.log("❌ Failed to create empty graph");
       return;
     }
 
     const graphId = emptyGraph.data.id;
     console.log(`   📊 Empty graph created with ID: ${graphId}`);
 
-    await pause(3, '🔍 CHECK: Empty graph should be visible with random dots');
+    await pause(3, "🔍 CHECK: Empty graph should be visible with random dots");
 
     // Step 5: Update graph to assign X-axis attribute
-    console.log('\n5️⃣ Assigning X-axis attribute...');
-    const assignXAxis = await submitToolRequest('update_component', {
+    console.log("\n5️⃣ Assigning X-axis attribute...");
+    const assignXAxis = await submitToolRequest("update_component", {
       componentId: graphId,
-      xAttributeName: 'voltage'
+      xAttributeName: "voltage"
     });
 
     if (assignXAxis.success) {
       console.log(`   📈 X-axis assigned to 'voltage'`);
     }
 
-    await pause(3, '🔍 CHECK: Does graph now show voltage on X-axis?');
+    await pause(3, "🔍 CHECK: Does graph now show voltage on X-axis?");
 
     // Step 6: Update graph to assign Y-axis attribute
-    console.log('\n6️⃣ Assigning Y-axis attribute...');
-    const assignYAxis = await submitToolRequest('update_component', {
+    console.log("\n6️⃣ Assigning Y-axis attribute...");
+    const assignYAxis = await submitToolRequest("update_component", {
       componentId: graphId,
-      yAttributeName: 'current'
+      yAttributeName: "current"
     });
 
     if (assignYAxis.success) {
       console.log(`   📈 Y-axis assigned to 'current'`);
     }
 
-    await pause(5, '🔍 CHECK: Does graph now show current on Y-axis? Should see linear relationship!');
+    await pause(5, "🔍 CHECK: Does graph now show current on Y-axis? Should see linear relationship!");
 
     // Step 7: Create second graph using the two-step approach
-    console.log('\n7️⃣ Creating second graph with two-step approach...');
+    console.log("\n7️⃣ Creating second graph with two-step approach...");
     
     // 7a: Create empty graph
-    const emptyGraph2 = await submitToolRequest('create_graph', {
-      dataContextName: 'TwoStepTest',
-      title: 'Trial vs Resistance (Two-Step)',
+    const emptyGraph2 = await submitToolRequest("create_graph", {
+      dataContextName: "TwoStepTest",
+      title: "Trial vs Resistance (Two-Step)",
       position: { x: 480, y: 280 },
       dimensions: { width: 400, height: 300 }
     });
 
     if (!emptyGraph2.success) {
-      console.log('❌ Failed to create second empty graph');
+      console.log("❌ Failed to create second empty graph");
       return;
     }
 
@@ -232,24 +232,24 @@ async function testTwoStepGraphAxes() {
     console.log(`   📊 Second empty graph created with ID: ${graphId2}`);
 
     // 7b: Assign both axes in one update call
-    console.log('\n8️⃣ Assigning both axes in single update...');
-    const assignBothAxes = await submitToolRequest('update_component', {
+    console.log("\n8️⃣ Assigning both axes in single update...");
+    const assignBothAxes = await submitToolRequest("update_component", {
       componentId: graphId2,
-      xAttributeName: 'trial',
-      yAttributeName: 'resistance'
+      xAttributeName: "trial",
+      yAttributeName: "resistance"
     });
 
     if (assignBothAxes.success) {
       console.log(`   📈 Both axes assigned: trial (X) and resistance (Y)`);
     }
 
-    await pause(5, '🔍 CHECK: Does second graph show trial vs resistance?');
+    await pause(5, "🔍 CHECK: Does second graph show trial vs resistance?");
 
     // Step 8: Try alternative update approach using component resource
-    console.log('\n9️⃣ Testing alternative update approach...');
-    const emptyGraph3 = await submitToolRequest('create_graph', {
-      dataContextName: 'TwoStepTest',
-      title: 'Voltage vs Resistance (Alternative)',
+    console.log("\n9️⃣ Testing alternative update approach...");
+    const emptyGraph3 = await submitToolRequest("create_graph", {
+      dataContextName: "TwoStepTest",
+      title: "Voltage vs Resistance (Alternative)",
       position: { x: 50, y: 620 },
       dimensions: { width: 400, height: 300 }
     });
@@ -259,11 +259,11 @@ async function testTwoStepGraphAxes() {
       console.log(`   📊 Third graph created with ID: ${graphId3}`);
 
       // Try updating with full component specification
-      const updateGraph3 = await submitToolRequest('update_component', {
+      const updateGraph3 = await submitToolRequest("update_component", {
         componentId: graphId3,
         values: {
-          xAttributeName: 'voltage',
-          yAttributeName: 'resistance'
+          xAttributeName: "voltage",
+          yAttributeName: "resistance"
         }
       });
 
@@ -272,22 +272,22 @@ async function testTwoStepGraphAxes() {
       }
     }
 
-    await pause(5, '🔍 CHECK: Does third graph show voltage vs resistance?');
+    await pause(5, "🔍 CHECK: Does third graph show voltage vs resistance?");
 
-    console.log('\n🎉 TWO-STEP GRAPH AXES TEST FINISHED!');
-    console.log('📊 What should be visible in CODAP:');
-    console.log('   • Data table with 5 electrical experiment records');
-    console.log('   • Graph 1: Voltage (X) vs Current (Y) - should show linear relationship');
-    console.log('   • Graph 2: Trial (X) vs Resistance (Y) - should show flat line at 10Ω');
-    console.log('   • Graph 3: Voltage (X) vs Resistance (Y) - should show flat line at 10Ω');
-    console.log('\n🔧 Two-step approaches tested:');
-    console.log('   1. Create graph → Update X-axis → Update Y-axis (separate calls)');
-    console.log('   2. Create graph → Update both axes (single call)');
-    console.log('   3. Create graph → Update with values object');
-    console.log('\n❓ CRITICAL QUESTION: Which two-step approach shows attribute names on axes?');
+    console.log("\n🎉 TWO-STEP GRAPH AXES TEST FINISHED!");
+    console.log("📊 What should be visible in CODAP:");
+    console.log("   • Data table with 5 electrical experiment records");
+    console.log("   • Graph 1: Voltage (X) vs Current (Y) - should show linear relationship");
+    console.log("   • Graph 2: Trial (X) vs Resistance (Y) - should show flat line at 10Ω");
+    console.log("   • Graph 3: Voltage (X) vs Resistance (Y) - should show flat line at 10Ω");
+    console.log("\n🔧 Two-step approaches tested:");
+    console.log("   1. Create graph → Update X-axis → Update Y-axis (separate calls)");
+    console.log("   2. Create graph → Update both axes (single call)");
+    console.log("   3. Create graph → Update with values object");
+    console.log("\n❓ CRITICAL QUESTION: Which two-step approach shows attribute names on axes?");
 
   } catch (error) {
-    console.error('❌ Test failed:', error);
+    console.error("❌ Test failed:", error);
   }
 }
 

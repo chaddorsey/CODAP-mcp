@@ -64,7 +64,7 @@ async function validateSession(req, res, next = null) {
     req.sessionCode = code;
     
     // Call next middleware if provided (Express-style)
-    if (next && typeof next === 'function') {
+    if (next && typeof next === "function") {
       next();
     }
     

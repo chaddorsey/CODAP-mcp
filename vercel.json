@@ -17,8 +17,14 @@
     "api/metadata.js": {
       "maxDuration": 10
     },
-    "api/mcp.js": {
-      "maxDuration": 30
+    "api/test-endpoint.js": {
+      "maxDuration": 10
+    },
+    "api/tool-request.js": {
+      "maxDuration": 10
+    },
+    "api/debug-deployment.js": {
+      "maxDuration": 10
     }
   },
   "headers": [

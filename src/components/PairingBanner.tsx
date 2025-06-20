@@ -319,7 +319,8 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
         sendMessage, 
         createTable, 
         createItems,
-        createDataContext
+        createDataContext,
+        initializePlugin 
       } = await import("@concord-consortium/codap-plugin-api");
 
       // Execute the actual tool based on tool name

@@ -1,4 +1,4 @@
-import { ToolSchema, ToolParameterSchema } from '../types';
+import { ToolSchema, ToolParameterSchema } from "../types";
 
 /**
  * Transforms a ToolSchema (internal format) to JSON Schema draft-07.
@@ -8,7 +8,7 @@ import { ToolSchema, ToolParameterSchema } from '../types';
 export function toolSchemaToJsonSchema(toolSchema: ToolSchema): object {
   const { name, description, parameters } = toolSchema;
   return {
-    $schema: 'http://json-schema.org/draft-07/schema#',
+    $schema: "http://json-schema.org/draft-07/schema#",
     title: name,
     description,
     ...transformParameterSchema(parameters)
@@ -26,7 +26,7 @@ function transformParameterSchema(paramSchema: any): object {
   const base: any = { type };
   if (description) base.description = description;
   if (enumValues) base.enum = enumValues;
-  if (type === 'object') {
+  if (type === "object") {
     base.properties = {};
     if (properties) {
       for (const [key, value] of Object.entries(properties)) {
@@ -34,11 +34,11 @@ function transformParameterSchema(paramSchema: any): object {
       }
     }
     if (required) base.required = required;
-  } else if (type === 'array') {
+  } else if (type === "array") {
     base.items = items ? transformParameterSchema(items) : {};
   }
   // Copy over other JSON Schema-relevant fields
-  for (const key of ['default', 'minimum', 'maximum', 'pattern']) {
+  for (const key of ["default", "minimum", "maximum", "pattern"]) {
     if (rest[key] !== undefined) base[key] = rest[key];
   }
   return base;
