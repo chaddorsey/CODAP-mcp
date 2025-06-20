@@ -10,7 +10,7 @@ This document lists all tasks associated with PBI 18.
 | :------ | :--------------------------------------- | :------- | :--------------------------------- |
 | 18-1 | [Design MCP-compliant architecture](./18-1.md) | Done | Design MCP server architecture compatible with Vercel |
 | 18-2 | [Implement core MCP server endpoint](./18-2.md) | Done | Create `/api/mcp` endpoint with JSON-RPC 2.0 support |
-| 18-3 | [Implement MCP initialization and capabilities](./18-3.md) | Proposed | Handle MCP lifecycle with proper capability negotiation |
+| 18-3 | [Implement MCP initialization and capabilities](./18-3.md) | Done | Handle MCP lifecycle with proper capability negotiation |
 | 18-4 | [Convert tool discovery to MCP format](./18-4.md) | Proposed | Transform metadata endpoint to MCP list_tools |
 | 18-5 | [Implement MCP tool execution](./18-5.md) | Proposed | Route MCP call_tool to existing browser worker system |
 | 18-6 | [Add session management with MCP headers](./18-6.md) | Proposed | Integrate existing session system with MCP protocol |

@@ -63,6 +63,21 @@ class SessionManager {
     return await kv.get(`legacy:${legacyCode}`);
   }
   
+  async updateSession(mcpSessionId, updatedData) {
+    const session = await this.getSessionByMCP(mcpSessionId);
+    if (session) {
+      const mergedSession = { ...session, ...updatedData };
+      const ttl = Math.floor((mergedSession.expiresAt - Date.now()) / 1000);
+      
+      if (ttl > 0) {
+        await Promise.all([
+          kv.set(`mcp:${mcpSessionId}`, mergedSession, { ex: ttl }),
+          kv.set(`legacy:${session.legacyCode}`, mergedSession, { ex: ttl })
+        ]);
+      }
+    }
+  }
+  
   async deleteSession(mcpSessionId) {
     const session = await this.getSessionByMCP(mcpSessionId);
     if (session) {
@@ -147,6 +162,113 @@ function createMCPServer(sessionManager, toolBridge) {
     version: "1.0.0"
   });
   
+  // Register MCP lifecycle methods
+  server.registerInitialize(async (params, { sessionId }) => {
+    try {
+      // Validate protocol version
+      const supportedVersions = ["1.0.0", "1.0"];
+      const clientVersion = params.protocolVersion;
+      
+      if (!clientVersion || !supportedVersions.includes(clientVersion)) {
+        throw new Error(`Unsupported protocol version: ${clientVersion}. Supported versions: ${supportedVersions.join(', ')}`);
+      }
+      
+      // Update session with initialization info
+      const session = await sessionManager.getSessionByMCP(sessionId);
+      if (session) {
+        const updatedSession = {
+          ...session,
+          initialized: true,
+          clientInfo: params.clientInfo || {},
+          protocolVersion: clientVersion,
+          initializedAt: Date.now()
+        };
+        
+        await sessionManager.updateSession(sessionId, updatedSession);
+      }
+      
+      // Return server information and capabilities
+      return {
+        protocolVersion: "1.0.0",
+        serverInfo: {
+          name: "codap-mcp-server",
+          version: "1.0.0",
+          description: "CODAP MCP Server - Provides access to 33 CODAP data manipulation and visualization tools",
+          author: "Concord Consortium",
+          homepage: "https://codap.concord.org",
+          repository: "https://github.com/concord-consortium/CODAP-mcp"
+        },
+        capabilities: {
+          tools: {
+            listChanged: false // Tools list is static for now
+          },
+          resources: {
+            subscribe: false,
+            listChanged: false
+          },
+          prompts: {
+            listChanged: false
+          },
+          logging: {}
+        }
+      };
+      
+    } catch (error) {
+      throw new Error(`Initialization failed: ${error.message}`);
+    }
+  });
+  
+  server.registerCapabilities(async (params, { sessionId }) => {
+    try {
+      // Verify session is initialized
+      const session = await sessionManager.getSessionByMCP(sessionId);
+      if (!session || !session.initialized) {
+        throw new Error('Session not initialized. Call initialize method first.');
+      }
+      
+      // Return detailed capabilities
+      return {
+        capabilities: {
+          tools: {
+            listChanged: false,
+            count: CODAP_TOOLS.length,
+            categories: [
+              "data-context",
+              "data-manipulation", 
+              "visualization",
+              "components",
+              "collections",
+              "attributes",
+              "items",
+              "selection",
+              "notifications"
+            ]
+          },
+          resources: {
+            subscribe: false,
+            listChanged: false,
+            count: 0
+          },
+          prompts: {
+            listChanged: false,
+            count: 0
+          },
+          logging: {
+            level: "info"
+          }
+        },
+        meta: {
+          toolsAvailable: CODAP_TOOLS.length,
+          version: "1.0.0",
+          lastUpdated: new Date().toISOString()
+        }
+      };
+      
+    } catch (error) {
+      throw new Error(`Capabilities query failed: ${error.message}`);
+    }
+  });
+  
   // Register all CODAP tools from existing registry
   CODAP_TOOLS.forEach(tool => {
     server.registerTool(
@@ -157,6 +279,12 @@ function createMCPServer(sessionManager, toolBridge) {
         inputSchema: tool.parameters // Existing JSON Schema Draft-07 compatible
       },
       async (args, { sessionId }) => {
+        // Verify session is initialized before tool execution
+        const session = await sessionManager.getSessionByMCP(sessionId);
+        if (!session || !session.initialized) {
+          throw new Error('Session not initialized. Call initialize method first.');
+        }
+        
         return await toolBridge.executeTool(
           tool.name, 
           args, 
