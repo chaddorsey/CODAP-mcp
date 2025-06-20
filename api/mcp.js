@@ -32,6 +32,55 @@ function generateLegacySessionCode() {
 }
 
 /**
+ * Get usage examples for specific tools
+ */
+function getToolExamples(toolName) {
+  const examples = {
+    'createDataContext': [{
+      description: 'Create a simple dataset with student information',
+      arguments: {
+        name: 'Students',
+        collections: [{
+          name: 'Students',
+          attrs: [
+            { name: 'Name', type: 'categorical' },
+            { name: 'Grade', type: 'numeric' },
+            { name: 'Subject', type: 'categorical' }
+          ]
+        }]
+      }
+    }],
+    'createItems': [{
+      description: 'Add student records to the dataset',
+      arguments: {
+        dataContext: 'Students',
+        items: [
+          { Name: 'Alice', Grade: 85, Subject: 'Math' },
+          { Name: 'Bob', Grade: 92, Subject: 'Science' }
+        ]
+      }
+    }],
+    'createGraph': [{
+      description: 'Create a scatter plot of two attributes',
+      arguments: {
+        dataContext: 'Students',
+        xAttributeName: 'Grade',
+        yAttributeName: 'Subject'
+      }
+    }],
+    'createTable': [{
+      description: 'Create a table to view the data',
+      arguments: {
+        dataContext: 'Students',
+        title: 'Student Data Table'
+      }
+    }]
+  };
+  
+  return examples[toolName] || [];
+}
+
+/**
  * Session mapping between MCP Session IDs and legacy codes
  */
 class SessionManager {
@@ -266,6 +315,73 @@ function createMCPServer(sessionManager, toolBridge) {
       
     } catch (error) {
       throw new Error(`Capabilities query failed: ${error.message}`);
+    }
+  });
+  
+  server.registerListTools(async (params, { sessionId }) => {
+    try {
+      // Verify session is initialized
+      const session = await sessionManager.getSessionByMCP(sessionId);
+      if (!session || !session.initialized) {
+        throw new Error('Session not initialized. Call initialize method first.');
+      }
+      
+      // Transform CODAP tools to MCP format
+      const mcpTools = CODAP_TOOLS.map(tool => {
+        // Determine tool category based on name and function
+        let category = 'data-manipulation';
+        if (tool.name.includes('Graph') || tool.name.includes('Table') || tool.name.includes('Slider') || 
+            tool.name.includes('Calculator') || tool.name.includes('Text') || tool.name.includes('WebView')) {
+          category = 'visualization';
+        } else if (tool.name.includes('Component') || tool.name.includes('component')) {
+          category = 'components';
+        } else if (tool.name.includes('DataContext') || tool.name.includes('dataContext')) {
+          category = 'data-context';
+        } else if (tool.name.includes('Collection') || tool.name.includes('collection')) {
+          category = 'collections';
+        } else if (tool.name.includes('Attribute') || tool.name.includes('attribute')) {
+          category = 'attributes';
+        } else if (tool.name.includes('Item') || tool.name.includes('item') || tool.name.includes('Case')) {
+          category = 'items';
+        } else if (tool.name.includes('select') || tool.name.includes('Select')) {
+          category = 'selection';
+        } else if (tool.name.includes('Notification') || tool.name.includes('notification')) {
+          category = 'notifications';
+        }
+        
+        return {
+          name: tool.name,
+          title: tool.title || tool.name,
+          description: tool.description,
+          inputSchema: tool.parameters, // Already JSON Schema Draft-7 compatible
+          category: category,
+          tags: [category, 'codap', 'data-analysis'],
+          examples: getToolExamples(tool.name)
+        };
+      });
+      
+      return {
+        tools: mcpTools,
+        meta: {
+          total: mcpTools.length,
+          categories: [
+            "data-context",
+            "data-manipulation", 
+            "visualization", 
+            "components",
+            "collections",
+            "attributes",
+            "items",
+            "selection",
+            "notifications"
+          ],
+          version: "1.0.0",
+          lastUpdated: new Date().toISOString()
+        }
+      };
+      
+    } catch (error) {
+      throw new Error(`Tool discovery failed: ${error.message}`);
     }
   });
   
