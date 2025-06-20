@@ -2,6 +2,20 @@
 // Returns JSON-Schema tool definitions for LLM agents
 const { withSessionValidation, createErrorResponse } = require("./_middleware/sessionValidation");
 
+// Import comprehensive CODAP tools
+let allCODAPTools, TOTAL_TOOL_COUNT;
+try {
+  const toolsModule = require('./codap-tools.js');
+  allCODAPTools = toolsModule.allCODAPTools;
+  TOTAL_TOOL_COUNT = toolsModule.TOTAL_TOOL_COUNT;
+  console.log(`✅ Comprehensive CODAP tools loaded: ${TOTAL_TOOL_COUNT} tools available`);
+} catch (error) {
+  console.error("❌ Failed to load comprehensive tools, falling back to basic tools:", error.message);
+  // Fallback will be defined below
+  allCODAPTools = null;
+  TOTAL_TOOL_COUNT = 0;
+}
+
 /**
  * Version management constants
  */
@@ -11,13 +25,12 @@ const SUPPORTED_API_VERSIONS = ["1.0.0"];
 const SUPPORTED_MANIFEST_VERSIONS = ["1.0.0"];
 
 /**
- * Tool registry - importing from browser worker schemas
- * In a real implementation, this would import from the actual tool registry
- * For now, we'll define the manifest structure based on the existing tools
+ * Tool registry - now using comprehensive CODAP tools
+ * Imports from the comprehensive tool set with fallback to basic tools
  */
-const TOOL_MANIFEST = {
-  version: TOOL_MANIFEST_VERSION,
-  tools: [
+
+// Fallback basic tools for when comprehensive tools fail to load
+const FALLBACK_TOOLS = [
     {
       name: "create_dataset_with_table",
       description: "Create a new dataset in CODAP with automatic table display for immediate user feedback",
@@ -298,7 +311,14 @@ const TOOL_MANIFEST = {
         required: ["name"]
       }
     }
-  ]
+];
+
+// Create the tool manifest using comprehensive tools or fallback
+const TOOL_MANIFEST = {
+  version: TOOL_MANIFEST_VERSION,
+  tools: allCODAPTools || FALLBACK_TOOLS,
+  toolCount: TOTAL_TOOL_COUNT || FALLBACK_TOOLS.length,
+  source: allCODAPTools ? "comprehensive" : "fallback"
 };
 
 /**
