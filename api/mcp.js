@@ -306,21 +306,62 @@ class MCPProtocolHandler {
       return this.createErrorResponse(id, -32600, "Invalid Request");
     }
     
+    // Validate required method field
+    if (!method || typeof method !== 'string') {
+      return this.createErrorResponse(id, -32600, "Invalid Request");
+    }
+    
+    // Handle notifications (requests without id)
+    const isNotification = id === undefined;
+    
     try {
+      let result;
       switch (method) {
         case 'initialize':
-          return await this.handleInitialize(params, id, sessionId, headers);
+          result = await this.handleInitialize(params, id, sessionId, headers);
+          break;
+        case 'initialized':
+          result = await this.handleInitialized(params, id, sessionId, headers);
+          break;
         case 'capabilities':
-          return await this.handleCapabilities(params, id, sessionId, headers);
+          result = await this.handleCapabilities(params, id, sessionId, headers);
+          break;
         case 'tools/list':
-          return await this.handleToolsList(params, id, sessionId, headers);
+          result = await this.handleToolsList(params, id, sessionId, headers);
+          break;
         case 'tools/call':
-          return await this.handleToolCall(params, id, sessionId, headers);
+          result = await this.handleToolCall(params, id, sessionId, headers);
+          break;
+        case 'ping':
+          result = await this.handlePing(params, id, sessionId, headers);
+          break;
+        case 'logging/setLevel':
+          result = await this.handleSetLogLevel(params, id, sessionId, headers);
+          break;
         default:
+          if (isNotification) {
+            console.log(`[MCP] Ignoring unknown notification: ${method}`);
+            return null; // No response for notifications
+          }
           return this.createErrorResponse(id, -32601, "Method not found");
       }
+      
+      // Don't send response for notifications
+      if (isNotification) {
+        console.log(`[MCP] Processed notification: ${method}`);
+        return null;
+      }
+      
+      return result;
     } catch (error) {
       console.error(`MCP method ${method} error:`, error);
+      
+      // Don't send error response for notifications
+      if (isNotification) {
+        console.error(`[MCP] Error in notification ${method}:`, error);
+        return null;
+      }
+      
       return this.createErrorResponse(id, -32603, "Internal error", { error: error.message });
     }
   }
@@ -355,13 +396,14 @@ class MCPProtocolHandler {
     return {
       jsonrpc: "2.0",
       result: {
-        protocolVersion: "2024-11-05",
+        protocolVersion: "2025-03-26",
         capabilities: {
           tools: {
             listChanged: false
           },
           resources: {},
-          prompts: {}
+          prompts: {},
+          logging: {}
         },
         serverInfo: {
           name: "codap-mcp-server",
@@ -374,6 +416,42 @@ class MCPProtocolHandler {
           status: session.status
         }
       },
+      id
+    };
+  }
+  
+  async handleInitialized(params, id, sessionId, headers = {}) {
+    // This is a notification sent after initialize - no response needed
+    console.log(`[MCP] Client initialized notification for session ${sessionId}`);
+    return null; // Notifications don't return responses
+  }
+  
+  async handlePing(params, id, sessionId, headers = {}) {
+    const session = await this.sessionManager.getSessionByMCP(sessionId);
+    if (!session) {
+      return this.createErrorResponse(id, -32002, "Session not found");
+    }
+    
+    return {
+      jsonrpc: "2.0",
+      result: {},
+      id
+    };
+  }
+  
+  async handleSetLogLevel(params, id, sessionId, headers = {}) {
+    const { level } = params;
+    console.log(`[MCP] Setting log level to: ${level} for session ${sessionId}`);
+    
+    // Store log level in session
+    const session = await this.sessionManager.getSessionByMCP(sessionId);
+    if (session) {
+      await this.sessionManager.updateSession(sessionId, { logLevel: level });
+    }
+    
+    return {
+      jsonrpc: "2.0",
+      result: {},
       id
     };
   }
@@ -519,23 +597,17 @@ class MCPProtocolHandler {
       const result = await this.waitForResponse(requestId, internalRequest);
       const executionTime = Date.now() - startTime;
       
-      // Return MCP-compliant response
+      // Return MCP-compliant response with proper content format
       return {
         jsonrpc: "2.0",
         result: {
           content: [
             {
               type: "text",
-              text: JSON.stringify({
-                success: true,
-                result: result,
-                toolName: toolName,
-                executionTime: `${executionTime}ms`,
-                sessionCode: session.legacyCode,
-                executionMode: "browser-worker"
-              }, null, 2)
+              text: `Tool execution completed successfully.\n\nTool: ${toolName}\nExecution Time: ${executionTime}ms\nMode: browser-worker\nSession: ${session.legacyCode}\n\nResult:\n${JSON.stringify(result, null, 2)}`
             }
-          ]
+          ],
+          isError: false
         },
         id
       };
@@ -560,23 +632,17 @@ class MCPProtocolHandler {
       
       console.log(`[MCP] Direct tool execution completed: ${toolName} in ${executionTime}ms`);
       
-      // Return MCP-compliant response
+      // Return MCP-compliant response with proper content format
       return {
         jsonrpc: "2.0",
         result: {
           content: [
             {
               type: "text",
-              text: JSON.stringify({
-                success: true,
-                result: result,
-                toolName: toolName,
-                executionTime: `${executionTime}ms`,
-                sessionId: sessionId,
-                executionMode: "direct-server"
-              }, null, 2)
+              text: `Tool execution completed successfully.\n\nTool: ${toolName}\nExecution Time: ${executionTime}ms\nMode: direct-server\nSession: ${sessionId}\n\nResult:\n${JSON.stringify(result, null, 2)}`
             }
-          ]
+          ],
+          isError: false
         },
         id
       };
@@ -678,6 +744,89 @@ function validateHeaders(headers) {
 }
 
 /**
+ * Handle batch requests according to JSON-RPC 2.0 specification
+ */
+async function handleBatchRequest(requests, sessionId, headers, startTime) {
+  // Validate batch request
+  if (requests.length === 0) {
+    return new Response(JSON.stringify({
+      jsonrpc: "2.0",
+      error: {
+        code: -32600,
+        message: "Invalid Request"
+      },
+      id: null
+    }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+  
+  const handler = new MCPProtocolHandler();
+  const responses = [];
+  
+  // Process each request in the batch
+  for (const request of requests) {
+    try {
+      // Check rate limiting for each request
+      const rateLimitOk = await handler.sessionManager.checkRateLimit(sessionId);
+      if (!rateLimitOk) {
+        responses.push({
+          jsonrpc: "2.0",
+          error: {
+            code: -32429,
+            message: "Rate limit exceeded"
+          },
+          id: request.id || null
+        });
+        continue;
+      }
+      
+      const response = await handler.handleRequest(request, sessionId, headers);
+      if (response !== null) { // Don't include responses for notifications
+        responses.push(response);
+      }
+    } catch (error) {
+      console.error(`[MCP] Batch request error:`, error);
+      responses.push({
+        jsonrpc: "2.0",
+        error: {
+          code: -32603,
+          message: "Internal error",
+          data: { error: error.message }
+        },
+        id: request.id || null
+      });
+    }
+  }
+  
+  const processingTime = Date.now() - startTime;
+  
+  // Return empty response if no responses (all notifications)
+  if (responses.length === 0) {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'x-processing-time-ms': processingTime.toString()
+      }
+    });
+  }
+  
+  // Return batch response
+  return new Response(JSON.stringify(responses), {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'mcp-session-id': sessionId,
+      'x-processing-time-ms': processingTime.toString(),
+      'x-batch-size': requests.length.toString()
+    }
+  });
+}
+
+/**
  * Handle POST requests - Enhanced MCP JSON-RPC messages with comprehensive header support
  */
 async function POST(req) {
@@ -708,6 +857,11 @@ async function POST(req) {
     // Parse request body
     const body = await req.json();
     
+    // Check if this is a batch request
+    if (Array.isArray(body)) {
+      return await handleBatchRequest(body, sessionId, headers, startTime);
+    }
+    
     // Create handler with enhanced session manager
     const handler = new MCPProtocolHandler();
     
@@ -734,6 +888,31 @@ async function POST(req) {
     // Process the request
     const response = await handler.handleRequest(body, sessionId, headers);
     const processingTime = Date.now() - startTime;
+    
+    // Handle null response (notifications)
+    if (response === null) {
+      return new Response(null, {
+        status: 204,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'mcp-session-id': sessionId,
+          'x-processing-time-ms': processingTime.toString()
+        }
+      });
+    }
+    
+    // Check if this is a JSON-RPC format error that should return 400
+    if (response.error && response.error.code === -32600) {
+      return new Response(JSON.stringify(response), {
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'mcp-session-id': sessionId,
+          'x-processing-time-ms': processingTime.toString()
+        }
+      });
+    }
     
     // Enhanced response headers
     const responseHeaders = {
