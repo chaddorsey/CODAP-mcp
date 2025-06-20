@@ -29,46 +29,263 @@ function generateLegacySessionCode() {
 }
 
 /**
- * Session mapping between MCP Session IDs and legacy codes
+ * Enhanced Session Manager with MCP protocol support
+ * Provides comprehensive session lifecycle management, validation, and security
  */
 class SessionManager {
-  async createSession(mcpSessionId) {
+  constructor() {
+    this.sessionMetrics = {
+      created: 0,
+      resumed: 0,
+      expired: 0,
+      errors: 0
+    };
+  }
+
+  /**
+   * Create a new session with comprehensive validation
+   */
+  async createSession(mcpSessionId, clientInfo = null) {
+    // Validate session ID format
+    if (!this.validateSessionId(mcpSessionId)) {
+      throw new Error(`Invalid session ID format: ${mcpSessionId}`);
+    }
+
+    // Check if session already exists (resumption case)
+    const existingSession = await this.getSessionByMCP(mcpSessionId);
+    if (existingSession) {
+      return await this.resumeSession(mcpSessionId, existingSession);
+    }
+
     const legacyCode = generateLegacySessionCode();
-    const expiresAt = Date.now() + SESSION_TTL;
+    const now = Date.now();
+    const expiresAt = now + SESSION_TTL;
     
     const sessionData = {
       mcpSessionId,
       legacyCode,
-      createdAt: Date.now(),
+      createdAt: now,
+      lastAccessedAt: now,
       expiresAt,
-      initialized: false
+      initialized: false,
+      clientInfo: clientInfo || {},
+      requestCount: 0,
+      toolCallCount: 0,
+      status: 'created'
     };
     
-    // Store bidirectional mapping
-    await Promise.all([
-      kv.set(`mcp:${mcpSessionId}`, sessionData, { ex: Math.floor(SESSION_TTL / 1000) }),
-      kv.set(`legacy:${legacyCode}`, sessionData, { ex: Math.floor(SESSION_TTL / 1000) })
-    ]);
-    
-    return sessionData;
-  }
-  
-  async getSessionByMCP(mcpSessionId) {
-    return await kv.get(`mcp:${mcpSessionId}`);
-  }
-  
-  async updateSession(mcpSessionId, updatedData) {
-    const session = await this.getSessionByMCP(mcpSessionId);
-    if (session) {
-      const mergedSession = { ...session, ...updatedData };
-      const ttl = Math.floor((mergedSession.expiresAt - Date.now()) / 1000);
+    try {
+      // Store bidirectional mapping with atomic operation
+      await Promise.all([
+        kv.set(`mcp:${mcpSessionId}`, sessionData, { ex: Math.floor(SESSION_TTL / 1000) }),
+        kv.set(`legacy:${legacyCode}`, sessionData, { ex: Math.floor(SESSION_TTL / 1000) }),
+        kv.set(`session:metrics:${mcpSessionId}`, { created: now }, { ex: Math.floor(SESSION_TTL / 1000) })
+      ]);
       
-      if (ttl > 0) {
-        await Promise.all([
-          kv.set(`mcp:${mcpSessionId}`, mergedSession, { ex: ttl }),
-          kv.set(`legacy:${session.legacyCode}`, mergedSession, { ex: ttl })
-        ]);
+      this.sessionMetrics.created++;
+      console.log(`[SessionManager] Created new session: ${mcpSessionId} -> ${legacyCode}`);
+      
+      return sessionData;
+    } catch (error) {
+      this.sessionMetrics.errors++;
+      console.error(`[SessionManager] Failed to create session ${mcpSessionId}:`, error);
+      throw new Error(`Session creation failed: ${error.message}`);
+    }
+  }
+  
+  /**
+   * Resume an existing session
+   */
+  async resumeSession(mcpSessionId, existingSession) {
+    const now = Date.now();
+    
+    // Check if session is expired
+    if (now >= existingSession.expiresAt) {
+      await this.cleanupSession(mcpSessionId);
+      throw new Error(`Session ${mcpSessionId} has expired`);
+    }
+    
+    // Update last accessed time and extend TTL
+    const updatedSession = {
+      ...existingSession,
+      lastAccessedAt: now,
+      status: 'resumed'
+    };
+    
+    await this.updateSession(mcpSessionId, updatedSession);
+    this.sessionMetrics.resumed++;
+    
+    console.log(`[SessionManager] Resumed session: ${mcpSessionId}`);
+    return updatedSession;
+  }
+  
+  /**
+   * Get session by MCP ID with validation
+   */
+  async getSessionByMCP(mcpSessionId) {
+    if (!this.validateSessionId(mcpSessionId)) {
+      return null;
+    }
+    
+    try {
+      const session = await kv.get(`mcp:${mcpSessionId}`);
+      
+      if (session) {
+        // Check expiration
+        if (Date.now() >= session.expiresAt) {
+          await this.cleanupSession(mcpSessionId);
+          return null;
+        }
+        
+        // Update last accessed time
+        await this.touchSession(mcpSessionId);
       }
+      
+      return session;
+    } catch (error) {
+      console.error(`[SessionManager] Error getting session ${mcpSessionId}:`, error);
+      this.sessionMetrics.errors++;
+      return null;
+    }
+  }
+  
+  /**
+   * Update session data with validation and TTL management
+   */
+  async updateSession(mcpSessionId, updatedData) {
+    const session = await kv.get(`mcp:${mcpSessionId}`);
+    if (!session) {
+      throw new Error(`Session ${mcpSessionId} not found`);
+    }
+    
+    const now = Date.now();
+    const mergedSession = { 
+      ...session, 
+      ...updatedData,
+      lastAccessedAt: now
+    };
+    
+    // Calculate remaining TTL
+    const ttl = Math.floor((mergedSession.expiresAt - now) / 1000);
+    
+    if (ttl <= 0) {
+      await this.cleanupSession(mcpSessionId);
+      throw new Error(`Session ${mcpSessionId} has expired`);
+    }
+    
+    try {
+      await Promise.all([
+        kv.set(`mcp:${mcpSessionId}`, mergedSession, { ex: ttl }),
+        kv.set(`legacy:${session.legacyCode}`, mergedSession, { ex: ttl })
+      ]);
+      
+      return mergedSession;
+    } catch (error) {
+      console.error(`[SessionManager] Error updating session ${mcpSessionId}:`, error);
+      this.sessionMetrics.errors++;
+      throw error;
+    }
+  }
+  
+  /**
+   * Touch session to update last accessed time
+   */
+  async touchSession(mcpSessionId) {
+    try {
+      const session = await kv.get(`mcp:${mcpSessionId}`);
+      if (session) {
+        const now = Date.now();
+        const ttl = Math.floor((session.expiresAt - now) / 1000);
+        
+        if (ttl > 0) {
+          session.lastAccessedAt = now;
+          session.requestCount = (session.requestCount || 0) + 1;
+          
+          await Promise.all([
+            kv.set(`mcp:${mcpSessionId}`, session, { ex: ttl }),
+            kv.set(`legacy:${session.legacyCode}`, session, { ex: ttl })
+          ]);
+        }
+      }
+    } catch (error) {
+      // Non-critical error, log but don't throw
+      console.warn(`[SessionManager] Failed to touch session ${mcpSessionId}:`, error);
+    }
+  }
+  
+  /**
+   * Clean up expired or invalid session
+   */
+  async cleanupSession(mcpSessionId) {
+    try {
+      const session = await kv.get(`mcp:${mcpSessionId}`);
+      
+      if (session) {
+        await Promise.all([
+          kv.del(`mcp:${mcpSessionId}`),
+          kv.del(`legacy:${session.legacyCode}`),
+          kv.del(`session:metrics:${mcpSessionId}`)
+        ]);
+        
+        console.log(`[SessionManager] Cleaned up session: ${mcpSessionId}`);
+      }
+      
+      this.sessionMetrics.expired++;
+    } catch (error) {
+      console.error(`[SessionManager] Error cleaning up session ${mcpSessionId}:`, error);
+      this.sessionMetrics.errors++;
+    }
+  }
+  
+  /**
+   * Validate session ID format
+   */
+  validateSessionId(sessionId) {
+    if (!sessionId || typeof sessionId !== 'string') {
+      return false;
+    }
+    
+    // Allow various session ID formats
+    if (sessionId.length < 8 || sessionId.length > 128) {
+      return false;
+    }
+    
+    // Check for valid characters (alphanumeric, hyphens, underscores)
+    return /^[a-zA-Z0-9_-]+$/.test(sessionId);
+  }
+  
+  /**
+   * Get session metrics
+   */
+  getMetrics() {
+    return { ...this.sessionMetrics };
+  }
+  
+  /**
+   * Rate limiting check
+   */
+  async checkRateLimit(mcpSessionId, maxRequests = 200, windowMs = 60000) {
+    try {
+      const session = await this.getSessionByMCP(mcpSessionId);
+      if (!session) {
+        // Allow new sessions to be created
+        return true;
+      }
+      
+      const now = Date.now();
+      
+      // Simple rate limiting based on request count and time window
+      // Only apply rate limiting if session has made many requests recently
+      if (session.requestCount > maxRequests && (now - session.lastAccessedAt) < windowMs) {
+        console.warn(`[SessionManager] Rate limit exceeded for session ${mcpSessionId}: ${session.requestCount} requests`);
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error(`[SessionManager] Rate limit check failed for ${mcpSessionId}:`, error);
+      // On error, allow the request to proceed
+      return true;
     }
   }
 }
@@ -81,7 +298,7 @@ class MCPProtocolHandler {
     this.sessionManager = new SessionManager();
   }
   
-  async handleRequest(request, sessionId) {
+  async handleRequest(request, sessionId, headers = {}) {
     const { jsonrpc, method, params, id } = request;
     
     // Validate JSON-RPC 2.0 format
@@ -92,13 +309,13 @@ class MCPProtocolHandler {
     try {
       switch (method) {
         case 'initialize':
-          return await this.handleInitialize(params, id, sessionId);
+          return await this.handleInitialize(params, id, sessionId, headers);
         case 'capabilities':
-          return await this.handleCapabilities(params, id, sessionId);
+          return await this.handleCapabilities(params, id, sessionId, headers);
         case 'tools/list':
-          return await this.handleToolsList(params, id, sessionId);
+          return await this.handleToolsList(params, id, sessionId, headers);
         case 'tools/call':
-          return await this.handleToolCall(params, id, sessionId);
+          return await this.handleToolCall(params, id, sessionId, headers);
         default:
           return this.createErrorResponse(id, -32601, "Method not found");
       }
@@ -108,21 +325,32 @@ class MCPProtocolHandler {
     }
   }
   
-  async handleInitialize(params, id, sessionId) {
+  async handleInitialize(params, id, sessionId, headers = {}) {
     const { protocolVersion, capabilities, clientInfo } = params;
     
-    // Create or get session
+    // Combine client info from params and headers
+    const combinedClientInfo = {
+      ...clientInfo,
+      userAgent: headers.userAgent,
+      origin: headers.origin,
+      headerClientInfo: headers.clientInfo ? JSON.parse(headers.clientInfo) : null
+    };
+    
+    // Create or get session with enhanced info
     let session = await this.sessionManager.getSessionByMCP(sessionId);
     if (!session) {
-      session = await this.sessionManager.createSession(sessionId);
+      session = await this.sessionManager.createSession(sessionId, combinedClientInfo);
     }
     
-    // Mark session as initialized
+    // Mark session as initialized with comprehensive info
     await this.sessionManager.updateSession(sessionId, { 
       initialized: true,
       protocolVersion,
-      clientInfo 
+      clientInfo: combinedClientInfo,
+      initializationTime: Date.now()
     });
+    
+    console.log(`[MCP] Session initialized: ${sessionId} with client: ${combinedClientInfo.userAgent || 'unknown'}`);
     
     return {
       jsonrpc: "2.0",
@@ -142,14 +370,15 @@ class MCPProtocolHandler {
         sessionInfo: {
           sessionId: sessionId,
           legacyCode: session.legacyCode,
-          expiresAt: session.expiresAt
+          expiresAt: session.expiresAt,
+          status: session.status
         }
       },
       id
     };
   }
   
-  async handleCapabilities(params, id, sessionId) {
+  async handleCapabilities(params, id, sessionId, headers = {}) {
     const session = await this.sessionManager.getSessionByMCP(sessionId);
     if (!session || !session.initialized) {
       return this.createErrorResponse(id, -32002, "Session not initialized");
@@ -170,7 +399,7 @@ class MCPProtocolHandler {
     };
   }
   
-  async handleToolsList(params, id, sessionId) {
+  async handleToolsList(params, id, sessionId, headers = {}) {
     const session = await this.sessionManager.getSessionByMCP(sessionId);
     if (!session || !session.initialized) {
       return this.createErrorResponse(id, -32002, "Session not initialized");
@@ -182,6 +411,8 @@ class MCPProtocolHandler {
       inputSchema: tool.parameters
     }));
     
+    console.log(`[MCP] Listed ${tools.length} tools for session ${sessionId}`);
+    
     return {
       jsonrpc: "2.0",
       result: {
@@ -191,7 +422,7 @@ class MCPProtocolHandler {
     };
   }
   
-  async handleToolCall(params, id, sessionId) {
+  async handleToolCall(params, id, sessionId, headers = {}) {
     const session = await this.sessionManager.getSessionByMCP(sessionId);
     if (!session || !session.initialized) {
       return this.createErrorResponse(id, -32002, "Session not initialized");
@@ -206,6 +437,13 @@ class MCPProtocolHandler {
     }
     
     try {
+      // Update session tool call count
+      await this.sessionManager.updateSession(sessionId, {
+        toolCallCount: (session.toolCallCount || 0) + 1,
+        lastToolCall: toolName,
+        lastToolCallTime: Date.now()
+      });
+      
       // Check if session has active browser worker
       const hasBrowserWorker = await this.checkBrowserWorkerConnection(sessionId, session.legacyCode);
       
@@ -219,6 +457,18 @@ class MCPProtocolHandler {
       
     } catch (error) {
       console.error(`[MCP] Tool execution failed: ${toolName} - ${error.message}`);
+      
+      // Update session with error count
+      try {
+        await this.sessionManager.updateSession(sessionId, {
+          errorCount: (session.errorCount || 0) + 1,
+          lastError: error.message,
+          lastErrorTime: Date.now()
+        });
+      } catch (updateError) {
+        console.warn(`[MCP] Failed to update session error count:`, updateError);
+      }
+      
       return this.createErrorResponse(id, -32603, `Tool execution failed: ${error.message}`);
     }
   }
@@ -378,54 +628,249 @@ class MCPProtocolHandler {
 }
 
 /**
- * Handle POST requests - MCP JSON-RPC messages
+ * Enhanced MCP header parser
+ */
+function parseHeaders(req) {
+  const headers = {};
+  
+  // Standard MCP headers
+  headers.sessionId = req.headers.get('mcp-session-id') || req.headers.get('x-mcp-session-id');
+  headers.clientInfo = req.headers.get('mcp-client-info') || req.headers.get('x-mcp-client-info');
+  headers.protocolVersion = req.headers.get('mcp-protocol-version') || req.headers.get('x-mcp-protocol-version');
+  
+  // Legacy CODAP headers for backward compatibility
+  headers.legacySessionCode = req.headers.get('x-session-code') || req.headers.get('session-code');
+  
+  // Security headers
+  headers.userAgent = req.headers.get('user-agent');
+  headers.origin = req.headers.get('origin');
+  headers.referer = req.headers.get('referer');
+  
+  // Generate session ID if not provided
+  if (!headers.sessionId) {
+    headers.sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+  
+  return headers;
+}
+
+/**
+ * Validate request headers
+ */
+function validateHeaders(headers) {
+  const errors = [];
+  
+  // Validate session ID format
+  if (headers.sessionId && !/^[a-zA-Z0-9_-]+$/.test(headers.sessionId)) {
+    errors.push('Invalid session ID format');
+  }
+  
+  // Validate client info if provided
+  if (headers.clientInfo) {
+    try {
+      JSON.parse(headers.clientInfo);
+    } catch (e) {
+      errors.push('Invalid client info JSON format');
+    }
+  }
+  
+  return errors;
+}
+
+/**
+ * Handle POST requests - Enhanced MCP JSON-RPC messages with comprehensive header support
  */
 async function POST(req) {
+  const startTime = Date.now();
+  let sessionId = null;
+  
   try {
+    // Parse and validate headers
+    const headers = parseHeaders(req);
+    sessionId = headers.sessionId;
+    
+    const headerErrors = validateHeaders(headers);
+    if (headerErrors.length > 0) {
+      return new Response(JSON.stringify({
+        jsonrpc: "2.0",
+        error: {
+          code: -32600,
+          message: "Invalid headers",
+          data: { errors: headerErrors }
+        },
+        id: null
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // Parse request body
     const body = await req.json();
     
-    // Generate session ID from headers or create new one
-    const sessionId = req.headers.get('mcp-session-id') || `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
+    // Create handler with enhanced session manager
     const handler = new MCPProtocolHandler();
-    const response = await handler.handleRequest(body, sessionId);
+    
+    // Check rate limiting before processing
+    const rateLimitOk = await handler.sessionManager.checkRateLimit(sessionId);
+    if (!rateLimitOk) {
+      return new Response(JSON.stringify({
+        jsonrpc: "2.0",
+        error: {
+          code: -32429,
+          message: "Rate limit exceeded",
+          data: { sessionId: sessionId }
+        },
+        id: body.id || null
+      }), {
+        status: 429,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Retry-After': '60'
+        }
+      });
+    }
+    
+    // Process the request
+    const response = await handler.handleRequest(body, sessionId, headers);
+    const processingTime = Date.now() - startTime;
+    
+    // Enhanced response headers
+    const responseHeaders = {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Content-Type, mcp-session-id, mcp-client-info, x-mcp-session-id, x-mcp-client-info',
+      'mcp-session-id': sessionId,
+      'x-processing-time-ms': processingTime.toString(),
+      'x-server-version': '1.0.0'
+    };
+    
+    // Include client info in response if provided
+    if (headers.clientInfo) {
+      responseHeaders['mcp-client-info'] = headers.clientInfo;
+    }
+    
+    console.log(`[MCP] Request processed in ${processingTime}ms for session ${sessionId}`);
     
     return new Response(JSON.stringify(response), {
       status: 200,
-      headers: { 
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'mcp-session-id': sessionId
-      }
+      headers: responseHeaders
     });
     
   } catch (error) {
-    console.error('MCP Server Error:', error);
+    const processingTime = Date.now() - startTime;
+    console.error(`[MCP] Server Error (${processingTime}ms):`, error);
     
-    return new Response(JSON.stringify({
+    // Enhanced error response
+    const errorResponse = {
       jsonrpc: "2.0",
       error: {
         code: -32603,
         message: "Internal server error",
-        data: { error: error.message }
+        data: { 
+          error: error.message,
+          sessionId: sessionId,
+          processingTimeMs: processingTime
+        }
       },
       id: null
-    }), {
+    };
+    
+    return new Response(JSON.stringify(errorResponse), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'x-processing-time-ms': processingTime.toString()
+      }
     });
   }
 }
 
 /**
- * Handle GET requests - Health check
+ * Handle GET requests - Health check and session management endpoints
  */
 async function GET(req) {
+  const url = new URL(req.url);
+  const pathname = url.pathname;
+  
+  // Session metrics endpoint
+  if (pathname.includes('/metrics')) {
+    const sessionId = url.searchParams.get('session') || req.headers.get('mcp-session-id');
+    
+    if (sessionId) {
+      try {
+        const handler = new MCPProtocolHandler();
+        const session = await handler.sessionManager.getSessionByMCP(sessionId);
+        const metrics = handler.sessionManager.getMetrics();
+        
+        return new Response(JSON.stringify({
+          sessionId: sessionId,
+          session: session ? {
+            status: session.status,
+            createdAt: session.createdAt,
+            lastAccessedAt: session.lastAccessedAt,
+            requestCount: session.requestCount,
+            toolCallCount: session.toolCallCount,
+            errorCount: session.errorCount || 0
+          } : null,
+          globalMetrics: metrics,
+          timestamp: new Date().toISOString()
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        return new Response(JSON.stringify({
+          error: "Failed to retrieve metrics",
+          message: error.message
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+    
+    // Global metrics only
+    try {
+      const handler = new MCPProtocolHandler();
+      const metrics = handler.sessionManager.getMetrics();
+      
+      return new Response(JSON.stringify({
+        globalMetrics: metrics,
+        timestamp: new Date().toISOString()
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (error) {
+      return new Response(JSON.stringify({
+        error: "Failed to retrieve global metrics",
+        message: error.message
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+  }
+  
+  // Health check endpoint (default)
   return new Response(JSON.stringify({
     service: "CODAP MCP Server",
     status: "operational",
     version: "1.0.0",
     protocol: "JSON-RPC 2.0",
+    features: {
+      sessionManagement: true,
+      headerValidation: true,
+      rateLimiting: true,
+      metrics: true
+    },
+    endpoints: {
+      mcp: "/api/mcp",
+      metrics: "/api/mcp/metrics",
+      health: "/api/mcp"
+    },
     timestamp: new Date().toISOString()
   }), {
     status: 200,
@@ -434,7 +879,7 @@ async function GET(req) {
 }
 
 /**
- * Handle OPTIONS requests - CORS
+ * Handle OPTIONS requests - Enhanced CORS with comprehensive header support
  */
 async function OPTIONS(req) {
   return new Response('', {
@@ -442,7 +887,9 @@ async function OPTIONS(req) {
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, mcp-session-id'
+      'Access-Control-Allow-Headers': 'Content-Type, mcp-session-id, mcp-client-info, mcp-protocol-version, x-mcp-session-id, x-mcp-client-info, x-session-code, session-code',
+      'Access-Control-Expose-Headers': 'mcp-session-id, x-processing-time-ms, x-server-version',
+      'Access-Control-Max-Age': '86400'
     }
   });
 }
