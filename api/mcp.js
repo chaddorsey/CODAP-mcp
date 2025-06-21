@@ -14,7 +14,7 @@ const { queueToolRequest, getToolResponse, setToolResponse, getSession } = requi
 const { DirectToolExecutor } = require("./mcp-tool-executor.js");
 
 // Session management utilities
-const SESSION_TTL = 10 * 60 * 1000; // 10 minutes
+const SESSION_TTL = 60 * 60 * 1000; // 1 hour
 
 /**
  * Generate legacy 8-character session code for backward compatibility

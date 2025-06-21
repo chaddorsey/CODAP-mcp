@@ -6,8 +6,8 @@ const redis = new Redis({
   token: process.env.KV_REST_API_TOKEN,
 });
 
-// Session TTL in seconds (10 minutes)
-const SESSION_TTL = 600;
+// Session TTL in seconds (1 hour)
+const SESSION_TTL = 3600; // 1 hour (60 * 60 seconds)
 
 /**
  * Helper function to safely parse data from Redis
