@@ -121,19 +121,30 @@ export class BrowserWorkerService {
         console.log("Processing tool request:", toolRequest);
       }
 
+      // Map server field names to browser worker field names
+      // Cast to any to handle server vs browser field name differences
+      const serverRequest = toolRequest as any;
+      const mappedRequest = {
+        tool: serverRequest.tool,
+        id: serverRequest.requestId || serverRequest.id,           // Server uses "requestId", browser expects "id"
+        args: serverRequest.arguments || serverRequest.args,       // Server uses "arguments", browser expects "args"
+        timestamp: serverRequest.timestamp,
+        sessionCode: serverRequest.sessionCode
+      };
+
       // Log that we received the request
       console.log("🎉 TOOL REQUEST RECEIVED!", {
-        tool: toolRequest.tool,
-        requestId: toolRequest.id,
-        arguments: toolRequest.args
+        tool: mappedRequest.tool,
+        requestId: mappedRequest.id,
+        arguments: mappedRequest.args
       });
 
       // Execute the tool using dynamic handler system
-      const result = await this.executeToolRequest(toolRequest.tool, toolRequest.args, toolRequest.id);
+      const result = await this.executeToolRequest(mappedRequest.tool, mappedRequest.args, mappedRequest.id);
       
       // Create successful response
       const response: ToolResponse = {
-        requestId: toolRequest.id,
+        requestId: mappedRequest.id,
         success: true,
         result,
         timestamp: new Date().toISOString(),
@@ -147,23 +158,24 @@ export class BrowserWorkerService {
       
       if (this.config.debug) {
         console.log("🎉 Tool execution completed:", {
-          tool: toolRequest.tool,
-          requestId: toolRequest.id,
+          tool: mappedRequest.tool,
+          requestId: mappedRequest.id,
           result
         });
       }
       
     } catch (error) {
+      const serverRequest = toolRequest as any;
       console.error("❌ Failed to process tool request:", {
-        tool: toolRequest?.tool,
-        requestId: toolRequest?.id,
+        tool: serverRequest?.tool,
+        requestId: serverRequest?.requestId || serverRequest?.id,
         error: error instanceof Error ? error.message : error
       });
       
       // Create error response
       if (toolRequest && this.responseHandler) {
         const errorResponse: ToolResponse = {
-          requestId: toolRequest.id,
+          requestId: serverRequest.requestId || serverRequest.id,
           success: false,
           timestamp: new Date().toISOString(),
           duration: Date.now() - startTime,
@@ -214,7 +226,7 @@ export class BrowserWorkerService {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-sso-bypass": "pAg5Eon3T8qOwMaWKzo9k6T4pdbYiCye"
+          "x-vercel-protection-bypass": "pAg5Eon3T8qOwMaWKzo9k6T4pdbYiCye"
         },
         body: JSON.stringify(apiPayload)
       });
@@ -246,7 +258,7 @@ export class BrowserWorkerService {
         availableHandlers: this.comprehensiveToolHandlers ? Object.keys(this.comprehensiveToolHandlers).length : 0
       });
 
-      // Check if we have a comprehensive tool handler
+      // Check if we have a comprehensive tool handler (using server naming conventions)
       if (this.comprehensiveToolHandlers && this.comprehensiveToolHandlers[toolName]) {
         console.log(`✅ Found comprehensive handler for: ${toolName}`);
         
@@ -400,269 +412,210 @@ export class BrowserWorkerService {
 
   /**
    * Create comprehensive tool handlers using CODAP Plugin API
+   * Using server naming conventions that exactly match the MCP tool registry
    */
   private createComprehensiveToolHandlers(): Record<string, (args: any) => Promise<any>> {
     return {
+      // Plugin Initialization
+      initializePlugin: async (args: any) => {
+        const { name, title, version } = args;
+        return await sendMessage("update", "interactiveFrame", {
+          name,
+          title,
+          version
+        });
+      },
+
       // Data Context Tools
-      create_data_context: async (args: any) => {
-        const { name, title, description } = args;
-        return await sendMessage("create", "dataContext", {
+      createDataContext: async (args: any) => {
+        const { name, title, description, collections } = args;
+        const payload: any = {
           name,
           title: title || name,
           description: description || ""
-        });
+        };
+        
+        // If collections are provided, include them in the data context creation
+        if (collections && collections.length > 0) {
+          payload.collections = collections;
+        }
+        
+        return await sendMessage("create", "dataContext", payload);
       },
 
-      get_data_contexts: async () => {
+      getListOfDataContexts: async () => {
         return await sendMessage("get", "dataContextList");
       },
 
-      get_data_context: async (args: any) => {
-        const { name } = args;
-        return await sendMessage("get", `dataContext[${name}]`);
+      getDataContext: async (args: any) => {
+        const { dataContext } = args;
+        return await sendMessage("get", `dataContext[${dataContext}]`);
       },
 
-      update_data_context: async (args: any) => {
-        const { name, newName, title, description } = args;
-        const updateValues: any = {};
-        if (newName) updateValues.name = newName;
-        if (title) updateValues.title = title;
-        if (description) updateValues.description = description;
-        
-        return await sendMessage("update", `dataContext[${name}]`, updateValues);
-      },
-
-      delete_data_context: async (args: any) => {
-        const { name, confirmDelete } = args;
-        if (!confirmDelete) {
-          throw new Error("Delete confirmation required");
-        }
-        return await sendMessage("delete", `dataContext[${name}]`);
+      deleteDataContext: async (args: any) => {
+        const { dataContext } = args;
+        return await sendMessage("delete", `dataContext[${dataContext}]`);
       },
 
       // Collection Tools
-      create_collection: async (args: any) => {
-        const { dataContextName, collectionName, attributes, parent } = args;
+      createCollection: async (args: any) => {
+        const { dataContext, collection } = args;
         const values: any = {
-          name: collectionName,
-          title: collectionName
+          name: collection.name,
+          title: collection.title || collection.name
         };
         
-        if (parent) values.parent = parent;
-        if (attributes) values.attrs = attributes;
+        if (collection.parent) values.parent = collection.parent;
+        if (collection.attrs) values.attrs = collection.attrs;
         
-        return await sendMessage("create", `dataContext[${dataContextName}].collection`, values);
+        return await sendMessage("create", `dataContext[${dataContext}].collection`, values);
       },
 
-      get_collections: async (args: any) => {
-        const { dataContextName } = args;
-        return await sendMessage("get", `dataContext[${dataContextName}].collectionList`);
+      getCollectionList: async (args: any) => {
+        const { dataContext } = args;
+        return await sendMessage("get", `dataContext[${dataContext}].collectionList`);
       },
 
-      get_collection: async (args: any) => {
-        const { dataContextName, collectionName } = args;
-        return await sendMessage("get", `dataContext[${dataContextName}].collection[${collectionName}]`);
-      },
-
-      update_collection: async (args: any) => {
-        const { dataContextName, collectionName, newName, title } = args;
-        const updateValues: any = {};
-        if (newName) updateValues.name = newName;
-        if (title) updateValues.title = title;
-        
-        return await sendMessage("update", `dataContext[${dataContextName}].collection[${collectionName}]`, updateValues);
-      },
-
-      delete_collection: async (args: any) => {
-        const { dataContextName, collectionName, confirmDelete } = args;
-        if (!confirmDelete) {
-          throw new Error("Delete confirmation required");
-        }
-        return await sendMessage("delete", `dataContext[${dataContextName}].collection[${collectionName}]`);
+      getCollection: async (args: any) => {
+        const { dataContext, collection } = args;
+        return await sendMessage("get", `dataContext[${dataContext}].collection[${collection}]`);
       },
 
       // Attribute Tools
-      create_attribute: async (args: any) => {
-        const { dataContextName, collectionName, attributeName, type, description, formula } = args;
+      createAttribute: async (args: any) => {
+        const { dataContext, collection, attribute } = args;
         const values: any = {
-          name: attributeName,
-          type,
-          title: attributeName
+          name: attribute.name,
+          title: attribute.name
         };
         
-        if (description) values.description = description;
-        if (formula) values.formula = formula;
+        if (attribute.type) values.type = attribute.type;
+        if (attribute.description) values.description = attribute.description;
+        if (attribute.unit) values.unit = attribute.unit;
+        if (attribute.formula) values.formula = attribute.formula;
         
-        return await sendMessage("create", `dataContext[${dataContextName}].collection[${collectionName}].attribute`, values);
+        return await sendMessage("create", `dataContext[${dataContext}].collection[${collection}].attribute`, values);
       },
 
-      get_attributes: async (args: any) => {
-        const { dataContextName, collectionName } = args;
-        return await sendMessage("get", `dataContext[${dataContextName}].collection[${collectionName}].attributeList`);
+      getAttributeList: async (args: any) => {
+        const { dataContext, collection } = args;
+        return await sendMessage("get", `dataContext[${dataContext}].collection[${collection}].attributeList`);
       },
 
-      get_attribute: async (args: any) => {
-        const { dataContextName, collectionName, attributeName } = args;
-        return await sendMessage("get", `dataContext[${dataContextName}].collection[${collectionName}].attribute[${attributeName}]`);
+      getAttribute: async (args: any) => {
+        const { dataContext, collection, attribute } = args;
+        return await sendMessage("get", `dataContext[${dataContext}].collection[${collection}].attribute[${attribute}]`);
       },
 
-      update_attribute: async (args: any) => {
-        const { dataContextName, collectionName, attributeName, newName, type, description, formula } = args;
+      updateAttribute: async (args: any) => {
+        const { dataContext, collection, attribute } = args;
         const updateValues: any = {};
-        if (newName) updateValues.name = newName;
-        if (type) updateValues.type = type;
-        if (description) updateValues.description = description;
-        if (formula) updateValues.formula = formula;
         
-        return await sendMessage("update", `dataContext[${dataContextName}].collection[${collectionName}].attribute[${attributeName}]`, updateValues);
+        if (attribute.type) updateValues.type = attribute.type;
+        if (attribute.description) updateValues.description = attribute.description;
+        if (attribute.unit) updateValues.unit = attribute.unit;
+        if (attribute.formula) updateValues.formula = attribute.formula;
+        
+        return await sendMessage("update", `dataContext[${dataContext}].collection[${collection}].attribute[${attribute.name}]`, updateValues);
       },
 
-      delete_attribute: async (args: any) => {
-        const { dataContextName, collectionName, attributeName, confirmDelete } = args;
-        if (!confirmDelete) {
-          throw new Error("Delete confirmation required");
-        }
-        return await sendMessage("delete", `dataContext[${dataContextName}].collection[${collectionName}].attribute[${attributeName}]`);
+      deleteAttribute: async (args: any) => {
+        const { dataContext, collection, attribute } = args;
+        return await sendMessage("delete", `dataContext[${dataContext}].collection[${collection}].attribute[${attribute}]`);
       },
 
-      reorder_attributes: async (args: any) => {
-        const { dataContextName, collectionName, attributeName, newPosition } = args;
-        return await sendMessage("update", `dataContext[${dataContextName}].collection[${collectionName}].attributeLocation[${attributeName}]`, {
-          collection: collectionName,
-          position: newPosition
-        });
+      // Item/Case Tools
+      createItems: async (args: any) => {
+        const { dataContext, collection, items } = args;
+        return await createItems(dataContext, items);
       },
 
-      // Case and Item Tools
-      create_items: async (args: any) => {
-        const { dataContextName, items } = args;
-        return await createItems(dataContextName, items);
-      },
-
-      get_items: async (args: any) => {
-        const { dataContextName, limit } = args;
-        const resource = limit ? 
-          `dataContext[${dataContextName}].item[0..${limit-1}]` : 
-          `dataContext[${dataContextName}].itemSearch[*]`;
+      getAllItems: async (args: any) => {
+        const { dataContext, collection } = args;
+        const resource = collection ? 
+          `dataContext[${dataContext}].collection[${collection}].allCases` : 
+          `dataContext[${dataContext}].itemSearch[*]`;
         return await sendMessage("get", resource);
       },
 
-      get_item_by_id: async (args: any) => {
-        const { dataContextName, itemId } = args;
-        return await sendMessage("get", `dataContext[${dataContextName}].itemByID[${itemId}]`);
+      getItemCount: async (args: any) => {
+        const { dataContext, collection } = args;
+        const resource = collection ? 
+          `dataContext[${dataContext}].collection[${collection}].caseCount` :
+          `dataContext[${dataContext}].itemCount`;
+        return await sendMessage("get", resource);
       },
 
-      update_items: async (args: any) => {
-        const { dataContextName, updates } = args;
+      getItemByID: async (args: any) => {
+        const { dataContext, collection, itemID } = args;
+        return await sendMessage("get", `dataContext[${dataContext}].itemByID[${itemID}]`);
+      },
+
+      updateItems: async (args: any) => {
+        const { dataContext, collection, items } = args;
         // Process each update individually
         const results = [];
-        for (const update of updates) {
-          const result = await sendMessage("update", `dataContext[${dataContextName}].itemByID[${update.id}]`, update.values);
+        for (const item of items) {
+          const { id, ...values } = item;
+          const result = await sendMessage("update", `dataContext[${dataContext}].itemByID[${id}]`, values);
           results.push(result);
         }
         return { success: true, values: { results } };
       },
 
-      delete_items: async (args: any) => {
-        const { dataContextName, itemIds, confirmDelete } = args;
-        if (!confirmDelete) {
-          throw new Error("Delete confirmation required");
-        }
-        
+      deleteItems: async (args: any) => {
+        const { dataContext, collection, items } = args;
         // Delete each item individually
         const results = [];
-        for (const itemId of itemIds) {
-          const result = await sendMessage("delete", `dataContext[${dataContextName}].itemByID[${itemId}]`);
+        for (const itemId of items) {
+          const result = await sendMessage("delete", `dataContext[${dataContext}].itemByID[${itemId}]`);
           results.push(result);
         }
         return { success: true, values: { results } };
-      },
-
-      get_case_count: async (args: any) => {
-        const { dataContextName, collectionName } = args;
-        return await sendMessage("get", `dataContext[${dataContextName}].collection[${collectionName}].caseCount`);
-      },
-
-      get_case_by_index: async (args: any) => {
-        const { dataContextName, collectionName, index } = args;
-        return await sendMessage("get", `dataContext[${dataContextName}].collection[${collectionName}].caseByIndex[${index}]`);
-      },
-
-      search_cases: async (args: any) => {
-        const { dataContextName, collectionName, searchCriteria, limit = 100 } = args;
-        const { attributeName, value, operator = "equals" } = searchCriteria;
-        
-        // Build search query based on operator
-        let searchQuery: string;
-        switch (operator) {
-          case "contains":
-            searchQuery = `${attributeName} contains "${value}"`;
-            break;
-          case "startsWith":
-            searchQuery = `${attributeName} startsWith "${value}"`;
-            break;
-          case "endsWith":
-            searchQuery = `${attributeName} endsWith "${value}"`;
-            break;
-          case "greaterThan":
-            searchQuery = `${attributeName} > ${value}`;
-            break;
-          case "lessThan":
-            searchQuery = `${attributeName} < ${value}`;
-            break;
-          default:
-            searchQuery = `${attributeName} = "${value}"`;
-        }
-        return await sendMessage("get", `dataContext[${dataContextName}].collection[${collectionName}].caseBySearch[${searchQuery}]`, { limit });
       },
 
       // Selection Tools
-      get_selection: async (args: any) => {
-        const { dataContextName } = args;
-        return await sendMessage("get", `dataContext[${dataContextName}].selectionList`);
-      },
-
-      select_cases: async (args: any) => {
-        const { dataContextName, caseIds, extend = false } = args;
+      selectItems: async (args: any) => {
+        const { dataContext, collection, items, extend = false } = args;
         const action = extend ? "update" : "create";
-        return await sendMessage(action, `dataContext[${dataContextName}].selectionList`, caseIds);
+        return await sendMessage(action, `dataContext[${dataContext}].selectionList`, items);
       },
 
-      clear_selection: async (args: any) => {
-        const { dataContextName } = args;
-        return await sendMessage("create", `dataContext[${dataContextName}].selectionList`, []);
+      getSelectedItems: async (args: any) => {
+        const { dataContext, collection } = args;
+        return await sendMessage("get", `dataContext[${dataContext}].selectionList`);
+      },
+
+      deselectAll: async (args: any) => {
+        const { dataContext } = args;
+        return await sendMessage("create", `dataContext[${dataContext}].selectionList`, []);
       },
 
       // Component Tools
-      create_table: async (args: any) => {
-        const { dataContextName, title } = args;
-        return await createTable(dataContextName, title || `${dataContextName} Table`);
-      },
-
-      create_graph: async (args: any) => {
-        const { dataContextName, title, xAttribute, yAttribute, graphType = "scatterPlot", position, dimensions } = args;
+      createGraph: async (args: any) => {
+        const { dataContext, xAttributeName, yAttributeName, legendAttributeName, title, width, height, position } = args;
         
-        // Step 1: Create empty graph component (proven optimal approach)
+        // Step 1: Create empty graph component
         const graphValues: any = {
           type: "graph",
-          dataContext: dataContextName,
-          graphType
+          dataContext
         };
         
         if (title) graphValues.name = title;
         if (position) graphValues.position = position;
-        if (dimensions) graphValues.dimensions = dimensions;
+        if (width && height) graphValues.dimensions = { width, height };
         
-        console.log("Browser worker service creating empty graph:", graphValues);
+        console.log("Browser worker service creating graph:", graphValues);
         const graphResult = await sendMessage("create", "component", graphValues);
         
-        // Step 2: If axes are specified, update the graph with axis assignments (proven fastest method)
-        if ((xAttribute || yAttribute) && graphResult.success && graphResult.values) {
+        // Step 2: If axes are specified, update the graph with axis assignments
+        if ((xAttributeName || yAttributeName) && graphResult.success && graphResult.values) {
           const componentId = graphResult.values.id;
           if (componentId) {
             const updateValues: any = {};
-            if (xAttribute) updateValues.xAttributeName = xAttribute;
-            if (yAttribute) updateValues.yAttributeName = yAttribute;
+            if (xAttributeName) updateValues.xAttributeName = xAttributeName;
+            if (yAttributeName) updateValues.yAttributeName = yAttributeName;
+            if (legendAttributeName) updateValues.legendAttributeName = legendAttributeName;
             
             console.log("Browser worker service updating graph axes:", { componentId, updateValues });
             const updateResult = await sendMessage("update", `component[${componentId}]`, updateValues);
@@ -673,8 +626,9 @@ export class BrowserWorkerService {
               values: {
                 ...graphResult.values,
                 axesAssigned: updateResult.success,
-                xAttributeName: xAttribute,
-                yAttributeName: yAttribute
+                xAttributeName,
+                yAttributeName,
+                legendAttributeName
               }
             };
           }
@@ -683,47 +637,117 @@ export class BrowserWorkerService {
         return graphResult;
       },
 
-      create_map: async (args: any) => {
-        const { dataContextName, title, latitudeAttribute, longitudeAttribute, position, dimensions } = args;
+      createTable: async (args: any) => {
+        const { dataContext, title, width, height, position } = args;
         const values: any = {
-          type: "map",
-          dataContext: dataContextName
+          type: "caseTable",
+          dataContext
         };
         
         if (title) values.name = title;
-        if (latitudeAttribute) values.latitudeAttribute = latitudeAttribute;
-        if (longitudeAttribute) values.longitudeAttribute = longitudeAttribute;
         if (position) values.position = position;
-        if (dimensions) values.dimensions = dimensions;
+        if (width && height) values.dimensions = { width, height };
         
         return await sendMessage("create", "component", values);
       },
 
-      get_components: async () => {
+      createSlider: async (args: any) => {
+        const { title, name, min, max, step, value, position } = args;
+        const values: any = {
+          type: "slider",
+          name,
+          title: title || name,
+          lowerBound: min,
+          upperBound: max,
+          animationDirection: 1,
+          animationMode: 0
+        };
+        
+        if (step) values.step = step;
+        if (value !== undefined) values.value = value;
+        if (position) values.position = position;
+        
+        return await sendMessage("create", "component", values);
+      },
+
+      createCalculator: async (args: any) => {
+        const { title, position } = args;
+        const values: any = {
+          type: "calculator"
+        };
+        
+        if (title) values.name = title;
+        if (position) values.position = position;
+        
+        return await sendMessage("create", "component", values);
+      },
+
+      createText: async (args: any) => {
+        const { title, text, position } = args;
+        const values: any = {
+          type: "text",
+          text
+        };
+        
+        if (title) values.name = title;
+        if (position) values.position = position;
+        
+        return await sendMessage("create", "component", values);
+      },
+
+      createWebView: async (args: any) => {
+        const { title, URL, position } = args;
+        const values: any = {
+          type: "webView",
+          URL
+        };
+        
+        if (title) values.name = title;
+        if (position) values.position = position;
+        
+        return await sendMessage("create", "component", values);
+      },
+
+      getAllComponents: async () => {
         return await sendMessage("get", "componentList");
       },
 
-      update_component: async (args: any) => {
-        const { componentId, title, position, dimensions, xAttributeName, yAttributeName, values } = args;
-        
-        // If values object is provided, use it; otherwise build from individual properties
-        const updateValues: any = values || {};
+      getComponent: async (args: any) => {
+        const { component } = args;
+        return await sendMessage("get", `component[${component}]`);
+      },
+
+      updateComponent: async (args: any) => {
+        const { component, title, position, dimensions } = args;
+        const updateValues: any = {};
         
         if (title) updateValues.name = title;
         if (position) updateValues.position = position;
         if (dimensions) updateValues.dimensions = dimensions;
-        if (xAttributeName) updateValues.xAttributeName = xAttributeName;
-        if (yAttributeName) updateValues.yAttributeName = yAttributeName;
         
-        return await sendMessage("update", `component[${componentId}]`, updateValues);
+        return await sendMessage("update", `component[${component}]`, updateValues);
       },
 
-      delete_component: async (args: any) => {
-        const { componentId, confirmDelete } = args;
-        if (!confirmDelete) {
-          throw new Error("Delete confirmation required");
-        }
-        return await sendMessage("delete", `component[${componentId}]`);
+      deleteComponent: async (args: any) => {
+        const { component } = args;
+        return await sendMessage("delete", `component[${component}]`);
+      },
+
+      // Notification Tools
+      registerForNotifications: async (args: any) => {
+        const { request, callback } = args;
+        // Use sendMessage to create a notification subscription
+        // This is a simplified implementation that doesn't use the full CODAP notification system
+        return await sendMessage("create", "notificationSubscription", {
+          request,
+          callback: callback || "defaultCallback"
+        });
+      },
+
+      unregisterForNotifications: async (args: any) => {
+        const { request } = args;
+        // Use sendMessage to delete a notification subscription
+        return await sendMessage("delete", "notificationSubscription", { request });
       }
     };
   }

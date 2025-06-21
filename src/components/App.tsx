@@ -88,7 +88,7 @@ export const App = () => {
       <div className="title">CODAP MCP Plugin</div>
       
       <PairingBanner
-        relayBaseUrl="https://codap-e9fut2tgz-cdorsey-concordorgs-projects.vercel.app"
+        relayBaseUrl="https://codap-mcp-stable.vercel.app"
         autoStart={false}
         onSessionCreated={(sessionData) => {
           console.log("Session created:", sessionData);

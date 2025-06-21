@@ -1,7 +1,9 @@
-// Tool response endpoint using Node.js runtime
-// Accepts tool responses from MCP server and retrieves stored responses
+/**
+ * Response endpoint for browser workers to post tool execution results
+ * This endpoint stores tool responses in KV storage for the MCP server to retrieve
+ */
 
-const { getSession, setResponse, getResponse, setToolResponse, getToolResponse } = require("./kv-utils");
+const { setToolResponse } = require("./kv-utils");
 
 /**
  * Validates session code format
@@ -11,70 +13,13 @@ function isValidSessionCode(code) {
 }
 
 /**
- * Creates a standardized error response
- */
-function createErrorResponse(res, status, error, message, code) {
-  res.status(status).json({
-    error,
-    message,
-    code
-  });
-}
-
-/**
- * Creates a standardized success response
- */
-function createSuccessResponse(res, data, status = 200) {
-  res.status(status).json(data);
-}
-
-/**
- * Check if session exists and is valid
- */
-async function validateSession(code) {
-  try {
-    const sessionData = await getSession(code);
-    if (!sessionData) {
-      return false;
-    }
-    
-    // Check if session is expired
-    const now = new Date();
-    const expiresAt = new Date(sessionData.expiresAt);
-    return now <= expiresAt;
-  } catch (error) {
-    console.error("Session validation error:", error);
-    return false;
-  }
-}
-
-/**
- * Store tool response using kv-utils
- */
-async function storeToolResponse(code, responseData) {
-  const response = {
-    ...responseData,
-    timestamp: new Date().toISOString()
-  };
-  
-  // Store by session code (legacy)
-  await setResponse(code, response);
-  
-  // Also store by request ID for MCP system
-  if (responseData.id) {
-    await setToolResponse(responseData.id, response);
-    console.log(`[response.js] Stored tool response by request ID: ${responseData.id}`);
-  }
-}
-
-/**
- * Main handler function
+ * Main handler function for tool responses
  */
 export default async function handler(req, res) {
   // Set CORS headers
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, x-sso-bypass");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, x-session-code, x-vercel-protection-bypass");
 
   try {
     // Handle CORS preflight
@@ -83,120 +28,85 @@ export default async function handler(req, res) {
       return;
     }
     
-    // Handle GET requests (retrieve responses)
-    if (req.method === "GET") {
-      const { sessionCode, requestId } = req.query;
-      
-      if (!sessionCode) {
-        createErrorResponse(res, 400, "missing_session_code", "Session code is required");
-        return;
-      }
-      
-      if (!isValidSessionCode(sessionCode)) {
-        createErrorResponse(res, 400, "invalid_session_code", "Session code must be 8 characters (A-Z, 2-7)");
-        return;
-      }
-      
-      // Validate session exists and is not expired
-      const sessionValid = await validateSession(sessionCode);
-      if (!sessionValid) {
-        createErrorResponse(res, 404, "session_not_found", "Session not found or expired");
-        return;
-      }
-      
-      // Try to get response by request ID first (MCP system)
-      let storedResponse = null;
-      
-      if (requestId) {
-        storedResponse = await getToolResponse(requestId);
-        console.log(`[response.js] Looking for response by request ID: ${requestId}, found: ${!!storedResponse}`);
-      }
-      
-      // If not found by request ID, try by session code (legacy system)
-      if (!storedResponse) {
-        storedResponse = await getResponse(sessionCode);
-        console.log(`[response.js] Looking for response by session: ${sessionCode}, found: ${!!storedResponse}`);
-      }
-      
-      if (!storedResponse) {
-        createErrorResponse(res, 404, "response_not_found", 
-          requestId ? `No response found for request ID: ${requestId}` : "No response found for this session");
-        return;
-      }
-      
-      // If requestId is specified but response doesn't match, check if it's from legacy system
-      if (requestId && storedResponse.id && storedResponse.id !== requestId) {
-        createErrorResponse(res, 404, "response_not_found", `No response found for request ID: ${requestId}`);
-        return;
-      }
-      
-      createSuccessResponse(res, storedResponse);
-      return;
-    }
-    
-    // Handle POST requests (store responses)
+    // Only allow POST method
     if (req.method !== "POST") {
-      createErrorResponse(res, 405, "method_not_allowed", "Only GET and POST methods are allowed");
+      res.status(405).json({
+        error: "method_not_allowed",
+        message: "Only POST method is allowed"
+      });
       return;
     }
     
-    // Validate request body
-    if (!req.body) {
-      createErrorResponse(res, 400, "missing_body", "Request body is required");
-      return;
-    }
-    
+    // Parse request body
     const { sessionCode, requestId, result, error } = req.body;
     
     // Validate required fields
     if (!sessionCode) {
-      createErrorResponse(res, 400, "missing_session_code", "Session code is required");
+      res.status(400).json({
+        error: "missing_session_code",
+        message: "Session code is required"
+      });
       return;
     }
     
+    if (!requestId) {
+      res.status(400).json({
+        error: "missing_request_id", 
+        message: "Request ID is required"
+      });
+      return;
+    }
+    
+    if (!result && !error) {
+      res.status(400).json({
+        error: "missing_result_or_error",
+        message: "Either result or error must be provided"
+      });
+      return;
+    }
+    
+    // Validate session code format
     if (!isValidSessionCode(sessionCode)) {
-      createErrorResponse(res, 400, "invalid_session_code", "Session code must be 8 characters (A-Z, 2-7)");
+      res.status(400).json({
+        error: "invalid_session_code",
+        message: "Session code must be 8 characters (A-Z, 2-7)"
+      });
       return;
     }
     
-    if (!requestId || typeof requestId !== "string") {
-      createErrorResponse(res, 400, "missing_request_id", "Request ID is required");
-      return;
-    }
-    
-    // Must have either result or error, but not both
-    if ((!result && !error) || (result && error)) {
-      createErrorResponse(res, 400, "invalid_response", "Response must contain either 'result' or 'error', but not both");
-      return;
-    }
-    
-    // Validate session exists and is not expired
-    const sessionValid = await validateSession(sessionCode);
-    if (!sessionValid) {
-      createErrorResponse(res, 404, "session_not_found", "Session not found or expired");
-      return;
-    }
-    
-    // Store the tool response in KV storage
+    // Store the tool response
     const responseData = {
-      id: requestId,
-      result: result || null,
-      error: error || null,
+      sessionCode,
+      requestId,
       timestamp: new Date().toISOString()
     };
     
-    await storeToolResponse(sessionCode, responseData);
+    if (result) {
+      responseData.result = result;
+    }
     
-    console.log(`Tool response stored for session ${sessionCode}:`, responseData);
+    if (error) {
+      responseData.error = error;
+    }
     
-    createSuccessResponse(res, {
-      id: requestId,
-      status: "stored",
-      message: "Tool response stored successfully"
+    await setToolResponse(requestId, responseData);
+    
+    console.log(`[response] Stored tool response for request ${requestId} from session ${sessionCode}`);
+    
+    // Return success response
+    res.status(200).json({
+      success: true,
+      message: "Tool response stored successfully",
+      requestId,
+      timestamp: responseData.timestamp
     });
     
   } catch (error) {
-    console.error("Tool response error:", error);
-    createErrorResponse(res, 500, "internal_server_error", "Failed to store tool response");
+    console.error("[response] Error storing tool response:", error);
+    res.status(500).json({
+      error: "internal_server_error",
+      message: "Failed to store tool response",
+      details: error.message
+    });
   }
 } 

@@ -10,7 +10,7 @@ const { kv } = require("@vercel/kv");
 
 // Import existing tool registry and utilities
 const { CODAP_TOOLS } = require("./tool-registry.js");
-const { queueToolRequest, getToolResponse, setToolResponse } = require("./kv-utils.js");
+const { queueToolRequest, getToolResponse, setToolResponse, getSession } = require("./kv-utils.js");
 const { DirectToolExecutor } = require("./mcp-tool-executor.js");
 
 // Session management utilities
@@ -71,16 +71,46 @@ class SessionManager {
       clientInfo: clientInfo || {},
       requestCount: 0,
       toolCallCount: 0,
-      status: "created"
+      status: "created",
+      // Merge any additional properties from clientInfo (like initialized: true)
+      ...(clientInfo || {})
     };
     
     try {
-      // Store bidirectional mapping with atomic operation
-      await Promise.all([
+      // Store bidirectional mapping with atomic operation and longer timeout
+      const kvTimeout = 10000; // 10 second timeout
+      console.log(`[SessionManager] Creating session ${mcpSessionId} with ${kvTimeout}ms timeout`);
+      
+      const kvPromises = [
         kv.set(`mcp:${mcpSessionId}`, sessionData, { ex: Math.floor(SESSION_TTL / 1000) }),
         kv.set(`legacy:${legacyCode}`, sessionData, { ex: Math.floor(SESSION_TTL / 1000) }),
         kv.set(`session:metrics:${mcpSessionId}`, { created: now }, { ex: Math.floor(SESSION_TTL / 1000) })
+      ];
+      
+      // Execute with timeout
+      await Promise.race([
+        Promise.all(kvPromises),
+        new Promise((_, reject) => setTimeout(() => reject(new Error(`KV timeout after ${kvTimeout}ms`)), kvTimeout))
       ]);
+      
+      // CRITICAL: Verify session was actually stored
+      console.log(`[SessionManager] Verifying session ${mcpSessionId} was stored...`);
+      console.log(`[SessionManager] Original sessionData:`, JSON.stringify(sessionData, null, 2));
+      
+      // Small delay to ensure KV commit
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const verification = await Promise.race([
+        kv.get(`mcp:${mcpSessionId}`),
+        new Promise((_, reject) => setTimeout(() => reject(new Error(`Verification timeout after 5000ms`)), 5000))
+      ]);
+      
+      if (!verification) {
+        throw new Error(`Session verification failed - session not found in KV store`);
+      }
+      
+      console.log(`[SessionManager] Session ${mcpSessionId} verified successfully in KV store`);
+      console.log(`[SessionManager] Stored sessionData:`, JSON.stringify(verification, null, 2));
       
       this.sessionMetrics.created++;
       console.log(`[SessionManager] Created new session: ${mcpSessionId} -> ${legacyCode}`);
@@ -89,6 +119,13 @@ class SessionManager {
     } catch (error) {
       this.sessionMetrics.errors++;
       console.error(`[SessionManager] Failed to create session ${mcpSessionId}:`, error);
+      console.error(`[SessionManager] Error details:`, {
+        message: error.message,
+        stack: error.stack,
+        sessionId: mcpSessionId,
+        legacyCode,
+        timestamp: new Date().toISOString()
+      });
       throw new Error(`Session creation failed: ${error.message}`);
     }
   }
@@ -338,6 +375,9 @@ class MCPProtocolHandler {
         case "logging/setLevel":
           result = await this.handleSetLogLevel(params, id, sessionId, headers);
           break;
+        case "resources/list":
+          result = await this.handleResourcesList(params, id, sessionId, headers);
+          break;
         default:
           if (isNotification) {
             console.log(`[MCP] Ignoring unknown notification: ${method}`);
@@ -369,68 +409,70 @@ class MCPProtocolHandler {
   async handleInitialize(params, id, sessionId, headers = {}) {
     const { protocolVersion, capabilities, clientInfo } = params;
     
-    // Combine client info from params and headers
-    const combinedClientInfo = {
+    console.log(`[MCP] Initialize request: sessionId=${sessionId}, client=${clientInfo?.name || 'unknown'}`);
+    
+    // Enhanced client info with headers
+    const enhancedClientInfo = {
       ...clientInfo,
-      userAgent: headers.userAgent,
-      origin: headers.origin,
-      headerClientInfo: headers.clientInfo ? JSON.parse(headers.clientInfo) : null
+      userAgent: headers['user-agent'],
+      origin: headers['origin'],
+      referer: headers['referer'],
+      protocolVersion,
+      initializeTime: Date.now()
     };
     
-    // Allow initialize without session ID (session-agnostic connection)
-    let sessionInfo = {
-      connected: false,
-      message: "Use 'connect_to_session' tool to establish CODAP connection"
-    };
-    
-    if (sessionId) {
-      // Session ID provided - create or get session
-      let session = await this.sessionManager.getSessionByMCP(sessionId);
-      if (!session) {
-        session = await this.sessionManager.createSession(sessionId, combinedClientInfo);
+    try {
+      let session;
+      
+      if (sessionId) {
+        // For Claude Desktop sessions, auto-create and initialize
+        if (sessionId === 'claude-desktop-session' || clientInfo?.name?.includes('Claude')) {
+          // Auto-create Claude Desktop session
+          session = await this.sessionManager.createSession(sessionId, enhancedClientInfo);
+          
+          // Immediately initialize it for full tool access
+          await this.sessionManager.updateSession(sessionId, {
+            initialized: true,
+            protocolVersion,
+            capabilities,
+            initializationTime: Date.now(),
+            autoInitialized: true,
+            clientType: 'claude-desktop'
+          });
+          
+          console.log(`[MCP] Auto-initialized Claude Desktop session: ${sessionId}`);
+        } else {
+          // Regular session handling
+          session = await this.sessionManager.createSession(sessionId, enhancedClientInfo);
+        }
       }
       
-      // Mark session as initialized with comprehensive info
-      await this.sessionManager.updateSession(sessionId, { 
-        initialized: true,
-        protocolVersion,
-        clientInfo: combinedClientInfo,
-        initializationTime: Date.now()
-      });
-      
-      sessionInfo = {
-        sessionId,
-        legacyCode: session.legacyCode,
-        expiresAt: session.expiresAt,
-        status: session.status,
-        connected: true
-      };
-      
-      console.log(`[MCP] Session initialized: ${sessionId} with client: ${combinedClientInfo.userAgent || "unknown"}`);
-    } else {
-      console.log(`[MCP] Session-agnostic connection initialized with client: ${combinedClientInfo.userAgent || "unknown"}`);
-    }
-    
-    return {
-      jsonrpc: "2.0",
-      result: {
-        protocolVersion: "2025-03-26",
-        capabilities: {
-          tools: {
-            listChanged: false
+      return {
+        jsonrpc: "2.0",
+        result: {
+          protocolVersion: protocolVersion || "2024-11-05",
+          capabilities: {
+            logging: {},
+            tools: {},
+            prompts: {},
+            resources: {},
+            sampling: {}
           },
-          resources: {},
-          prompts: {},
-          logging: {}
+          serverInfo: {
+            name: "CODAP MCP Server",
+            version: "1.0.0",
+            description: "Model Context Protocol server for CODAP data analysis platform"
+          },
+          instructions: sessionId === 'claude-desktop-session' ? 
+            "CODAP MCP Server ready! All 34 CODAP tools are now available. You can interact with CODAP workspaces directly." :
+            "CODAP MCP Server initialized. Use 'connect_to_session' tool to connect to a specific CODAP session."
         },
-        serverInfo: {
-          name: "codap-mcp-server",
-          version: "1.0.0"
-        },
-        sessionInfo
-      },
-      id
-    };
+        id
+      };
+    } catch (error) {
+      console.error(`[MCP] Initialize failed: ${error.message}`);
+      return this.createErrorResponse(id, -32603, `Initialization failed: ${error.message}`);
+    }
   }
   
   async handleInitialized(params, id, sessionId, headers = {}) {
@@ -497,42 +539,46 @@ class MCPProtocolHandler {
       id
     };
   }
+
+  async handleResourcesList(params, id, sessionId, headers = {}) {
+    // Return empty resources list - we don't provide any resources currently
+    return {
+      jsonrpc: "2.0",
+      result: {
+        resources: []
+      },
+      id
+    };
+  }
   
   async handleToolsList(params, id, sessionId, headers = {}) {
-    // Always allow tools list, but include session connection tool if no session
-    let tools = [];
+    // ALWAYS provide all CODAP tools plus connect_to_session
+    // This solves the Claude Desktop caching issue by showing all tools upfront
     
-    if (!sessionId) {
-      // No session - only provide connection tool
-      tools = [{
-        name: "connect_to_session",
-        description: "Connect to a CODAP session using a session ID from the CODAP plugin",
-        inputSchema: {
-          type: "object",
-          properties: {
-            sessionId: {
-              type: "string",
-              description: "The session ID from your CODAP plugin (e.g., 'ABC12345')"
-            }
-          },
-          required: ["sessionId"]
-        }
-      }];
-    } else {
-      // Session exists - provide all CODAP tools
-      const session = await this.sessionManager.getSessionByMCP(sessionId);
-      if (!session || !session.initialized) {
-        return this.createErrorResponse(id, -32002, "Session not initialized");
+    // Get all CODAP tools
+    const codapTools = CODAP_TOOLS.map(tool => ({
+      name: tool.name,
+      description: tool.description,
+      inputSchema: tool.parameters
+    }));
+    
+    // Always include the connect_to_session tool first
+    const tools = [{
+      name: "connect_to_session",
+      description: "Connect to a CODAP session using a session ID from the CODAP plugin. Required before using other CODAP tools.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          sessionId: {
+            type: "string",
+            description: "The session ID from your CODAP plugin (e.g., 'ABC12345')"
+          }
+        },
+        required: ["sessionId"]
       }
-      
-      tools = CODAP_TOOLS.map(tool => ({
-        name: tool.name,
-        description: tool.description,
-        inputSchema: tool.parameters
-      }));
-    }
+    }, ...codapTools];
     
-    console.log(`[MCP] Listed ${tools.length} tools for session ${sessionId || 'no-session'}`);
+    console.log(`[MCP] Listed ${tools.length} tools for session ${sessionId || 'no-session'} (all tools always available)`);
     
     return {
       jsonrpc: "2.0",
@@ -544,124 +590,332 @@ class MCPProtocolHandler {
   }
   
   async handleToolCall(params, id, sessionId, headers = {}) {
-    const { name: toolName, arguments: toolArgs } = params;
+    const { name, arguments: args } = params;
     
-    // Handle special "connect_to_session" tool
-    if (toolName === "connect_to_session") {
-      const targetSessionId = toolArgs.sessionId;
-      if (!targetSessionId) {
-        return this.createErrorResponse(id, -32602, "Session ID is required");
+    console.log(`[MCP] Tool call: ${name}, sessionId=${sessionId}`);
+    
+    try {
+      // Handle connect_to_session tool
+      if (name === 'connect_to_session') {
+        return await this.handleConnectToSession(args, id, sessionId, headers);
       }
       
-      try {
-        // Check if target session exists in MCP system first
-        let targetSession = await this.sessionManager.getSessionByMCP(targetSessionId);
-        
-        if (!targetSession) {
-          // Check legacy session store
-          const { getSession } = require("./kv-utils.js");
-          const legacySession = await getSession(targetSessionId);
-          
-          if (!legacySession) {
-            return this.createErrorResponse(id, -32602, `CODAP session '${targetSessionId}' not found. Make sure the CODAP plugin is running with this session ID.`);
-          }
-          
-          // Create MCP session from legacy session
-          targetSession = await this.sessionManager.createSession(targetSessionId, {
-            legacySession: true,
-            originalCode: targetSessionId,
-            createdAt: legacySession.createdAt
-          });
-          
-          // Mark the session as initialized since it's coming from a valid legacy session
-          await this.sessionManager.updateSession(targetSessionId, {
-            initialized: true,
-            protocolVersion: "2025-03-26",
-            initializationTime: Date.now()
-          });
-          
-          console.log(`[MCP] Created and initialized MCP session from legacy session: ${targetSessionId}`);
-        }
-        
+      // For all other tools, ensure we have a valid session
+      if (!sessionId) {
         return {
           jsonrpc: "2.0",
           result: {
-            content: [
-              {
-                type: "text",
-                text: `Successfully connected to CODAP session '${targetSessionId}'!\n\nNow you can use any of the 34 CODAP tools to interact with your CODAP workspace.\n\nSession Details:\n- Session ID: ${targetSessionId}\n- Legacy Code: ${targetSession.legacyCode}\n- Status: ${targetSession.status}\n- Created: ${new Date(targetSession.createdAt).toLocaleString()}\n\nTo continue using CODAP tools, include the session ID '${targetSessionId}' in future requests by setting the 'mcp-session-id' header.`
-              }
-            ],
-            isError: false,
-            sessionEstablished: true,
-            sessionId: targetSessionId
+            content: [{
+              type: "text", 
+              text: `To use the '${name}' tool, you must first connect to a CODAP session.\n\nPlease use the 'connect_to_session' tool with a valid CODAP session ID (e.g., 'ABC12345').\n\nOnce connected, you'll be able to use all 34 CODAP tools for data analysis.`
+            }]
           },
           id
         };
-      } catch (error) {
-        return this.createErrorResponse(id, -32603, `Connection failed: ${error.message}`);
       }
-    }
-    
-    // Regular CODAP tools require an established session
-    const session = await this.sessionManager.getSessionByMCP(sessionId);
-    if (!session || !session.initialized) {
-      return this.createErrorResponse(id, -32002, "No CODAP session established. Use 'connect_to_session' tool first.");
-    }
-    
-    // Validate tool exists
-    const tool = CODAP_TOOLS.find(t => t.name === toolName);
-    if (!tool) {
-      return this.createErrorResponse(id, -32602, `Tool '${toolName}' not found`);
-    }
-    
-    try {
-      // Update session tool call count
-      await this.sessionManager.updateSession(sessionId, {
-        toolCallCount: (session.toolCallCount || 0) + 1,
-        lastToolCall: toolName,
-        lastToolCallTime: Date.now()
+      
+      // Get session and check for active pairing session
+      console.log(`[MCP] Looking up Claude session ${sessionId} for tool ${name}`);
+      let claudeSession = await this.sessionManager.getSessionByMCP(sessionId);
+      let session = claudeSession;
+      let effectiveSessionId = sessionId;
+      
+      if (!claudeSession) {
+        console.log(`[MCP] Claude session ${sessionId} not found`);
+        return {
+          jsonrpc: "2.0",
+          result: {
+            content: [{
+              type: "text",
+              text: `Claude session ${sessionId} not found. Please use the 'connect_to_session' tool to establish a connection.`
+            }]
+          },
+          id
+        };
+      }
+      
+      console.log(`[MCP] Claude session found. activePairingSession: ${claudeSession.activePairingSession}, connectedCODAPSession: ${claudeSession.connectedCODAPSession}`);
+      
+      if (claudeSession && claudeSession.activePairingSession) {
+        // Use the pairing session for tool execution
+        effectiveSessionId = claudeSession.activePairingSession;
+        console.log(`[MCP] Looking up pairing session ${effectiveSessionId} for tool ${name}`);
+        session = await this.sessionManager.getSessionByMCP(effectiveSessionId);
+        
+        if (!session) {
+          console.log(`[MCP] ERROR: Pairing session ${effectiveSessionId} not found in KV store!`);
+          console.log(`[MCP] Claude session data:`, JSON.stringify(claudeSession, null, 2));
+          
+          // If pairing session doesn't exist, fall back to direct CODAP session
+          if (claudeSession.connectedCODAPSession) {
+            console.log(`[MCP] Attempting fallback to CODAP session ${claudeSession.connectedCODAPSession}`);
+            effectiveSessionId = claudeSession.connectedCODAPSession;
+            session = await this.sessionManager.getSessionByMCP(effectiveSessionId);
+            if (session) {
+              console.log(`[MCP] Fallback to CODAP session ${effectiveSessionId} successful for tool ${name}`);
+            } else {
+              console.log(`[MCP] Fallback failed - CODAP session ${effectiveSessionId} also not found`);
+            }
+          }
+        } else {
+          console.log(`[MCP] Using pairing session ${effectiveSessionId} for tool ${name} (initialized: ${session.initialized})`);
+        }
+      }
+      
+      if (!session) {
+        const errorMsg = `Session ${effectiveSessionId} not found in KV store. Claude session exists but pairing/CODAP sessions are missing. This indicates a KV storage persistence issue.`;
+        console.log(`[MCP] ERROR: ${errorMsg}`);
+        return {
+          jsonrpc: "2.0",
+          result: {
+            content: [{
+              type: "text",
+              text: errorMsg + ` Please try reconnecting with 'connect_to_session'.`
+            }]
+          },
+          id
+        };
+      }
+      
+      if (!session.initialized) {
+        const errorMsg = `Session ${effectiveSessionId} not initialized (type: ${session.type}, status: ${session.status}).`;
+        console.log(`[MCP] ERROR: ${errorMsg}`);
+        console.log(`[MCP] Session data:`, JSON.stringify(session, null, 2));
+        return {
+          jsonrpc: "2.0",
+          result: {
+            content: [{
+              type: "text",
+              text: errorMsg + ` Please use the 'connect_to_session' tool first.`
+            }]
+          },
+          id
+        };
+      }
+      
+      // Update session metrics (use effective session ID)
+      await this.sessionManager.updateSession(effectiveSessionId, {
+        lastToolCall: Date.now(),
+        toolCallCount: (session.toolCallCount || 0) + 1
       });
       
+      // Handle CODAP tools
+      const codapTools = this.getCODAPTools();
+      const tool = codapTools.find(t => t.name === name);
+      
+      if (!tool) {
+        return {
+          jsonrpc: "2.0",
+          result: {
+            content: [{
+              type: "text",
+              text: `Unknown tool: ${name}. Available tools: ${codapTools.map(t => t.name).join(', ')}`
+            }]
+          },
+          id
+        };
+      }
+      
       // Check if session has active browser worker
-      const hasBrowserWorker = await this.checkBrowserWorkerConnection(sessionId, session.legacyCode);
+      const hasBrowserWorker = await this.checkBrowserWorkerConnection(effectiveSessionId, session.legacyCode);
       
       if (hasBrowserWorker) {
         console.log(`[MCP] Using browser worker mode for session ${session.legacyCode}`);
-        return await this.executeBrowserWorkerTool(params, id, sessionId, session);
+        return await this.executeBrowserWorkerTool(params, id, effectiveSessionId, session);
       } else {
-        console.log(`[MCP] Using direct execution mode for session ${sessionId}`);
-        return await this.executeDirectTool(params, id, sessionId, session);
+        console.log(`[MCP] Using direct execution mode for session ${effectiveSessionId}`);
+        return await this.executeDirectTool(params, id, effectiveSessionId, session);
       }
       
     } catch (error) {
-      console.error(`[MCP] Tool execution failed: ${toolName} - ${error.message}`);
+      console.error(`[MCP] Tool call error:`, error);
       
-      // Update session with error count
-      try {
-        await this.sessionManager.updateSession(sessionId, {
-          errorCount: (session.errorCount || 0) + 1,
-          lastError: error.message,
-          lastErrorTime: Date.now()
-        });
-      } catch (updateError) {
-        console.warn(`[MCP] Failed to update session error count:`, updateError);
+      // Update session error count
+      if (sessionId) {
+        try {
+          const session = await this.sessionManager.getSessionByMCP(sessionId);
+          if (session) {
+            await this.sessionManager.updateSession(sessionId, {
+              errorCount: (session.errorCount || 0) + 1
+            });
+          }
+        } catch (updateError) {
+          console.error(`[MCP] Failed to update session error count:`, updateError);
+        }
       }
       
-      return this.createErrorResponse(id, -32603, `Tool execution failed: ${error.message}`);
+      return {
+        jsonrpc: "2.0",
+        result: {
+          content: [{
+            type: "text",
+            text: `Tool execution failed: ${error.message}`
+          }]
+        },
+        id
+      };
     }
   }
   
+  /**
+   * Handle connect_to_session tool call
+   */
+  async handleConnectToSession(args, id, sessionId, headers = {}) {
+    const targetSessionId = args.sessionId;
+    if (!targetSessionId) {
+      return {
+        jsonrpc: "2.0",
+        result: {
+          content: [{
+            type: "text",
+            text: "Session ID is required. Please provide a valid CODAP session ID."
+          }]
+        },
+        id
+      };
+    }
+
+    try {
+      // Check if target session exists in MCP system first
+      let targetSession = await this.sessionManager.getSessionByMCP(targetSessionId);
+      
+      if (!targetSession) {
+        // Check legacy session store
+        const { getSession } = require("./kv-utils.js");
+        const legacySession = await getSession(targetSessionId);
+        
+        if (!legacySession) {
+          return {
+            jsonrpc: "2.0",
+            result: {
+              content: [{
+                type: "text",
+                text: `CODAP session '${targetSessionId}' not found. Make sure the CODAP plugin is running with this session ID.`
+              }]
+            },
+            id
+          };
+        }
+        
+        // Create MCP session from legacy session
+        targetSession = await this.sessionManager.createSession(targetSessionId, {
+          legacySession: true,
+          originalCode: targetSessionId,
+          createdAt: legacySession.createdAt
+        });
+        
+        // Mark the session as initialized since it's coming from a valid legacy session
+        await this.sessionManager.updateSession(targetSessionId, {
+          initialized: true,
+          protocolVersion: "2024-11-05",
+          initializationTime: Date.now()
+        });
+        
+        console.log(`[MCP] Created and initialized MCP session from legacy session: ${targetSessionId}`);
+      }
+      
+      // CRITICAL FIX: Create a pairing session between Claude Desktop and CODAP
+      if (sessionId && sessionId !== targetSessionId) {
+        // Ensure the Claude Desktop session exists
+        let claudeSession = await this.sessionManager.getSessionByMCP(sessionId);
+        if (!claudeSession) {
+          claudeSession = await this.sessionManager.createSession(sessionId, {
+            type: 'claude-desktop',
+            initialized: true,
+            protocolVersion: "2024-11-05",
+            createdAt: Date.now()
+          });
+          console.log(`[MCP] Created Claude Desktop session: ${sessionId}`);
+        }
+        
+        // Create a unique pairing session
+        const pairingSessionId = generatePairingSessionId(sessionId, targetSessionId);
+        
+        // Create the pairing session
+        console.log(`[MCP] Creating pairing session ${pairingSessionId}...`);
+        const pairingSession = await this.sessionManager.createSession(pairingSessionId, {
+          type: 'pairing',
+          claudeSession: sessionId,
+          codapSession: targetSessionId,
+          claudeSessionLegacyCode: null,
+          codapSessionLegacyCode: targetSession.legacyCode,
+          initialized: true,
+          protocolVersion: "2024-11-05",
+          createdAt: Date.now()
+        });
+        
+        // CRITICAL: Verify pairing session exists before updating Claude session
+        const pairingVerification = await this.sessionManager.getSessionByMCP(pairingSessionId);
+        if (!pairingVerification) {
+          throw new Error(`Pairing session creation failed - ${pairingSessionId} not found after creation`);
+        }
+        if (!pairingVerification.initialized) {
+          throw new Error(`Pairing session ${pairingSessionId} not initialized after creation`);
+        }
+        console.log(`[MCP] Pairing session ${pairingSessionId} verified successfully`);
+        
+        // Update the Claude Desktop session to reference the pairing and mark as initialized
+        console.log(`[MCP] Updating Claude session ${sessionId} with pairing reference...`);
+        await this.sessionManager.updateSession(sessionId, {
+          activePairingSession: pairingSessionId,
+          connectedCODAPSession: targetSessionId,
+          connectionTime: Date.now(),
+          initialized: true,
+          protocolVersion: "2024-11-05"
+        });
+        
+        // FINAL VERIFICATION: Ensure Claude session has the pairing reference
+        const claudeVerification = await this.sessionManager.getSessionByMCP(sessionId);
+        if (!claudeVerification.activePairingSession) {
+          throw new Error(`Claude session update failed - no activePairingSession found`);
+        }
+        
+        console.log(`[MCP] Successfully created and verified pairing session ${pairingSessionId} between Claude ${sessionId} and CODAP ${targetSessionId}`);
+      }
+      
+      return {
+        jsonrpc: "2.0",
+        result: {
+          content: [{
+            type: "text",
+            text: `Connected successfully to CODAP session '${targetSessionId}'!\n\nNow you can use any of the 34 CODAP tools to interact with your CODAP workspace.\n\nSession Details:\n- Session ID: ${targetSessionId}\n- Legacy Code: ${targetSession.legacyCode}\n- Status: ${targetSession.status}\n- Created: ${new Date(targetSession.createdAt).toLocaleString()}\n\nYour Claude Desktop session is now connected to this CODAP session. All subsequent tool calls will automatically use this CODAP session.`
+          }]
+        },
+        id
+      };
+    } catch (error) {
+      return {
+        jsonrpc: "2.0",
+        result: {
+          content: [{
+            type: "text",
+            text: `Connection failed: ${error.message}`
+          }]
+        },
+        id
+      };
+    }
+  }
+
+  /**
+   * Get CODAP tools list
+   */
+  getCODAPTools() {
+    return CODAP_TOOLS;
+  }
+
   /**
    * Check if session has an active browser worker connection
    * Simplified version to avoid timeouts - assume no browser worker for now
    */
   async checkBrowserWorkerConnection(sessionId, legacyCode) {
     try {
-      // For now, always return false to force direct execution mode
-      // This eliminates potential KV timeout issues during debugging
-      console.log(`[MCP] Checking browser worker for session ${legacyCode} - forcing direct mode`);
-      return false;
+      console.log(`[MCP] Checking browser worker connection for session ${legacyCode}`);
+      
+      // TEMPORARY: Force browser-worker mode for all sessions to test the SSE pipeline
+      // This will help us determine if the issue is in detection or in the SSE workflow
+      console.log(`[MCP] FORCING browser-worker mode for testing - session ${legacyCode}`);
+      return true;
       
     } catch (error) {
       console.error(`[MCP] Error checking browser worker connection: ${error.message}`);
@@ -679,8 +933,11 @@ class MCPProtocolHandler {
     const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
     // Transform MCP request to internal format
+    // Use the main session ID (not legacy code) to match browser worker SSE connection
+    // The browser worker connects using session.id, so we need to queue using the same
+    const sessionCode = sessionId.split('-').pop(); // Extract CODAP session ID from MCP session ID
     const internalRequest = {
-      sessionCode: session.legacyCode,
+      sessionCode: sessionCode, // Use the session code that browser worker listens to
       tool: toolName,
       arguments: toolArgs,
       requestId,
@@ -707,8 +964,7 @@ class MCPProtocolHandler {
               type: "text",
               text: `Tool execution completed successfully.\n\nTool: ${toolName}\nExecution Time: ${executionTime}ms\nMode: browser-worker\nSession: ${session.legacyCode}\n\nResult:\n${JSON.stringify(result, null, 2)}`
             }
-          ],
-          isError: false
+          ]
         },
         id
       };
@@ -742,8 +998,7 @@ class MCPProtocolHandler {
               type: "text",
               text: `Tool execution completed successfully.\n\nTool: ${toolName}\nExecution Time: ${executionTime}ms\nMode: direct-server\nSession: ${sessionId}\n\nResult:\n${JSON.stringify(result, null, 2)}`
             }
-          ],
-          isError: false
+          ]
         },
         id
       };
@@ -937,6 +1192,13 @@ async function POST(req) {
     // Parse and validate headers
     const headers = parseHeaders(req);
     sessionId = headers.sessionId;
+    
+    // CRITICAL FIX: Generate unique session for Claude Desktop when no session ID provided
+    if (!sessionId) {
+      // Create a unique Claude Desktop session identifier
+      sessionId = generateClaudeDesktopSessionId(req, headers);
+      console.log(`[MCP] Generated Claude Desktop session ID: ${sessionId}`);
+    }
     
     const headerErrors = validateHeaders(headers);
     if (headerErrors.length > 0) {
@@ -1223,6 +1485,42 @@ function extractSessionIdFromCommand(toolName, arguments_obj) {
   }
   
   return null;
+}
+
+/**
+ * Generate a unique session ID for Claude Desktop instances
+ * This creates a stable identifier for each Claude Desktop instance that connects
+ */
+function generateClaudeDesktopSessionId(req, headers) {
+  // Collect identifying characteristics
+  const factors = [
+    headers.userAgent || 'unknown-agent',
+    headers.origin || 'unknown-origin',
+    req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || 'unknown-ip',
+    headers.clientInfo || 'unknown-client'
+  ];
+  
+  // Create a hash of the factors for uniqueness
+  const factorString = factors.join('|');
+  let hash = 0;
+  for (let i = 0; i < factorString.length; i++) {
+    const char = factorString.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  
+  // Use only the hash for stable session IDs across tool calls
+  const hashStr = Math.abs(hash).toString(36);
+  
+  return `claude-${hashStr}`;
+}
+
+/**
+ * Create a pairing session between Claude Desktop and CODAP
+ */
+function generatePairingSessionId(claudeSessionId, codapSessionId) {
+  // Remove timestamp to ensure stable pairing session IDs
+  return `pairing-${claudeSessionId}-${codapSessionId}`;
 }
 
 // Export functions for Vercel serverless

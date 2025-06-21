@@ -19,11 +19,14 @@ function generateMCPConfig() {
   return {
     "mcpServers": {
       "codap": {
-        "command": "npx",
+        "command": "node",
         "args": [
-          "@modelcontextprotocol/server-fetch",
-          CONFIG.serverUrl
-        ]
+          "-e",
+          "const https=require('https');process.stdin.setEncoding('utf8');process.stdin.on('data',d=>{d.trim().split('\\n').forEach(async l=>{if(l.trim()){try{const m=JSON.parse(l);const r=await new Promise((resolve,reject)=>{const req=https.request('" + CONFIG.serverUrl + "',{method:'POST',headers:{'Content-Type':'application/json','mcp-session-id':process.env.MCP_SESSION_ID||'claude-session'}},res=>{let data='';res.on('data',c=>data+=c);res.on('end',()=>resolve(JSON.parse(data)))});req.on('error',reject);req.write(JSON.stringify(m));req.end()});if(r)process.stdout.write(JSON.stringify(r)+'\\n')}catch(e){process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:null,error:{code:-32603,message:e.message}})+'\\n')}}})});process.stderr.write('CODAP MCP ready\\n');"
+        ],
+        "env": {
+          "MCP_SESSION_ID": "claude-desktop-session"
+        }
       }
     }
   };

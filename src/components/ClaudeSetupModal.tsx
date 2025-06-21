@@ -20,11 +20,11 @@ export const ClaudeSetupModal: React.FC<ClaudeSetupModalProps> = ({
   const clipboard = useClipboard();
 
   // Memoize the configuration to avoid recreating on every render
-  const claudeConfig = useMemo(() => generateClaudeMCPConfig(relayBaseUrl), [relayBaseUrl]);
+  const claudeConfig = useMemo(() => JSON.parse(generateClaudeMCPConfig()), []);
 
   const handleCopyConfiguration = useCallback(async () => {
     try {
-      const configText = JSON.stringify(claudeConfig, null, 2);
+      const configText = generateClaudeMCPConfig(); // Use the string directly
       const result = await clipboard.copyToClipboard(configText);
       if (result.success) {
         setCopyFeedback("Configuration copied to clipboard!");
@@ -36,7 +36,7 @@ export const ClaudeSetupModal: React.FC<ClaudeSetupModalProps> = ({
       setCopyFeedback("Failed to copy configuration");
       setTimeout(() => setCopyFeedback(""), 3000);
     }
-  }, [clipboard, claudeConfig]);
+  }, [clipboard]);
 
   const handleBackdropClick = useCallback((e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
@@ -157,3 +157,4 @@ export const ClaudeSetupModal: React.FC<ClaudeSetupModalProps> = ({
     </div>
   );
 }; 
+

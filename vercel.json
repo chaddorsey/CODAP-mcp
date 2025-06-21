@@ -5,12 +5,6 @@
     "api/sessions.js": {
       "maxDuration": 10
     },
-    "api/request.js": {
-      "maxDuration": 10
-    },
-    "api/response.js": {
-      "maxDuration": 10
-    },
     "api/stream.js": {
       "maxDuration": 60
     },
@@ -19,6 +13,9 @@
     },
     "api/mcp.js": {
       "maxDuration": 30
+    },
+    "api/response.js": {
+      "maxDuration": 10
     }
   },
   "headers": [
