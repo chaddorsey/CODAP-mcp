@@ -22,3 +22,4 @@ test-relay-manual.js
 
 # Local environment variables
 .env.local
+~/Library/Application Support/Claude/claude_desktop_config.json
