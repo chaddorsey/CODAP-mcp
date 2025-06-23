@@ -102,7 +102,24 @@ export default async function handler(req, res) {
     }
     
     // Validate session exists and is not expired
-    const sessionValid = await validateSession(sessionCode);
+    // Use a timeout to ensure fast response
+    const sessionValidationPromise = validateSession(sessionCode);
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error("Session validation timeout")), 5000); // 5 second timeout
+    });
+    
+    let sessionValid;
+    try {
+      sessionValid = await Promise.race([sessionValidationPromise, timeoutPromise]);
+    } catch (error) {
+      console.error("Session validation failed or timed out:", error);
+      res.status(404).json({
+        error: "session_validation_failed",
+        message: "Session validation failed or timed out"
+      });
+      return;
+    }
+    
     if (!sessionValid) {
       res.status(404).json({
         error: "session_not_found",
@@ -121,9 +138,26 @@ export default async function handler(req, res) {
       "Access-Control-Allow-Headers": "Content-Type, x-sso-bypass"
     });
     
-    // Helper function to send SSE events with proper format
+    // Helper function to send SSE events with proper format and error handling
     const sendSSEEvent = (eventType, data) => {
-      res.write(`event: ${eventType}\ndata: ${JSON.stringify(data)}\n\n`);
+      try {
+        if (res.destroyed || res.finished) {
+          console.log(`SSE connection closed, cannot send ${eventType} event`);
+          return false;
+        }
+        
+        // Ensure data is valid before sending
+        if (data === undefined || data === null) {
+          console.warn(`Attempted to send SSE event ${eventType} with undefined/null data`);
+          return false;
+        }
+        
+        res.write(`event: ${eventType}\ndata: ${JSON.stringify(data)}\n\n`);
+        return true;
+      } catch (error) {
+        console.error(`Failed to send SSE event ${eventType}:`, error);
+        return false;
+      }
     };
     
     // Send initial connection confirmation
@@ -148,8 +182,12 @@ export default async function handler(req, res) {
       });
     }, 30000); // Send heartbeat every 30 seconds
     
-    // Set up interval to poll for requests
-    const pollInterval = setInterval(async () => {
+    // Set up adaptive polling for requests
+    let pollInterval;
+    let pollCount = 0;
+    const maxFastPolls = 60; // 30 seconds of fast polling (500ms * 60)
+    
+    const pollFunction = async () => {
       try {
         // Check if session is still valid
         const stillValid = await validateSession(sessionCode);
@@ -159,7 +197,7 @@ export default async function handler(req, res) {
             message: "Session has expired",
             timestamp: new Date().toISOString()
           });
-          clearInterval(pollInterval);
+          if (pollInterval) clearInterval(pollInterval);
           clearInterval(heartbeatInterval);
           res.end();
           return;
@@ -172,6 +210,15 @@ export default async function handler(req, res) {
           sendSSEEvent("tool-request", request);
           console.log(`Sent tool request via SSE for session ${sessionCode}:`, request);
         }
+        
+        pollCount++;
+        
+        // Switch to slower polling after fast phase
+        if (pollCount === maxFastPolls) {
+          console.log(`Switching to slower polling for session ${sessionCode}`);
+          clearInterval(pollInterval);
+          pollInterval = setInterval(pollFunction, 2000); // 2 second polling
+        }
       } catch (error) {
         console.error("SSE polling error:", error);
         sendSSEEvent("error", {
@@ -180,12 +227,15 @@ export default async function handler(req, res) {
           timestamp: new Date().toISOString()
         });
       }
-    }, 1000); // Poll every 1 second
+    };
+    
+    // Start with fast polling
+    pollInterval = setInterval(pollFunction, 500); // Fast polling initially
     
     // Handle client disconnect
     req.on("close", () => {
       console.log(`SSE stream closed for session: ${sessionCode}`);
-      clearInterval(pollInterval);
+      if (pollInterval) clearInterval(pollInterval);
       clearInterval(heartbeatInterval);
     });
     

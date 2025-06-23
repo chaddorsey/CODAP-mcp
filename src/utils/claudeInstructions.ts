@@ -1,4 +1,29 @@
 /**
+ * Generates simple connection prompt for Claude Desktop
+ */
+export function generateClaudeConnectionPrompt(sessionId: string): string {
+  return `Connect to CODAP session ${sessionId}`;
+}
+
+/**
+ * Generates detailed connection instructions after copying
+ */
+export function generateConnectionInstructions(sessionId: string): string {
+  return `✅ Copied to clipboard!
+
+Paste this into Claude Desktop:
+"Connect to CODAP session ${sessionId}"
+
+Claude will then connect to your CODAP workspace and you can:
+• Create and modify datasets
+• Generate graphs and visualizations
+• Filter and analyze data
+• Perform calculations and statistics
+
+The connection will remain active while this CODAP session is open.`;
+}
+
+/**
  * Generates connection instructions for Claude Desktop
  */
 export function generateClaudeConnectionInstructions(sessionId: string): string {

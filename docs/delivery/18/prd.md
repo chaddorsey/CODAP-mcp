@@ -26,14 +26,41 @@ The current Vercel server uses custom REST API endpoints (`/api/metadata`, `/api
 
 ## User Stories
 
-**Primary Story**: As an LLM application developer, I want the CODAP-MCP server to be fully MCP protocol compliant so that I can integrate CODAP tools using standard MCP clients without custom API implementations.
+**Primary Story**: As a Claude Desktop user, I want a seamless, minimal CODAP plugin that automatically connects to Claude so I can manipulate CODAP data through natural language without technical complexity.
 
 **Supporting Stories**:
-- **As a Claude Desktop user**, I want to add the CODAP-MCP server to my MCP configuration so that I can use CODAP tools directly in my conversations
-- **As a Cursor user**, I want the CODAP-MCP server to appear as a standard MCP server so that I can use CODAP tools in my IDE workflows  
-- **As an MCP SDK developer**, I want to connect to CODAP-MCP using standard TypeScript/Python MCP clients so that I can build applications without learning custom APIs
+- **As a first-time user**, I want clear, one-click setup guidance so I can configure Claude Desktop to work with CODAP without technical expertise
+- **As a returning user**, I want automatic session generation and connection so I can start working immediately without manual setup steps
+- **As a data analyst**, I want invisible infrastructure so I can focus on my analysis work rather than managing sessions or browser workers
+- **As a non-technical user**, I want simple status indicators so I can easily see if Claude is connected and working
+- **As an LLM application developer**, I want the CODAP-MCP server to be fully MCP protocol compliant so that I can integrate CODAP tools using standard MCP clients without custom API implementations
 - **As a system administrator**, I want MCP-standard configuration and monitoring so that CODAP-MCP integrates with existing MCP infrastructure
-- **As an API consumer**, I want standard MCP error handling and status codes so that my error handling logic works consistently across MCP servers
+
+## Claude Desktop MVP User Experience
+
+**Vision**: Transform the CODAP plugin into an "invisible glue" connector that seamlessly bridges Claude Desktop and CODAP with minimal user friction.
+
+**Core Principles**:
+- **Invisible Infrastructure**: Hide technical complexity (sessions, browser workers, etc.)
+- **Claude-First Design**: Assume Claude Desktop as primary user interface
+- **Minimal UI**: Only essential connection status and session information
+- **Automatic Operations**: No manual session generation or worker management
+- **Clear Status Communication**: Simple visual indicators for connection state
+
+**User Journey**:
+1. User opens CODAP with plugin → Session auto-generated, worker auto-started
+2. User sees "Connect to Claude" interface with prominent session ID
+3. User clicks "Copy Claude Connect Prompt" → Instructions copied to clipboard
+4. User pastes in Claude Desktop → Connection established
+5. Plugin shows "Connected" status → User works seamlessly via Claude
+
+**Interface Requirements**:
+- Remove legacy sections: CODAP Functions, Response panels, Listener notifications
+- Prominent session ID display with easy copy functionality
+- Two status indicators: "Relay Connected" and "Claude Connected" 
+- One-click "Copy Claude Connect Prompt" with confirmation feedback
+- Unobtrusive "First time? Get my Claude Ready" setup guidance
+- Minimal footprint - plugin should be as small as possible
 
 ## Technical Approach
 

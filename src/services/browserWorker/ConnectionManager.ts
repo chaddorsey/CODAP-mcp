@@ -47,10 +47,14 @@ export class ConnectionManager implements ConnectionManagerInterface {
   private lastHeartbeat = 0;
   private isConnecting = false;
   private isDisconnected = true;
+  private connectionResolver: ((value?: void | PromiseLike<void>) => void) | null = null;
+  private connectionRejecter: ((reason?: any) => void) | null = null;
 
-  // Heartbeat monitoring constants
-  private static readonly HEARTBEAT_TIMEOUT_MS = 60000; // 60 seconds
-  private static readonly HEARTBEAT_CHECK_INTERVAL_MS = 30000; // 30 seconds
+  // Timing constants - optimized for faster connection
+  private static readonly HEARTBEAT_TIMEOUT_MS = 45000; // Reduced from 60s to 45s
+  private static readonly HEARTBEAT_CHECK_INTERVAL_MS = 15000; // Reduced from 30s to 15s
+  private static readonly INITIAL_POLL_INTERVAL_MS = 500; // Fast polling for first 30 seconds
+  private static readonly NORMAL_POLL_INTERVAL_MS = 2000; // Normal polling after initial period
 
   constructor(config: BrowserWorkerConfig, retryConfig?: RetryConfig) {
     this.config = { ...DEFAULT_BROWSER_WORKER_CONFIG, ...config };
@@ -160,17 +164,34 @@ export class ConnectionManager implements ConnectionManagerInterface {
     this.log("Establishing SSE connection", { url });
 
     return new Promise((resolve, reject) => {
+      // Store resolvers for later use
+      this.connectionResolver = resolve;
+      this.connectionRejecter = reject;
+      
       try {
         this.eventSource = new EventSource(url);
+        
+        // Set up a timeout for connection establishment
+        const connectionTimeout = setTimeout(() => {
+          this.log("SSE connection timeout");
+          if (this.eventSource) {
+            this.eventSource.close();
+            this.eventSource = null;
+          }
+          this.connectionResolver = null;
+          this.connectionRejecter = null;
+          reject(new Error("SSE connection timeout"));
+        }, 10000); // 10 second timeout
 
-        // Connection opened successfully
+        // Connection opened successfully - but wait for server confirmation
         this.eventSource.onopen = () => {
-          this.log("SSE connection opened");
-          this.updateStatus(ConnectionState.CONNECTED);
+          clearTimeout(connectionTimeout);
+          this.log("SSE connection opened - waiting for server confirmation");
+          // Don't update to CONNECTED yet - wait for server's "connected" event
+          this.updateStatus(ConnectionState.CONNECTING);
           this.currentStatus.retryCount = 0;
           this.currentStatus.lastConnected = Date.now();
-          this.startHeartbeatMonitoring();
-          resolve();
+          // Don't resolve yet - wait for server confirmation
         };
 
         // Handle SSE messages
@@ -201,8 +222,21 @@ export class ConnectionManager implements ConnectionManagerInterface {
 
         // Handle EventSource errors
         this.eventSource.onerror = (event) => {
+          clearTimeout(connectionTimeout);
+          this.log("EventSource error occurred", { 
+            readyState: this.eventSource?.readyState,
+            event 
+          });
           this.handleEventSourceError(event);
-          reject(new Error("EventSource connection failed"));
+          
+          // Clean up resolvers and reject
+          if (this.connectionRejecter) {
+            this.connectionRejecter(new Error("EventSource connection failed"));
+            this.connectionResolver = null;
+            this.connectionRejecter = null;
+          } else {
+            reject(new Error("EventSource connection failed"));
+          }
         };
 
       } catch (error) {
@@ -243,7 +277,7 @@ export class ConnectionManager implements ConnectionManagerInterface {
    * Handle connected event
    */
   private handleConnectedEvent(event: MessageEvent): void {
-    this.log("Received connected event", { data: event.data });
+    this.log("Received connected event - server confirmed connection");
     
     try {
       const data = JSON.parse(event.data);
@@ -252,6 +286,18 @@ export class ConnectionManager implements ConnectionManagerInterface {
         data,
         timestamp: new Date().toISOString()
       };
+      
+      // Now we're truly connected - server has confirmed
+      this.updateStatus(ConnectionState.CONNECTED);
+      this.startHeartbeatMonitoring();
+      
+      // Resolve the connection promise
+      if (this.connectionResolver) {
+        this.connectionResolver();
+        this.connectionResolver = null;
+        this.connectionRejecter = null;
+      }
+      
       this.emitEvent("message", connectedEvent);
     } catch (error) {
       this.log("Failed to parse connected event", { error });

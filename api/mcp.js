@@ -57,7 +57,8 @@ class SessionManager {
       return await this.resumeSession(mcpSessionId, existingSession);
     }
 
-    const legacyCode = generateLegacySessionCode();
+    // Use provided legacy code or generate a new one
+    const legacyCode = (clientInfo && clientInfo.legacyCode) || generateLegacySessionCode();
     const now = Date.now();
     const expiresAt = now + SESSION_TTL;
     
@@ -606,7 +607,7 @@ class MCPProtocolHandler {
           jsonrpc: "2.0",
           result: {
             content: [{
-              type: "text", 
+              type: "text",
               text: `To use the '${name}' tool, you must first connect to a CODAP session.\n\nPlease use the 'connect_to_session' tool with a valid CODAP session ID (e.g., 'ABC12345').\n\nOnce connected, you'll be able to use all 34 CODAP tools for data analysis.`
             }]
           },
@@ -797,9 +798,10 @@ class MCPProtocolHandler {
           };
         }
         
-        // Create MCP session from legacy session
+        // FIXED: Create MCP session from legacy session but preserve the original legacy code
         targetSession = await this.sessionManager.createSession(targetSessionId, {
           legacySession: true,
+          legacyCode: targetSessionId, // Preserve the existing legacy code
           originalCode: targetSessionId,
           createdAt: legacySession.createdAt
         });
@@ -871,6 +873,32 @@ class MCPProtocolHandler {
         }
         
         console.log(`[MCP] Successfully created and verified pairing session ${pairingSessionId} between Claude ${sessionId} and CODAP ${targetSessionId}`);
+        
+        // EARLY CLAUDE CONNECTION DETECTION: Send SSE notification
+        try {
+          // Queue a special "claude-connected" event for the browser worker
+          const { queueToolRequest } = require("./kv-utils.js");
+          const claudeConnectedNotification = {
+            sessionCode: targetSession.legacyCode,
+            tool: "__claude_connected__", // Special internal event
+            arguments: {
+              claudeSessionId: sessionId,
+              codapSessionId: targetSessionId,
+              pairingSessionId: pairingSessionId,
+              timestamp: new Date().toISOString()
+            },
+            requestId: `claude_connected_${Date.now()}`,
+            timestamp: Date.now(),
+            mcpSessionId: sessionId,
+            isNotification: true // Mark as notification, not tool request
+          };
+          
+          await queueToolRequest(claudeConnectedNotification);
+          console.log(`[MCP] Queued claude-connected notification for session ${targetSession.legacyCode}`);
+        } catch (error) {
+          console.error(`[MCP] Failed to queue claude-connected notification:`, error);
+          // Don't fail the connection if notification fails
+        }
       }
       
       return {

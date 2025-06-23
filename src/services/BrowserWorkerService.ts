@@ -45,6 +45,11 @@ export class BrowserWorkerService {
   private responseHandler: ResponseHandler | null = null;
   private isStarted = false;
   private comprehensiveToolHandlers: Record<string, (args: any) => Promise<any>> | null = null;
+  private claudeConnected = false; // Track Claude connection status
+  private lastClaudeActivity = 0; // Track last Claude activity
+  private claudeTimeoutTimer: NodeJS.Timeout | null = null; // Timeout timer
+
+  private static readonly CLAUDE_TIMEOUT_MS = 120000; // 2 minutes of inactivity
 
   private connectionStatus: ConnectionStatus = {
     state: ConnectionState.DISCONNECTED,
@@ -71,7 +76,7 @@ export class BrowserWorkerService {
       responseEndpoint: "/api/response",
       headers: {
         "Content-Type": "application/json",
-        "x-sso-bypass": "pAg5Eon3T8qOwMaWKzo9k6T4pdbYiCye"
+        "x-vercel-protection-bypass": "pAg5Eon3T8qOwMaWKzo9k6T4pdbYiCye"
       },
       debug: config.debug || false
     });
@@ -116,6 +121,53 @@ export class BrowserWorkerService {
     
     try {
       toolRequest = event.data as ToolRequest;
+      
+      // Handle special Claude connection notification (if it exists)
+      if (toolRequest.tool === "__claude_connected__") {
+        console.log("🎉 Claude Desktop connected (early detection)! Firing claude-connected event");
+        
+        this.claudeConnected = true;
+        this.lastClaudeActivity = Date.now();
+        this.resetClaudeTimeout();
+        
+        // Access the correct field name (server uses 'arguments', browser expects 'args')
+        const earlyServerRequest = toolRequest as any;
+        const sessionInfo = earlyServerRequest.arguments || earlyServerRequest.args;
+        
+        // Fire custom event to notify UI
+        const claudeConnectedEvent = new CustomEvent("claude-connected", {
+          detail: { 
+            connected: true, 
+            timestamp: new Date().toISOString(),
+            early: true, // Mark as early detection
+            sessionInfo
+          }
+        });
+        window.dispatchEvent(claudeConnectedEvent);
+        
+        // Don't process this as a regular tool request
+        return;
+      }
+      
+      // Detect Claude connection on ANY tool request (immediate detection)
+      if (!this.claudeConnected) {
+        this.claudeConnected = true;
+        console.log("🎉 Claude Desktop connected! Firing claude-connected event");
+        
+        // Fire custom event to notify UI
+        const claudeConnectedEvent = new CustomEvent("claude-connected", {
+          detail: { 
+            connected: true, 
+            timestamp: new Date().toISOString(),
+            early: false // Mark as tool-based detection
+          }
+        });
+        window.dispatchEvent(claudeConnectedEvent);
+      }
+      
+      // Update Claude activity timestamp
+      this.lastClaudeActivity = Date.now();
+      this.resetClaudeTimeout();
       
       if (this.config.debug) {
         console.log("Processing tool request:", toolRequest);
@@ -197,6 +249,27 @@ export class BrowserWorkerService {
         console.error("Full error details:", error);
       }
     }
+  }
+
+  /**
+   * Reset Claude connection timeout
+   */
+  private resetClaudeTimeout(): void {
+    if (this.claudeTimeoutTimer) {
+      clearTimeout(this.claudeTimeoutTimer);
+    }
+    this.claudeTimeoutTimer = setTimeout(() => {
+      if (Date.now() - this.lastClaudeActivity > BrowserWorkerService.CLAUDE_TIMEOUT_MS) {
+        this.claudeConnected = false;
+        console.log("🎉 Claude Desktop disconnected due to inactivity");
+        
+        // Fire custom event to notify UI
+        const claudeDisconnectedEvent = new CustomEvent("claude-connected", {
+          detail: { connected: false, timestamp: new Date().toISOString() }
+        });
+        window.dispatchEvent(claudeDisconnectedEvent);
+      }
+    }, BrowserWorkerService.CLAUDE_TIMEOUT_MS);
   }
 
   /**
@@ -770,6 +843,13 @@ export class BrowserWorkerService {
     
     this.isStarted = false;
     this.connectionManager.disconnect();
+    
+    // Clean up Claude connection tracking
+    this.claudeConnected = false;
+    if (this.claudeTimeoutTimer) {
+      clearTimeout(this.claudeTimeoutTimer);
+      this.claudeTimeoutTimer = null;
+    }
     
     this.connectionStatus = {
       state: ConnectionState.DISCONNECTED,

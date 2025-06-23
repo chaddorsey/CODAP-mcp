@@ -17,7 +17,7 @@ This document lists all tasks associated with PBI 18.
 | 18-7 | [Implement StreamableHTTP transport](./18-7.md) | Done | Add MCP-compliant streaming for Vercel deployment |
 | 18-8 | [Add JSON-RPC error handling](./18-8.md) | Done | Implement standard JSON-RPC error codes and responses |
 | 18-9 | [Create backward compatibility layer](./18-9.md) | Done | Maintain existing API endpoints during migration |
-| 18-10 | [Test Claude Desktop integration](./18-10.md) | Review | Verify compatibility with Claude Desktop MCP client |
+| 18-10 | [Claude Desktop MVP User Experience Implementation](./18-10.md) | InProgress | Transform plugin into minimal Claude-first connector with automated behavior |
 | 18-11 | [Test Cursor integration](./18-11.md) | Proposed | Verify compatibility with Cursor MCP integration |
 | 18-12 | [Test MCP SDK compatibility](./18-12.md) | Proposed | Test with TypeScript and Python MCP clients |
 | 18-13 | [Performance optimization and monitoring](./18-13.md) | Proposed | Optimize MCP server performance for production |

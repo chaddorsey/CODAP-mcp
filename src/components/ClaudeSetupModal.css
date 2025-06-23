@@ -23,6 +23,7 @@
   max-height: 90vh;
   overflow-y: auto;
   position: relative;
+  user-select: text;
 }
 
 .claude-setup-modal-header {
@@ -63,6 +64,11 @@
 
 .claude-setup-modal-content {
   padding: 20px 24px 24px;
+  user-select: text;
+}
+
+.claude-setup-modal-content * {
+  user-select: text;
 }
 
 .claude-setup-description {
@@ -80,15 +86,32 @@
 }
 
 .claude-setup-config-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   margin-bottom: 12px;
 }
 
 .claude-setup-config-header span {
   font-weight: 500;
   color: #374151;
+}
+
+.claude-setup-copy-link {
+  color: #3b82f6;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: color 0.2s ease;
+  margin-left: 4px;
+}
+
+.claude-setup-copy-link:hover {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+.claude-setup-copy-link:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 .claude-setup-copy-button {

@@ -60,7 +60,6 @@ export const ClaudeSetupModal: React.FC<ClaudeSetupModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="claude-setup-modal-title"
-      aria-describedby="claude-setup-modal-description"
     >
       <div className="claude-setup-modal">
         <div className="claude-setup-modal-header">
@@ -76,26 +75,21 @@ export const ClaudeSetupModal: React.FC<ClaudeSetupModalProps> = ({
         </div>
 
         <div className="claude-setup-modal-content">
-          <div id="claude-setup-modal-description" className="claude-setup-description">
-            <p>One-time setup to enable CODAP tools in Claude Desktop.</p>
-            <p><strong>This configuration works for all CODAP sessions!</strong></p>
-          </div>
-
           <div className="claude-setup-config-section">
             <div className="claude-setup-config-header">
-              <span>Configuration JSON:</span>
-              <button
-                type="button"
-                className="claude-setup-copy-button"
-                onClick={handleCopyConfiguration}
-                disabled={clipboard.state.isLoading}
-                aria-describedby="copy-config-feedback"
-              >
-                <span aria-hidden="true">
-                  {clipboard.state.isLoading ? "⏳" : "📋"}
-                </span>
-                Copy Configuration
-              </button>
+              <span>
+                Configuration JSON (one-time setup): 
+                <a 
+                  href="#"
+                  className="claude-setup-copy-link"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleCopyConfiguration();
+                  }}
+                >
+                  Copy 📋
+                </a>
+              </span>
             </div>
             
             <pre className="claude-setup-config-block">
@@ -104,7 +98,6 @@ export const ClaudeSetupModal: React.FC<ClaudeSetupModalProps> = ({
             
             {copyFeedback && (
               <div 
-                id="copy-config-feedback"
                 className="claude-setup-copy-feedback"
                 role="status"
                 aria-live="polite"
@@ -141,15 +134,7 @@ export const ClaudeSetupModal: React.FC<ClaudeSetupModalProps> = ({
                 <li>Tell Claude: &quot;Connect to CODAP session {sessionId}&quot;</li>
               </ol>
               
-              <div className="claude-setup-benefits">
-                <h4>✨ Benefits of This Approach:</h4>
-                <ul>
-                  <li>🔄 <strong>Works for all sessions</strong> - no reconfiguration needed</li>
-                  <li>⏰ <strong>Never expires</strong> - configuration remains valid</li>
-                  <li>🚀 <strong>Quick connection</strong> - just copy session ID when needed</li>
-                  <li>🛠️ <strong>One-time setup</strong> - configure once, use forever</li>
-                </ul>
-              </div>
+
             </div>
           </div>
         </div>

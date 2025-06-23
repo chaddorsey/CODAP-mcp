@@ -83,12 +83,26 @@ export interface UseBrowserWorkerReturn extends BrowserWorkerState, BrowserWorke
  */
 export function useBrowserWorker(config: UseBrowserWorkerConfig): UseBrowserWorkerReturn {
   // Service instance - memoized to prevent recreation
+  // Only recreate if the core connection parameters change
   const service = useMemo(() => {
     if (!config.relayBaseUrl || !config.sessionCode) {
       return null;
     }
-    return createBrowserWorkerService(config);
-  }, [config.relayBaseUrl, config.sessionCode]);
+    const newService = createBrowserWorkerService({
+      relayBaseUrl: config.relayBaseUrl,
+      sessionCode: config.sessionCode,
+      debug: config.debug,
+      autoStart: config.autoStart
+    });
+    
+    // If autoStart is enabled, start immediately
+    if (config.autoStart && newService) {
+      console.log("Auto-starting browser worker immediately");
+      newService.start().catch(console.error);
+    }
+    
+    return newService;
+  }, [config.relayBaseUrl, config.sessionCode, config.debug, config.autoStart]);
 
   // Component state
   const [state, setState] = useState<BrowserWorkerState>({
