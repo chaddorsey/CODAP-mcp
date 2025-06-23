@@ -35,13 +35,26 @@ export interface UseClipboardReturn {
 }
 
 /**
- * Checks if the Clipboard API is available
+ * Checks if we're running in an iframe (where Clipboard API may be blocked)
+ */
+function isInIframe(): boolean {
+  try {
+    return window.self !== window.top;
+  } catch (_) {
+    // If we can't access window.top due to cross-origin, we're likely in an iframe
+    return true;
+  }
+}
+
+/**
+ * Checks if the Clipboard API is available and likely to work
  */
 function isClipboardApiSupported(): boolean {
   return (
     typeof navigator !== "undefined" &&
     typeof navigator.clipboard !== "undefined" &&
-    typeof navigator.clipboard.writeText === "function"
+    typeof navigator.clipboard.writeText === "function" &&
+    !isInIframe() // Avoid Clipboard API in iframes due to permissions policy
   );
 }
 
@@ -135,11 +148,15 @@ export function useClipboard(): UseClipboardReturn {
     let result: ClipboardResult;
 
     try {
-      // Try modern Clipboard API first
-      if (isClipboardApiSupported()) {
+      // In iframe context, prefer execCommand to avoid permissions policy issues
+      if (isInIframe() && isExecCommandSupported()) {
+        result = copyWithExecCommand(text);
+      }
+      // Try modern Clipboard API for non-iframe contexts
+      else if (isClipboardApiSupported()) {
         result = await copyWithClipboardApi(text);
       }
-      // Fall back to execCommand if Clipboard API fails or isn't available
+      // Fall back to execCommand if available
       else if (isExecCommandSupported()) {
         result = copyWithExecCommand(text);
       }
@@ -148,7 +165,7 @@ export function useClipboard(): UseClipboardReturn {
         result = { success: false, error: "No clipboard methods available" };
       }
     } catch (error) {
-      // If Clipboard API fails, try execCommand as fallback
+      // If primary method fails, try execCommand as fallback
       if (isExecCommandSupported()) {
         result = copyWithExecCommand(text);
       } else {
