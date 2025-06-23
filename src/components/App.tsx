@@ -5,7 +5,7 @@ import { ClaudeSetupModal } from "./ClaudeSetupModal";
 import { createSessionService } from "../services";
 import { useBrowserWorker } from "../hooks/useBrowserWorker";
 import { useClipboard } from "../hooks/useClipboard";
-import { generateClaudeConnectionPrompt, generateConnectionInstructions } from "../utils/claudeInstructions";
+import { generateClaudeConnectionPrompt } from "../utils/claudeInstructions";
 import "./App.css";
 import "../styles/claude-integration.css";
 
@@ -20,6 +20,7 @@ export const App = () => {
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const [initializationError, setInitializationError] = useState<string | null>(null);
+  const [promptCopyFeedback, setPromptCopyFeedback] = useState<string>("");
 
   // Prevent multiple initializations
   const initializationRef = useRef(false);
@@ -135,13 +136,13 @@ export const App = () => {
     const result = await clipboard.copyToClipboard(prompt);
     
     if (result.success) {
-      // Show success notification with instructions
-      const instructions = generateConnectionInstructions(sessionId);
-      console.log("Connection prompt copied:", instructions);
-      
-      // You could show a toast notification here
-      // For now, we'll log the success
+      setPromptCopyFeedback("✅ Connection prompt copied! Paste it into Claude Desktop to connect.");
+    } else {
+      setPromptCopyFeedback(`❌ Copy failed: ${result.error || "Unknown error"}`);
     }
+    
+    // Clear feedback after 5 seconds (longer for this important message)
+    setTimeout(() => setPromptCopyFeedback(""), 5000);
   };
 
   const handleShowSetupGuide = () => {
@@ -197,6 +198,7 @@ export const App = () => {
         onCopyConnectionPrompt={handleCopyConnectionPrompt}
         onShowSetupGuide={handleShowSetupGuide}
         isLoading={clipboard.state.isLoading}
+        promptCopyFeedback={promptCopyFeedback}
       />
       
       {showSetupModal && (

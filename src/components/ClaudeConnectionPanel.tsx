@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useState, useCallback } from "react";
 import { StatusIndicator } from "./StatusIndicator";
+import { useClipboard } from "../hooks/useClipboard";
 
 interface ClaudeConnectionPanelProps {
   sessionId: string;
@@ -9,6 +10,7 @@ interface ClaudeConnectionPanelProps {
   onCopyConnectionPrompt: () => void;
   onShowSetupGuide: () => void;
   isLoading?: boolean;
+  promptCopyFeedback?: string;
 }
 
 export const ClaudeConnectionPanel: React.FC<ClaudeConnectionPanelProps> = ({ 
@@ -18,8 +20,12 @@ export const ClaudeConnectionPanel: React.FC<ClaudeConnectionPanelProps> = ({
   claudeConnected, 
   onCopyConnectionPrompt,
   onShowSetupGuide,
-  isLoading = false
+  isLoading = false,
+  promptCopyFeedback
 }) => {
+  const clipboard = useClipboard();
+  const [sessionCopyFeedback, setSessionCopyFeedback] = useState<string>("");
+
   const selectSessionText = () => {
     // Helper to select session ID text for easy copying
     const sessionElement = document.querySelector(".session-id");
@@ -31,13 +37,20 @@ export const ClaudeConnectionPanel: React.FC<ClaudeConnectionPanelProps> = ({
     }
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text).then(() => {
-      console.log("Session ID copied to clipboard");
-    }).catch(err => {
-      console.error("Failed to copy session ID:", err);
-    });
-  };
+  const copySessionId = useCallback(async () => {
+    if (!sessionId) return;
+    
+    const result = await clipboard.copyToClipboard(sessionId);
+    
+    if (result.success) {
+      setSessionCopyFeedback("✅ Session ID copied!");
+    } else {
+      setSessionCopyFeedback(`❌ Copy failed: ${result.error || "Unknown error"}`);
+    }
+    
+    // Clear feedback after 3 seconds
+    setTimeout(() => setSessionCopyFeedback(""), 3000);
+  }, [sessionId, clipboard]);
 
   return (
     <div className="claude-connection-panel">
@@ -72,13 +85,26 @@ export const ClaudeConnectionPanel: React.FC<ClaudeConnectionPanelProps> = ({
           </span>
           <button 
             className="copy-session-btn"
-            onClick={() => copyToClipboard(sessionId)}
+            onClick={copySessionId}
             title="Copy Session ID"
-            disabled={!sessionId}
+            disabled={!sessionId || clipboard.state.isLoading}
           >
-            📋
+            {clipboard.state.isLoading ? "⏳" : "📋"}
           </button>
         </div>
+        
+        {/* Session copy feedback */}
+        {sessionCopyFeedback && (
+          <div 
+            className={`copy-feedback session-copy-feedback ${
+              sessionCopyFeedback.includes("❌") ? "error" : ""
+            }`}
+            role="status"
+            aria-live="polite"
+          >
+            {sessionCopyFeedback}
+          </div>
+        )}
       </div>
 
       {/* Connection Action */}
@@ -93,6 +119,19 @@ export const ClaudeConnectionPanel: React.FC<ClaudeConnectionPanelProps> = ({
         <div className="connection-hint">
           Copy this prompt and paste it into Claude Desktop to connect
         </div>
+        
+        {/* Prompt copy feedback */}
+        {promptCopyFeedback && (
+          <div 
+            className={`copy-feedback prompt-copy-feedback ${
+              promptCopyFeedback.includes("❌") ? "error" : ""
+            }`}
+            role="status"
+            aria-live="polite"
+          >
+            {promptCopyFeedback}
+          </div>
+        )}
       </div>
 
       {/* Setup Help */}
