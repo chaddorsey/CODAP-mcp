@@ -136,7 +136,7 @@ export const App = () => {
     const result = await clipboard.copyToClipboard(prompt);
     
     if (result.success) {
-      setPromptCopyFeedback("✅ Connection prompt copied! Paste it into Claude Desktop to connect.");
+      setPromptCopyFeedback("✅ Prompt copied! Paste in Claude Desktop to connect.");
     } else {
       setPromptCopyFeedback(`❌ Copy failed: ${result.error || "Unknown error"}`);
     }
