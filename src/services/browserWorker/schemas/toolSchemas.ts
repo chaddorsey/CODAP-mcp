@@ -1,7 +1,7 @@
 /**
- * Tool schema definitions for CODAP tools
- * Defines parameter validation and structure for supported CODAP Plugin API tools
- * Based on official CODAP Plugin API documentation and reference implementations
+ * Tool schema definitions for CODAP and SageModeler tools
+ * Defines parameter validation and structure for supported Plugin API tools
+ * Based on official CODAP Plugin API documentation and SageModeler API specifications
  */
 
 import { ToolRegistry, ToolSchema } from "../types";
@@ -293,6 +293,105 @@ const getDataContextSchema: ToolSchema = {
   }
 };
 
+// ==================== SageModeler Tool Schemas ====================
+
+/**
+ * Schema for creating a SageModeler node
+ */
+const sageCreateNodeSchema: ToolSchema = {
+  name: "sage_create_node",
+  description: "Create a new node in SageModeler with specified properties",
+  parameters: {
+    type: "object",
+    properties: {
+      title: { type: "string", description: "Node title/name", required: true },
+      initialValue: { type: "number", description: "Initial numeric value" },
+      x: { type: "number", description: "X position coordinate" },
+      y: { type: "number", description: "Y position coordinate" },
+      min: { type: "number", description: "Minimum value" },
+      max: { type: "number", description: "Maximum value" },
+      isAccumulator: { type: "boolean", description: "Whether node is an accumulator" },
+      isFlowVariable: { type: "boolean", description: "Whether node is a flow variable" },
+      allowNegativeValues: { type: "boolean", description: "Allow negative values" },
+      valueDefinedSemiQuantitatively: { type: "boolean", description: "Semi-quantitative definition" },
+      color: { type: "string", description: "Node color (hex code)" },
+      combineMethod: { type: "string", description: "Combine method for inputs" },
+      image: { type: "string", description: "Image URL" },
+      usesDefaultImage: { type: "boolean", description: "Use default image" },
+      paletteItem: { type: "string", description: "Palette item reference" },
+      sourceApp: { type: "string", description: "Source application identifier" }
+    },
+    required: ["title"]
+  }
+};
+
+/**
+ * Schema for creating a link in SageModeler
+ */
+const sageCreateLinkSchema: ToolSchema = {
+  name: "sage_create_link",
+  description: "Create a link between two nodes in SageModeler",
+  parameters: {
+    type: "object",
+    properties: {
+      source: { type: "string", description: "Source node ID", required: true },
+      target: { type: "string", description: "Target node ID", required: true },
+      relationVector: { 
+        type: "string", 
+        enum: ["increase", "decrease", "vary"],
+        description: "Relationship type",
+        required: true
+      },
+      relationScalar: { 
+        type: "string", 
+        enum: ["aboutTheSame", "aLittle", "aLot", "moreAndMore", "lessAndLess"],
+        description: "Relationship strength" 
+      },
+      customData: { 
+        type: "array", 
+        description: "Custom relationship data for 'vary' type",
+        items: { type: "number" }
+      },
+      label: { type: "string", description: "Link label" },
+      color: { type: "string", description: "Link color" },
+      sourceApp: { type: "string", description: "Source application identifier" }
+    },
+    required: ["source", "target", "relationVector"]
+  }
+};
+
+/**
+ * Schema for running SageModeler experiments
+ */
+const sageRunExperimentSchema: ToolSchema = {
+  name: "sage_run_experiment",
+  description: "Execute an experiment with specified parameters in SageModeler",
+  parameters: {
+    type: "object",
+    properties: {
+      mode: { 
+        type: "string", 
+        enum: ["static", "dynamic"],
+        description: "Experiment mode",
+        required: true
+      },
+      duration: { type: "number", description: "Duration for dynamic experiments" },
+      stepUnit: { type: "string", description: "Step unit for dynamic experiments" },
+      delivery: { 
+        type: "string", 
+        enum: ["batch", "stream"],
+        description: "Delivery method" 
+      },
+      parameters: { 
+        type: "object", 
+        description: "Experiment parameters per node",
+        required: true
+      }
+    },
+    required: ["mode", "parameters"]
+  }
+};
+
 /**
  * Check if a tool is supported by the registry
  */
@@ -315,9 +414,10 @@ export function getSupportedTools(): string[] {
 }
 
 /**
- * Default tool registry with all supported CODAP tools
+ * Default tool registry with all supported CODAP and SageModeler tools
  */
 export const DEFAULT_TOOL_REGISTRY: ToolRegistry = {
+  // CODAP Tools
   create_dataset_with_table: createDatasetWithTableSchema,
   create_graph: createGraphSchema,
   create_data_context: createDataContextSchema,
@@ -325,7 +425,46 @@ export const DEFAULT_TOOL_REGISTRY: ToolRegistry = {
   create_table: createTableSchema,
   get_data_contexts: getDataContextsSchema,
   get_components: getComponentsSchema,
-  get_data_context: getDataContextSchema
+  get_data_context: getDataContextSchema,
+  
+  // SageModeler Tools - Node Management
+  sage_create_node: sageCreateNodeSchema,
+  sage_create_random_node: { name: "sage_create_random_node", description: "Create a random node for testing", parameters: { type: "object", properties: {}, required: [] } },
+  sage_update_node: { name: "sage_update_node", description: "Update node properties", parameters: { type: "object", properties: { nodeId: { type: "string", required: true } }, required: ["nodeId"] } },
+  sage_delete_node: { name: "sage_delete_node", description: "Delete a node", parameters: { type: "object", properties: { nodeId: { type: "string", required: true } }, required: ["nodeId"] } },
+  sage_get_all_nodes: { name: "sage_get_all_nodes", description: "Get all nodes", parameters: { type: "object", properties: {}, required: [] } },
+  sage_get_node_by_id: { name: "sage_get_node_by_id", description: "Get node by ID", parameters: { type: "object", properties: { nodeId: { type: "string", required: true } }, required: ["nodeId"] } },
+  sage_select_node: { name: "sage_select_node", description: "Select a node", parameters: { type: "object", properties: { nodeId: { type: "string", required: true } }, required: ["nodeId"] } },
+  
+  // SageModeler Tools - Link Management
+  sage_create_link: sageCreateLinkSchema,
+  sage_update_link: { name: "sage_update_link", description: "Update link properties", parameters: { type: "object", properties: { linkId: { type: "string", required: true } }, required: ["linkId"] } },
+  sage_delete_link: { name: "sage_delete_link", description: "Delete a link", parameters: { type: "object", properties: { linkId: { type: "string", required: true } }, required: ["linkId"] } },
+  sage_get_all_links: { name: "sage_get_all_links", description: "Get all links", parameters: { type: "object", properties: {}, required: [] } },
+  sage_get_link_by_id: { name: "sage_get_link_by_id", description: "Get link by ID", parameters: { type: "object", properties: { linkId: { type: "string", required: true } }, required: ["linkId"] } },
+  
+  // SageModeler Tools - Experiments
+  sage_reload_experiment_nodes: { name: "sage_reload_experiment_nodes", description: "Reload experiment nodes", parameters: { type: "object", properties: {}, required: [] } },
+  sage_run_experiment: sageRunExperimentSchema,
+  
+  // SageModeler Tools - Recording
+  sage_start_recording: { name: "sage_start_recording", description: "Start recording", parameters: { type: "object", properties: {}, required: [] } },
+  sage_stop_recording: { name: "sage_stop_recording", description: "Stop recording", parameters: { type: "object", properties: {}, required: [] } },
+  sage_set_recording_options: { name: "sage_set_recording_options", description: "Set recording options", parameters: { type: "object", properties: { options: { type: "object", required: true } }, required: ["options"] } },
+  
+  // SageModeler Tools - Model Import/Export
+  sage_load_model: { name: "sage_load_model", description: "Load a model", parameters: { type: "object", properties: { model: { type: "object", required: true } }, required: ["model"] } },
+  sage_export_model: { name: "sage_export_model", description: "Export current model", parameters: { type: "object", properties: {}, required: [] } },
+  sage_import_sd_json: { name: "sage_import_sd_json", description: "Import SD-JSON", parameters: { type: "object", properties: { sdJson: { type: "object", required: true } }, required: ["sdJson"] } },
+  sage_export_sd_json: { name: "sage_export_sd_json", description: "Export to SD-JSON", parameters: { type: "object", properties: {}, required: [] } },
+  
+  // SageModeler Tools - Settings
+  sage_set_model_complexity: { name: "sage_set_model_complexity", description: "Set model complexity", parameters: { type: "object", properties: { complexity: { type: "string", enum: ["simple", "intermediate", "advanced"], required: true } }, required: ["complexity"] } },
+  sage_set_ui_settings: { name: "sage_set_ui_settings", description: "Set UI settings", parameters: { type: "object", properties: { settings: { type: "object", required: true } }, required: ["settings"] } },
+  sage_restore_default_settings: { name: "sage_restore_default_settings", description: "Restore default settings", parameters: { type: "object", properties: {}, required: [] } },
+  
+  // SageModeler Tools - Simulation State
+  sage_get_simulation_state: { name: "sage_get_simulation_state", description: "Get simulation state", parameters: { type: "object", properties: {}, required: [] } }
 };
 
 /**
