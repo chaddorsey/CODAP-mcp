@@ -379,6 +379,9 @@ class MCPProtocolHandler {
         case "resources/list":
           result = await this.handleResourcesList(params, id, sessionId, headers);
           break;
+        case "prompts/list":
+          result = await this.handlePromptsList(params, id, sessionId, headers);
+          break;
         default:
           if (isNotification) {
             console.log(`[MCP] Ignoring unknown notification: ${method}`);
@@ -547,6 +550,17 @@ class MCPProtocolHandler {
       jsonrpc: "2.0",
       result: {
         resources: []
+      },
+      id
+    };
+  }
+
+  async handlePromptsList(params, id, sessionId, headers = {}) {
+    // Return empty prompts list - we don't provide any prompts currently
+    return {
+      jsonrpc: "2.0",
+      result: {
+        prompts: []
       },
       id
     };
