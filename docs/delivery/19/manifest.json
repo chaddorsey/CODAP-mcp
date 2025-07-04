@@ -1,0 +1,28 @@
+{
+  "dxt_version": "0.1",
+  "name": "codap-mcp",
+  "display_name": "CODAP MCP Server",
+  "version": "0.1.0",
+  "description": "Enables Claude Desktop to control CODAP via the Model Context Protocol (MCP).",
+  "author": {
+    "name": "The Concord Consortium"
+  },
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/server/index.js"]
+    }
+  },
+  "tools": [
+    {
+      "name": "connect_to_session",
+      "description": "Connect to a CODAP session."
+    },
+    {
+      "name": "createDataContext",
+      "description": "Create a new data context in CODAP."
+    }
+  ]
+} 
