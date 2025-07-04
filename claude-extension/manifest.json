@@ -19,10 +19,6 @@
     {
       "name": "connect_to_session",
       "description": "Connect to a CODAP session."
-    },
-    {
-      "name": "createDataContext",
-      "description": "Create a new data context in CODAP."
     }
   ]
 } 
