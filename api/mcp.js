@@ -524,7 +524,7 @@ class MCPProtocolHandler {
           logging: {}
         },
         serverInfo: {
-          name: "codap-mcp-server",
+          name: "codap-mcp",
           version: "1.0.0",
           sessionMode: sessionId ? "session-connected" : "session-agnostic"
         }
@@ -1217,27 +1217,32 @@ class MCPProtocolHandler {
       let capabilityText = "";
       if (hasCodeap && hasSageModeler) {
         capabilityText = `\n\n🎯 **This is a CODAP- and SageModeler-equipped session**\n\n`;
+        capabilityText += `✅ **DUAL CAPABILITIES**: Both CODAP and SageModeler tools are available in this session.\n\n`;
         capabilityText += `⚠️ **IMPORTANT**: Only tools marked **[CODAP]** or **[SAGEMODELER]** are valid for use during this session. Use of any non-valid tools will return errors and waste time.\n\n`;
-        capabilityText += `**Valid Tools for This Session** (${availableTools.length + 1} total):\n\n`;
-        capabilityText += `**[CODAP] Tools** (${codapTools.length} tools):\n`;
+        capabilityText += `**✅ Valid Tools for This Session** (${availableTools.length + 1} total):\n\n`;
+        capabilityText += `**[CODAP] Tools** (${codapTools.length} tools) - Data analysis & visualization:\n`;
         capabilityText += codapTools.map(t => `• ${t.name}`).join('\n') + '\n\n';
-        capabilityText += `**[SAGEMODELER] Tools** (${sageTools.length} tools):\n`;
+        capabilityText += `**[SAGEMODELER] Tools** (${sageTools.length} tools) - Systems modeling:\n`;
         capabilityText += sageTools.map(t => `• ${t.name}`).join('\n') + '\n\n';
         capabilityText += `**[CONNECTION] Tool** (1 tool):\n• connect_to_session`;
       } else if (hasCodeap) {
         capabilityText = `\n\n🎯 **This is a CODAP-only session**\n\n`;
+        capabilityText += `🚫 **CRITICAL**: SageModeler tools (sage_*) are NOT available in this session and will return "Tool not found" errors.\n\n`;
         capabilityText += `⚠️ **IMPORTANT**: Only tools marked **[CODAP]** are valid for use during this session. Use of any non-valid tools will return errors and waste time.\n\n`;
-        capabilityText += `**Valid Tools for This Session** (${availableTools.length + 1} total):\n\n`;
+        capabilityText += `**✅ Valid Tools for This Session** (${availableTools.length + 1} total):\n\n`;
         capabilityText += `**[CODAP] Tools** (${codapTools.length} tools):\n`;
         capabilityText += codapTools.map(t => `• ${t.name}`).join('\n') + '\n\n';
-        capabilityText += `**[CONNECTION] Tool** (1 tool):\n• connect_to_session`;
+        capabilityText += `**[CONNECTION] Tool** (1 tool):\n• connect_to_session\n\n`;
+        capabilityText += `🚫 **Unavailable in this session**: All SageModeler tools (sage_create_node, sage_update_node, etc.) - these will fail with "Tool not found" errors.`;
       } else if (hasSageModeler) {
         capabilityText = `\n\n🎯 **This is a SageModeler-only session**\n\n`;
+        capabilityText += `🚫 **CRITICAL**: CODAP tools are NOT available in this session and will return "Tool not found" errors.\n\n`;
         capabilityText += `⚠️ **IMPORTANT**: Only tools marked **[SAGEMODELER]** are valid for use during this session. Use of any non-valid tools will return errors and waste time.\n\n`;
-        capabilityText += `**Valid Tools for This Session** (${availableTools.length + 1} total):\n\n`;
-        capabilityText += `**[SAGEMODELER] Tools** (${sageTools.length} tools):\n`;
+        capabilityText += `**✅ Valid Tools for This Session** (${availableTools.length + 1} total):\n\n`;
+        capabilityText += `**[SAGEMODELER] Tools** (${sageTools.length} tools) - Systems modeling:\n`;
         capabilityText += sageTools.map(t => `• ${t.name}`).join('\n') + '\n\n';
-        capabilityText += `**[CONNECTION] Tool** (1 tool):\n• connect_to_session`;
+        capabilityText += `**[CONNECTION] Tool** (1 tool):\n• connect_to_session\n\n`;
+        capabilityText += `🚫 **Unavailable in this session**: All CODAP tools (createDataContext, createGraph, etc.) - these will fail with "Tool not found" errors.`;
       }
       
       return {
