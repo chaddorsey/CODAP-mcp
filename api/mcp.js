@@ -413,14 +413,14 @@ class MCPProtocolHandler {
   async handleInitialize(params, id, sessionId, headers = {}) {
     const { protocolVersion, capabilities, clientInfo } = params;
     
-    console.log(`[MCP] Initialize request: sessionId=${sessionId}, client=${clientInfo?.name || 'unknown'}`);
+    console.log(`[MCP] Initialize request: sessionId=${sessionId}, client=${clientInfo?.name || "unknown"}`);
     
     // Enhanced client info with headers
     const enhancedClientInfo = {
       ...clientInfo,
-      userAgent: headers['user-agent'],
-      origin: headers['origin'],
-      referer: headers['referer'],
+      userAgent: headers["user-agent"],
+      origin: headers.origin,
+      referer: headers.referer,
       protocolVersion,
       initializeTime: Date.now()
     };
@@ -430,7 +430,7 @@ class MCPProtocolHandler {
       
       if (sessionId) {
         // For Claude Desktop sessions, auto-create and initialize
-        if (sessionId === 'claude-desktop-session' || clientInfo?.name?.includes('Claude')) {
+        if (sessionId === "claude-desktop-session" || clientInfo?.name?.includes("Claude")) {
           // Auto-create Claude Desktop session
           session = await this.sessionManager.createSession(sessionId, enhancedClientInfo);
           
@@ -441,7 +441,7 @@ class MCPProtocolHandler {
             capabilities,
             initializationTime: Date.now(),
             autoInitialized: true,
-            clientType: 'claude-desktop'
+            clientType: "claude-desktop"
           });
           
           console.log(`[MCP] Auto-initialized Claude Desktop session: ${sessionId}`);
@@ -467,7 +467,7 @@ class MCPProtocolHandler {
             version: "1.0.0",
             description: "Model Context Protocol server for CODAP data analysis platform"
           },
-          instructions: sessionId === 'claude-desktop-session' ? 
+          instructions: sessionId === "claude-desktop-session" ? 
             "CODAP MCP Server ready! All 34 CODAP tools are now available. You can interact with CODAP workspaces directly." :
             "CODAP MCP Server initialized. Use 'connect_to_session' tool to connect to a specific CODAP session."
         },
@@ -593,7 +593,7 @@ class MCPProtocolHandler {
       }
     }, ...codapTools];
     
-    console.log(`[MCP] Listed ${tools.length} tools for session ${sessionId || 'no-session'} (all tools always available)`);
+    console.log(`[MCP] Listed ${tools.length} tools for session ${sessionId || "no-session"} (all tools always available)`);
     
     return {
       jsonrpc: "2.0",
@@ -611,7 +611,7 @@ class MCPProtocolHandler {
     
     try {
       // Handle connect_to_session tool
-      if (name === 'connect_to_session') {
+      if (name === "connect_to_session") {
         return await this.handleConnectToSession(args, id, sessionId, headers);
       }
       
@@ -631,7 +631,7 @@ class MCPProtocolHandler {
       
       // Get session and check for active pairing session
       console.log(`[MCP] Looking up Claude session ${sessionId} for tool ${name}`);
-      let claudeSession = await this.sessionManager.getSessionByMCP(sessionId);
+      const claudeSession = await this.sessionManager.getSessionByMCP(sessionId);
       let session = claudeSession;
       let effectiveSessionId = sessionId;
       
@@ -724,7 +724,7 @@ class MCPProtocolHandler {
           result: {
             content: [{
               type: "text",
-              text: `Unknown tool: ${name}. Available tools: ${codapTools.map(t => t.name).join(', ')}`
+              text: `Unknown tool: ${name}. Available tools: ${codapTools.map(t => t.name).join(", ")}`
             }]
           },
           id
@@ -836,7 +836,7 @@ class MCPProtocolHandler {
         let claudeSession = await this.sessionManager.getSessionByMCP(sessionId);
         if (!claudeSession) {
           claudeSession = await this.sessionManager.createSession(sessionId, {
-            type: 'claude-desktop',
+            type: "claude-desktop",
             initialized: true,
             protocolVersion: "2024-11-05",
             createdAt: Date.now()
@@ -850,7 +850,7 @@ class MCPProtocolHandler {
         // Create the pairing session
         console.log(`[MCP] Creating pairing session ${pairingSessionId}...`);
         const pairingSession = await this.sessionManager.createSession(pairingSessionId, {
-          type: 'pairing',
+          type: "pairing",
           claudeSession: sessionId,
           codapSession: targetSessionId,
           claudeSessionLegacyCode: null,
@@ -898,7 +898,7 @@ class MCPProtocolHandler {
             arguments: {
               claudeSessionId: sessionId,
               codapSessionId: targetSessionId,
-              pairingSessionId: pairingSessionId,
+              pairingSessionId,
               timestamp: new Date().toISOString()
             },
             requestId: `claude_connected_${Date.now()}`,
@@ -977,9 +977,9 @@ class MCPProtocolHandler {
     // Transform MCP request to internal format
     // Use the main session ID (not legacy code) to match browser worker SSE connection
     // The browser worker connects using session.id, so we need to queue using the same
-    const sessionCode = sessionId.split('-').pop(); // Extract CODAP session ID from MCP session ID
+    const sessionCode = sessionId.split("-").pop(); // Extract CODAP session ID from MCP session ID
     const internalRequest = {
-      sessionCode: sessionCode, // Use the session code that browser worker listens to
+      sessionCode, // Use the session code that browser worker listens to
       tool: toolName,
       arguments: toolArgs,
       requestId,
@@ -1498,16 +1498,16 @@ async function OPTIONS(req) {
  */
 function extractSessionIdFromCommand(toolName, arguments_obj) {
   // Check if this is a connection establishment command
-  if (arguments_obj && typeof arguments_obj === 'object') {
+  if (arguments_obj && typeof arguments_obj === "object") {
     // Direct session ID in arguments
     if (arguments_obj.sessionId) {
       return arguments_obj.sessionId;
     }
     
     // Check for natural language patterns in various argument fields
-    const textFields = ['instruction', 'command', 'message', 'text', 'description'];
+    const textFields = ["instruction", "command", "message", "text", "description"];
     for (const field of textFields) {
-      if (arguments_obj[field] && typeof arguments_obj[field] === 'string') {
+      if (arguments_obj[field] && typeof arguments_obj[field] === "string") {
         const sessionMatch = arguments_obj[field].match(/(?:connect to|session)\s+(?:codap\s+)?session\s+([A-Z0-9]{8})/i);
         if (sessionMatch) {
           return sessionMatch[1].toUpperCase();
@@ -1517,7 +1517,7 @@ function extractSessionIdFromCommand(toolName, arguments_obj) {
     
     // Check all string values for session patterns
     for (const [key, value] of Object.entries(arguments_obj)) {
-      if (typeof value === 'string') {
+      if (typeof value === "string") {
         const sessionMatch = value.match(/(?:connect to|session)\s+(?:codap\s+)?session\s+([A-Z0-9]{8})/i);
         if (sessionMatch) {
           return sessionMatch[1].toUpperCase();
@@ -1536,14 +1536,14 @@ function extractSessionIdFromCommand(toolName, arguments_obj) {
 function generateClaudeDesktopSessionId(req, headers) {
   // Collect identifying characteristics
   const factors = [
-    headers.userAgent || 'unknown-agent',
-    headers.origin || 'unknown-origin',
-    req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || 'unknown-ip',
-    headers.clientInfo || 'unknown-client'
+    headers.userAgent || "unknown-agent",
+    headers.origin || "unknown-origin",
+    req.headers.get("x-forwarded-for") || req.headers.get("cf-connecting-ip") || "unknown-ip",
+    headers.clientInfo || "unknown-client"
   ];
   
   // Create a hash of the factors for uniqueness
-  const factorString = factors.join('|');
+  const factorString = factors.join("|");
   let hash = 0;
   for (let i = 0; i < factorString.length; i++) {
     const char = factorString.charCodeAt(i);

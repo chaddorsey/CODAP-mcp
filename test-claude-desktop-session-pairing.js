@@ -11,8 +11,8 @@ const BYPASS_HEADER = "pAg5Eon3T8qOwMaWKzo9k6T4pdbYiCye";
 async function makeRequest(url, options = {}) {
   const response = await fetch(url, {
     headers: {
-      'x-vercel-protection-bypass': BYPASS_HEADER,
-      'Content-Type': 'application/json',
+      "x-vercel-protection-bypass": BYPASS_HEADER,
+      "Content-Type": "application/json",
       ...options.headers
     },
     ...options
@@ -31,18 +31,18 @@ async function testClaudeDesktopSessionPairing() {
       test: async () => {
         // Simulate two different Claude Desktop instances
         const claude1Headers = {
-          'user-agent': 'Claude-Desktop/1.0 (Mac)',
-          'origin': 'claude-desktop://app1'
+          "user-agent": "Claude-Desktop/1.0 (Mac)",
+          "origin": "claude-desktop://app1"
         };
         
         const claude2Headers = {
-          'user-agent': 'Claude-Desktop/1.0 (Mac)',
-          'origin': 'claude-desktop://app2'
+          "user-agent": "Claude-Desktop/1.0 (Mac)",
+          "origin": "claude-desktop://app2"
         };
         
         // Test tools list for both instances (should generate unique session IDs)
         const { data: tools1 } = await makeRequest(`${VERCEL_URL}/api/mcp`, {
-          method: 'POST',
+          method: "POST",
           headers: claude1Headers,
           body: JSON.stringify({
             jsonrpc: "2.0",
@@ -53,7 +53,7 @@ async function testClaudeDesktopSessionPairing() {
         });
         
         const { data: tools2 } = await makeRequest(`${VERCEL_URL}/api/mcp`, {
-          method: 'POST',
+          method: "POST",
           headers: claude2Headers,
           body: JSON.stringify({
             jsonrpc: "2.0",
@@ -78,12 +78,12 @@ async function testClaudeDesktopSessionPairing() {
       name: "2. Claude 1 Connects to CODAP Session UBJ25TFW",
       test: async () => {
         const claude1Headers = {
-          'user-agent': 'Claude-Desktop/1.0 (Mac)',
-          'origin': 'claude-desktop://app1'
+          "user-agent": "Claude-Desktop/1.0 (Mac)",
+          "origin": "claude-desktop://app1"
         };
         
         const { data } = await makeRequest(`${VERCEL_URL}/api/mcp`, {
-          method: 'POST',
+          method: "POST",
           headers: claude1Headers,
           body: JSON.stringify({
             jsonrpc: "2.0",
@@ -106,12 +106,12 @@ async function testClaudeDesktopSessionPairing() {
       name: "3. Claude 1 Now Has All CODAP Tools",
       test: async () => {
         const claude1Headers = {
-          'user-agent': 'Claude-Desktop/1.0 (Mac)',
-          'origin': 'claude-desktop://app1'
+          "user-agent": "Claude-Desktop/1.0 (Mac)",
+          "origin": "claude-desktop://app1"
         };
         
         const { data } = await makeRequest(`${VERCEL_URL}/api/mcp`, {
-          method: 'POST',
+          method: "POST",
           headers: claude1Headers,
           body: JSON.stringify({
             jsonrpc: "2.0",
@@ -132,12 +132,12 @@ async function testClaudeDesktopSessionPairing() {
       name: "4. Claude 2 Still Only Has Connection Tool",
       test: async () => {
         const claude2Headers = {
-          'user-agent': 'Claude-Desktop/1.0 (Mac)',
-          'origin': 'claude-desktop://app2'
+          "user-agent": "Claude-Desktop/1.0 (Mac)",
+          "origin": "claude-desktop://app2"
         };
         
         const { data } = await makeRequest(`${VERCEL_URL}/api/mcp`, {
-          method: 'POST',
+          method: "POST",
           headers: claude2Headers,
           body: JSON.stringify({
             jsonrpc: "2.0",
@@ -159,12 +159,12 @@ async function testClaudeDesktopSessionPairing() {
       name: "5. Claude 1 Can Execute CODAP Tools",
       test: async () => {
         const claude1Headers = {
-          'user-agent': 'Claude-Desktop/1.0 (Mac)',
-          'origin': 'claude-desktop://app1'
+          "user-agent": "Claude-Desktop/1.0 (Mac)",
+          "origin": "claude-desktop://app1"
         };
         
         const { data } = await makeRequest(`${VERCEL_URL}/api/mcp`, {
-          method: 'POST',
+          method: "POST",
           headers: claude1Headers,
           body: JSON.stringify({
             jsonrpc: "2.0",
@@ -188,12 +188,12 @@ async function testClaudeDesktopSessionPairing() {
       name: "6. Claude 2 Cannot Execute CODAP Tools",
       test: async () => {
         const claude2Headers = {
-          'user-agent': 'Claude-Desktop/1.0 (Mac)',
-          'origin': 'claude-desktop://app2'
+          "user-agent": "Claude-Desktop/1.0 (Mac)",
+          "origin": "claude-desktop://app2"
         };
         
         const { data } = await makeRequest(`${VERCEL_URL}/api/mcp`, {
-          method: 'POST',
+          method: "POST",
           headers: claude2Headers,
           body: JSON.stringify({
             jsonrpc: "2.0",
@@ -218,13 +218,13 @@ async function testClaudeDesktopSessionPairing() {
       name: "7. Claude 2 Connects to Different CODAP Session",
       test: async () => {
         const claude2Headers = {
-          'user-agent': 'Claude-Desktop/1.0 (Mac)',
-          'origin': 'claude-desktop://app2'
+          "user-agent": "Claude-Desktop/1.0 (Mac)",
+          "origin": "claude-desktop://app2"
         };
         
         // First create a test session for Claude 2
         const { data: createResult } = await makeRequest(`${VERCEL_URL}/api/request`, {
-          method: 'POST',
+          method: "POST",
           body: JSON.stringify({
             sessionCode: "TESTCOD2",
             tool: "ping",
@@ -235,7 +235,7 @@ async function testClaudeDesktopSessionPairing() {
         
         // Now connect Claude 2 to this session
         const { data } = await makeRequest(`${VERCEL_URL}/api/mcp`, {
-          method: 'POST',
+          method: "POST",
           headers: claude2Headers,
           body: JSON.stringify({
             jsonrpc: "2.0",
@@ -258,18 +258,18 @@ async function testClaudeDesktopSessionPairing() {
       name: "8. Both Claude Instances Independent",
       test: async () => {
         const claude1Headers = {
-          'user-agent': 'Claude-Desktop/1.0 (Mac)',
-          'origin': 'claude-desktop://app1'
+          "user-agent": "Claude-Desktop/1.0 (Mac)",
+          "origin": "claude-desktop://app1"
         };
         
         const claude2Headers = {
-          'user-agent': 'Claude-Desktop/1.0 (Mac)',
-          'origin': 'claude-desktop://app2'
+          "user-agent": "Claude-Desktop/1.0 (Mac)",
+          "origin": "claude-desktop://app2"
         };
         
         // Both should now have all tools
         const { data: tools1 } = await makeRequest(`${VERCEL_URL}/api/mcp`, {
-          method: 'POST',
+          method: "POST",
           headers: claude1Headers,
           body: JSON.stringify({
             jsonrpc: "2.0",
@@ -280,7 +280,7 @@ async function testClaudeDesktopSessionPairing() {
         });
         
         const { data: tools2 } = await makeRequest(`${VERCEL_URL}/api/mcp`, {
-          method: 'POST',
+          method: "POST",
           headers: claude2Headers,
           body: JSON.stringify({
             jsonrpc: "2.0",

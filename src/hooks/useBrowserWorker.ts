@@ -26,6 +26,8 @@ import {
 export interface UseBrowserWorkerConfig extends BrowserWorkerServiceConfig {
   /** Whether to start automatically when component mounts */
   autoStart?: boolean;
+  /** Supported capabilities for this session (e.g., ["CODAP", "SAGEMODELER"]) */
+  capabilities?: string[];
   /** Callback when connection status changes */
   onStatusChange?: (status: ConnectionStatus) => void;
   /** Callback when tool execution starts */
@@ -92,7 +94,8 @@ export function useBrowserWorker(config: UseBrowserWorkerConfig): UseBrowserWork
       relayBaseUrl: config.relayBaseUrl,
       sessionCode: config.sessionCode,
       debug: config.debug,
-      autoStart: config.autoStart
+      autoStart: config.autoStart,
+      capabilities: config.capabilities || ["CODAP"] // Default to CODAP only
     });
     
     // If autoStart is enabled, start immediately
@@ -102,7 +105,7 @@ export function useBrowserWorker(config: UseBrowserWorkerConfig): UseBrowserWork
     }
     
     return newService;
-  }, [config.relayBaseUrl, config.sessionCode, config.debug, config.autoStart]);
+  }, [config.relayBaseUrl, config.sessionCode, config.debug, config.autoStart, config.capabilities]);
 
   // Component state
   const [state, setState] = useState<BrowserWorkerState>({

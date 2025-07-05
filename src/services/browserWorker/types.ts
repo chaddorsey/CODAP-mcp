@@ -68,7 +68,7 @@ export interface ToolResponse {
   result?: any;
   /** Error details if execution failed */
   error?: {
-    type: "execution_error" | "tool_not_found" | "invalid_args" | "codap_error";
+    type: "execution_error" | "tool_not_found" | "invalid_args" | "codap_error" | "routing_error";
     message: string;
     details?: any;
   };
@@ -430,23 +430,7 @@ export interface ToolParameterSchema {
 /**
  * Schema definition for a tool
  */
-export interface ToolSchema {
-  /** Tool name */
-  name: string;
-  /** Tool description */
-  description: string;
-  /** Parameter schema definition */
-  parameters: {
-    type: "object";
-    properties: Record<string, ToolParameterSchema>;
-    required?: string[];
-  };
-}
-
-/**
- * Registry of available tools and their schemas
- */
-export type ToolRegistry = Record<string, ToolSchema>;
+// ToolSchema and ToolRegistry are now exported from schemas/toolSchemas.ts
 
 // ==================== Parser Configuration ====================
 

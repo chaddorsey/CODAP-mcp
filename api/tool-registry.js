@@ -1102,13 +1102,13 @@ function getAllTools() {
  * @param {string[]} capabilities - Array of capability names (e.g., ['CODAP', 'SAGEMODELER'])
  * @returns {object[]} Array of tool definitions
  */
-function getToolsByCapabilities(capabilities = ['CODAP']) {
+function getToolsByCapabilities(capabilities = ["CODAP"]) {
   const tools = [];
   
   for (const capability of capabilities) {
-    if (capability === 'CODAP') {
+    if (capability === "CODAP") {
       tools.push(...CODAP_TOOLS);
-    } else if (capability === 'SAGEMODELER') {
+    } else if (capability === "SAGEMODELER") {
       tools.push(...SAGEMODELER_TOOLS);
     }
     // Future capabilities can be added here
@@ -1141,7 +1141,7 @@ function getAllCapabilities() {
  */
 function validateCapabilities(capabilities) {
   if (!Array.isArray(capabilities)) return false;
-  return capabilities.every(cap => CAPABILITY_DEFINITIONS.hasOwnProperty(cap));
+  return capabilities.every(cap => Object.prototype.hasOwnProperty.call(CAPABILITY_DEFINITIONS, cap));
 }
 
 // =============================================================================
@@ -1149,19 +1149,23 @@ function validateCapabilities(capabilities) {
 // =============================================================================
 
 // Export for CommonJS compatibility
-module.exports = { 
-  // Legacy exports (for backward compatibility)
-  CODAP_TOOLS,
-  
-  // New organized exports
-  SAGEMODELER_TOOLS,
-  CAPABILITY_DEFINITIONS,
-  
-  // Utility functions
-  getAllTools,
-  getAllToolsByCapability,
-  getToolsByCapabilities,
-  getCapabilityInfo,
-  getAllCapabilities,
-  validateCapabilities
-};
+// eslint-disable-next-line no-undef
+if (typeof module !== "undefined" && module.exports) {
+  // eslint-disable-next-line no-undef
+  module.exports = { 
+    // Legacy exports (for backward compatibility)
+    CODAP_TOOLS,
+    
+    // New organized exports
+    SAGEMODELER_TOOLS,
+    CAPABILITY_DEFINITIONS,
+    
+    // Utility functions
+    getAllTools,
+    getAllToolsByCapability,
+    getToolsByCapabilities,
+    getCapabilityInfo,
+    getAllCapabilities,
+    validateCapabilities
+  };
+}

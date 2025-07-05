@@ -11,7 +11,12 @@ import {
 } from "./types";
 
 import { ExecutionQueue, ExecutionQueueConfig } from "./ExecutionQueue";
-import { getSupportedTools, isToolSupported } from "./schemas/toolSchemas";
+import { 
+  getToolRouting, 
+  requiresSagePrefix, 
+  getToolsByCapability,
+  isToolSupportedForCapabilities 
+} from "./schemas/toolSchemas";
 
 // Import CODAP plugin API functions
 import { 
@@ -32,15 +37,15 @@ export interface ToolExecutorConfig {
   maxExecutionTime?: number;
   /** Whether to automatically start processing */
   autoStart?: boolean;
+  /** Supported capabilities for this session */
+  capabilities?: string[];
 }
 
-/**
- * Default executor configuration
- */
-export const DEFAULT_EXECUTOR_CONFIG: ToolExecutorConfig = {
-  enableLogging: false,
-  maxExecutionTime: 30000, // 30 seconds
-  autoStart: true
+const DEFAULT_EXECUTOR_CONFIG: ToolExecutorConfig = {
+  enableLogging: true,
+  maxExecutionTime: 30000,
+  autoStart: true,
+  capabilities: ["CODAP"] // Default to CODAP only
 };
 
 /**
@@ -50,7 +55,7 @@ export interface ExecutionResult {
   success: boolean;
   result?: any;
   error?: {
-    type: "execution_error" | "tool_not_found" | "invalid_args" | "codap_error";
+    type: "execution_error" | "tool_not_found" | "invalid_args" | "codap_error" | "routing_error";
     message: string;
     details?: any;
   };
@@ -60,7 +65,7 @@ export interface ExecutionResult {
 
 /**
  * Tool Executor implementation
- * Provides sequential execution of tool requests against CODAP plugin API
+ * Provides sequential execution of tool requests against CODAP plugin API and SageModeler API
  */
 export class ToolExecutor implements ToolExecutorInterface {
   private queue: ExecutionQueue;
@@ -79,28 +84,26 @@ export class ToolExecutor implements ToolExecutorInterface {
 
   /**
    * Execute a tool request
-   * Adds request to queue and returns promise for response
    */
   async execute(request: ToolRequest): Promise<ToolResponse> {
-    this.log("Executing tool request", { id: request.id, tool: request.tool });
-
-    // Validate tool is supported
-    if (!this.isToolSupported(request.tool)) {
-      const error: ToolResponse = {
+    this.log("Received tool request", { tool: request.tool, requestId: request.id });
+    
+    // Check if tool is supported for current capabilities
+    if (!isToolSupportedForCapabilities(request.tool, this.config.capabilities || ["CODAP"])) {
+      return {
         requestId: request.id,
         success: false,
         error: {
           type: "tool_not_found",
-          message: `Tool '${request.tool}' is not supported`,
-          details: { supportedTools: this.getSupportedTools() }
+          message: `Tool ${request.tool} not supported for current capabilities: ${(this.config.capabilities || ["CODAP"]).join(", ")}`,
+          details: { supportedTools: getToolsByCapability(this.config.capabilities) }
         },
         timestamp: new Date().toISOString(),
         duration: 0
       };
-      return error;
     }
 
-    // Add to queue and wait for processing
+    // Add to queue for sequential processing
     return this.queue.enqueue(request);
   }
 
@@ -108,18 +111,18 @@ export class ToolExecutor implements ToolExecutorInterface {
    * Check if a tool is supported
    */
   isToolSupported(toolName: string): boolean {
-    return isToolSupported(toolName);
+    return isToolSupportedForCapabilities(toolName, this.config.capabilities || ["CODAP"]);
   }
 
   /**
-   * Get list of supported tools
+   * Get list of supported tools for current capabilities
    */
   getSupportedTools(): string[] {
-    return getSupportedTools();
+    return getToolsByCapability(this.config.capabilities || ["CODAP"]);
   }
 
   /**
-   * Check if executor is currently processing a request
+   * Check if executor is currently processing
    */
   isBusy(): boolean {
     return this.isProcessing;
@@ -133,113 +136,69 @@ export class ToolExecutor implements ToolExecutorInterface {
   }
 
   /**
-   * Get current execution status
-   */
-  getExecutionStatus(): ExecutionStatus {
-    return this.queue.getExecutionStatus();
-  }
-
-  /**
-   * Start processing queue
+   * Start processing queued requests
    */
   startProcessing(): void {
-    if (this.processingInterval) {
-      return; // Already processing
-    }
-
+    if (this.isProcessing) return;
+    
+    this.isProcessing = true;
     this.processingInterval = setInterval(() => {
       this.processNext();
-    }, 100); // Check queue every 100ms
-
-    this.log("Started queue processing");
+    }, 100); // Check every 100ms
   }
 
   /**
-   * Stop processing queue
+   * Stop processing queued requests
    */
   stopProcessing(): void {
+    this.isProcessing = false;
     if (this.processingInterval) {
       clearInterval(this.processingInterval);
       this.processingInterval = undefined;
     }
-    this.log("Stopped queue processing");
-  }
-
-  /**
-   * Clear all queued requests
-   */
-  clearQueue(): void {
-    this.queue.clear();
-    this.log("Cleared execution queue");
   }
 
   /**
    * Process next request in queue
    */
   private async processNext(): Promise<void> {
-    if (this.isProcessing || this.queue.isEmpty()) {
-      return;
-    }
-
-    const queuedRequest = this.queue.dequeue();
-    if (!queuedRequest) {
-      return;
-    }
-
-    this.isProcessing = true;
-    this.queue.setProcessing(true);
-
-    const startTime = Date.now();
-
+    if (!this.isProcessing) return;
+    
+    const next = this.queue.dequeue();
+    if (!next) return;
+    
+    const { request, resolve } = next;
+    
     try {
-      const result = await this.executeToolRequest(queuedRequest.request);
-      const duration = Date.now() - startTime;
-
-      const response: ToolResponse = {
-        requestId: queuedRequest.request.id,
-        success: result.success,
-        timestamp: result.timestamp,
-        duration,
-        ...(result.success ? { result: result.result } : { error: result.error })
-      };
-
-      this.queue.markProcessed(queuedRequest.request.id, duration);
-      queuedRequest.resolve(response);
+      const result = await this.executeToolRequest(request);
       
-      this.log("Request processed successfully", { 
-        id: queuedRequest.request.id, 
-        duration 
-      });
-
+      const response: ToolResponse = {
+        requestId: request.id,
+        success: result.success,
+        result: result.result,
+        error: result.error,
+        timestamp: result.timestamp,
+        duration: result.duration
+      };
+      
+      resolve(response);
     } catch (error) {
-      const duration = Date.now() - startTime;
-      const errorResponse: ToolResponse = {
-        requestId: queuedRequest.request.id,
+      resolve({
+        requestId: request.id,
         success: false,
-        timestamp: new Date().toISOString(),
-        duration,
         error: {
           type: "execution_error",
           message: error instanceof Error ? error.message : "Unknown execution error",
           details: error
-        }
-      };
-
-      this.queue.markFailed(queuedRequest.request.id, error instanceof Error ? error : new Error(String(error)));
-      queuedRequest.reject(error instanceof Error ? error : new Error(String(error)));
-      
-      this.log("Request processing failed", { 
-        id: queuedRequest.request.id, 
-        error: errorResponse.error?.message 
+        },
+        timestamp: new Date().toISOString(),
+        duration: 0
       });
-    } finally {
-      this.isProcessing = false;
-      this.queue.setProcessing(false);
     }
   }
 
   /**
-   * Execute a specific tool request against CODAP
+   * Execute a specific tool request using capability-based routing
    */
   private async executeToolRequest(request: ToolRequest): Promise<ExecutionResult> {
     const startTime = Date.now();
@@ -247,159 +206,21 @@ export class ToolExecutor implements ToolExecutorInterface {
     try {
       this.log("Executing tool", { tool: request.tool, args: request.args });
       
+      // Get routing information for this tool
+      const routing = getToolRouting(request.tool);
+      if (!routing) {
+        throw new Error(`No routing information found for tool: ${request.tool}`);
+      }
+
       let result: any;
 
-      // Route to appropriate CODAP API call based on tool
-      switch (request.tool) {
-        case "create_dataset_with_table":
-          result = await this.createDatasetWithTable(request.args);
-          break;
-          
-        case "create_graph":
-          result = await this.createGraph(request.args);
-          break;
-          
-        case "create_data_context":
-          result = await this.createDataContext(request.args);
-          break;
-          
-        case "create_collection":
-          result = await this.createCollection(request.args);
-          break;
-          
-        case "create_items":
-          result = await this.createItems(request.args);
-          break;
-          
-        case "create_table":
-          result = await this.createTable(request.args);
-          break;
-          
-        case "get_data_contexts":
-          result = await this.getDataContexts();
-          break;
-          
-        case "get_components":
-          result = await this.getComponents();
-          break;
-          
-        case "get_data_context":
-          result = await this.getDataContext(request.args);
-          break;
-          
-        case "update_component":
-          result = await this.updateComponent(request.args);
-          break;
-          
-        // SageModeler Tools - Node Management
-        case "sage_create_node":
-          result = await this.sageCreateNode(request.args);
-          break;
-          
-        case "sage_create_random_node":
-          result = await this.sageCreateRandomNode(request.args);
-          break;
-          
-        case "sage_update_node":
-          result = await this.sageUpdateNode(request.args);
-          break;
-          
-        case "sage_delete_node":
-          result = await this.sageDeleteNode(request.args);
-          break;
-          
-        case "sage_get_all_nodes":
-          result = await this.sageGetAllNodes(request.args);
-          break;
-          
-        case "sage_get_node_by_id":
-          result = await this.sageGetNodeById(request.args);
-          break;
-          
-        case "sage_select_node":
-          result = await this.sageSelectNode(request.args);
-          break;
-          
-        // SageModeler Tools - Link Management  
-        case "sage_create_link":
-          result = await this.sageCreateLink(request.args);
-          break;
-          
-        case "sage_update_link":
-          result = await this.sageUpdateLink(request.args);
-          break;
-          
-        case "sage_delete_link":
-          result = await this.sageDeleteLink(request.args);
-          break;
-          
-        case "sage_get_all_links":
-          result = await this.sageGetAllLinks(request.args);
-          break;
-          
-        case "sage_get_link_by_id":
-          result = await this.sageGetLinkById(request.args);
-          break;
-          
-        // SageModeler Tools - Experiments
-        case "sage_reload_experiment_nodes":
-          result = await this.sageReloadExperimentNodes(request.args);
-          break;
-          
-        case "sage_run_experiment":
-          result = await this.sageRunExperiment(request.args);
-          break;
-          
-        // SageModeler Tools - Recording
-        case "sage_start_recording":
-          result = await this.sageStartRecording(request.args);
-          break;
-          
-        case "sage_stop_recording":
-          result = await this.sageStopRecording(request.args);
-          break;
-          
-        case "sage_set_recording_options":
-          result = await this.sageSetRecordingOptions(request.args);
-          break;
-          
-        // SageModeler Tools - Model Import/Export
-        case "sage_load_model":
-          result = await this.sageLoadModel(request.args);
-          break;
-          
-        case "sage_export_model":
-          result = await this.sageExportModel(request.args);
-          break;
-          
-        case "sage_import_sd_json":
-          result = await this.sageImportSdJson(request.args);
-          break;
-          
-        case "sage_export_sd_json":
-          result = await this.sageExportSdJson(request.args);
-          break;
-          
-        // SageModeler Tools - Settings
-        case "sage_set_model_complexity":
-          result = await this.sageSetModelComplexity(request.args);
-          break;
-          
-        case "sage_set_ui_settings":
-          result = await this.sageSetUiSettings(request.args);
-          break;
-          
-        case "sage_restore_default_settings":
-          result = await this.sageRestoreDefaultSettings(request.args);
-          break;
-          
-        // SageModeler Tools - Simulation State
-        case "sage_get_simulation_state":
-          result = await this.sageGetSimulationState(request.args);
-          break;
-          
-        default:
-          throw new Error(`Unsupported tool: ${request.tool}`);
+      // Route based on target application
+      if (routing.target === "CODAP") {
+        result = await this.executeCODAPTool(request.tool, request.args);
+      } else if (routing.target === "SAGEMODELER") {
+        result = await this.executeSageModelerTool(request.tool, request.args);
+      } else {
+        throw new Error(`Unknown routing target: ${routing.target}`);
       }
 
       const duration = Date.now() - startTime;
@@ -417,8 +238,8 @@ export class ToolExecutor implements ToolExecutorInterface {
       return {
         success: false,
         error: {
-          type: "codap_error",
-          message: error instanceof Error ? error.message : "CODAP execution failed",
+          type: "routing_error",
+          message: error instanceof Error ? error.message : "Tool execution failed",
           details: error
         },
         duration,
@@ -427,39 +248,170 @@ export class ToolExecutor implements ToolExecutorInterface {
     }
   }
 
+  /**
+   * Execute CODAP-specific tool using standard CODAP Plugin API
+   */
+  private async executeCODAPTool(toolName: string, args: any): Promise<any> {
+    // Route to appropriate CODAP API call based on tool name
+    switch (toolName) {
+      case "initializePlugin":
+        return await this.initializePlugin(args);
+      case "createDataContext":
+        return await this.createDataContext(args);
+      case "createItems":
+        return await this.createItems(args);
+      case "updateItems":
+        return await this.updateItems(args);
+      case "deleteItems":
+        return await this.deleteItems(args);
+      case "getAllItems":
+        return await this.getAllItems(args);
+      case "getItemCount":
+        return await this.getItemCount(args);
+      case "getItemByID":
+        return await this.getItemByID(args);
+      case "selectItems":
+        return await this.selectItems(args);
+      case "createCollection":
+        return await this.createCollection(args);
+      case "createAttribute":
+        return await this.createAttribute(args);
+      case "updateAttribute":
+        return await this.updateAttribute(args);
+      case "deleteAttribute":
+        return await this.deleteAttribute(args);
+      case "createGraph":
+        return await this.createGraph(args);
+      case "createTable":
+        return await this.createTable(args);
+      case "createSlider":
+        return await this.createSlider(args);
+      case "createCalculator":
+        return await this.createCalculator(args);
+      case "createText":
+        return await this.createText(args);
+      case "createWebView":
+        return await this.createWebView(args);
+      case "deleteComponent":
+        return await this.deleteComponent(args);
+      case "updateComponent":
+        return await this.updateComponent(args);
+      case "getAllComponents":
+        return await this.getAllComponents(args);
+      case "getComponent":
+        return await this.getComponent(args);
+      case "getListOfDataContexts":
+        return await this.getListOfDataContexts(args);
+      case "getDataContext":
+        return await this.getDataContext(args);
+      case "deleteDataContext":
+        return await this.deleteDataContext(args);
+      case "getSelectedItems":
+        return await this.getSelectedItems(args);
+      case "deselectAll":
+        return await this.deselectAll(args);
+      case "getCollectionList":
+        return await this.getCollectionList(args);
+      case "getCollection":
+        return await this.getCollection(args);
+      case "getAttributeList":
+        return await this.getAttributeList(args);
+      case "getAttribute":
+        return await this.getAttribute(args);
+      case "registerForNotifications":
+        return await this.registerForNotifications(args);
+      case "unregisterForNotifications":
+        return await this.unregisterForNotifications(args);
+      default:
+        throw new Error(`Unsupported CODAP tool: ${toolName}`);
+    }
+  }
+
+  /**
+   * Execute SageModeler-specific tool using SageModeler API with proper prefixing
+   */
+  private async executeSageModelerTool(toolName: string, args: any): Promise<any> {
+    // Map tool names to SageModeler API calls
+    const sageApiMapping: Record<string, { action: string; resource: string }> = {
+      "sage_create_node": { action: "create", resource: "nodes" },
+      "sage_create_random_node": { action: "create", resource: "nodes/random" },
+      "sage_update_node": { action: "update", resource: "nodes" },
+      "sage_delete_node": { action: "delete", resource: "nodes" },
+      "sage_get_all_nodes": { action: "get", resource: "nodes" },
+      "sage_get_node_by_id": { action: "get", resource: "nodes" },
+      "sage_select_node": { action: "call", resource: "nodes/select" },
+      "sage_create_link": { action: "create", resource: "links" },
+      "sage_update_link": { action: "update", resource: "links" },
+      "sage_delete_link": { action: "delete", resource: "links" },
+      "sage_get_all_links": { action: "get", resource: "links" },
+      "sage_get_link_by_id": { action: "get", resource: "links" },
+      "sage_reload_experiment_nodes": { action: "call", resource: "experiment/reloadNodes" },
+      "sage_run_experiment": { action: "call", resource: "simulation/experimentRun" },
+      "sage_start_recording": { action: "call", resource: "simulation/recordStream" },
+      "sage_stop_recording": { action: "call", resource: "simulation/stopRecording" },
+      "sage_set_recording_options": { action: "call", resource: "simulation/setRecordingOptions" },
+      "sage_load_model": { action: "update", resource: "model" },
+      "sage_export_model": { action: "get", resource: "model" },
+      "sage_import_sd_json": { action: "call", resource: "model/importSdJson" },
+      "sage_export_sd_json": { action: "call", resource: "model/exportSdJson" },
+      "sage_set_model_complexity": { action: "update", resource: "model/complexity" },
+      "sage_set_ui_settings": { action: "update", resource: "ui/settings" },
+      "sage_restore_default_settings": { action: "call", resource: "settings/restoreDefaults" },
+      "sage_get_simulation_state": { action: "get", resource: "simulation/state" }
+    };
+
+    const apiCall = sageApiMapping[toolName];
+    if (!apiCall) {
+      throw new Error(`No SageModeler API mapping found for tool: ${toolName}`);
+    }
+
+    // Adjust resource path for ID-based operations
+    let resource = apiCall.resource;
+    if (toolName === "sage_get_node_by_id" && args.nodeId) {
+      resource = `nodes/${args.nodeId}`;
+    } else if (toolName === "sage_update_node" && args.nodeId) {
+      resource = `nodes/${args.nodeId}`;
+    } else if (toolName === "sage_delete_node" && args.nodeId) {
+      resource = `nodes/${args.nodeId}`;
+    } else if (toolName === "sage_get_link_by_id" && args.linkId) {
+      resource = `links/${args.linkId}`;
+    } else if (toolName === "sage_update_link" && args.linkId) {
+      resource = `links/${args.linkId}`;
+    } else if (toolName === "sage_delete_link" && args.linkId) {
+      resource = `links/${args.linkId}`;
+    }
+
+    return await this.sendSageMessage(apiCall.action, resource, args);
+  }
+
   // ==================== CODAP Tool Implementations ====================
 
   /**
-   * Create dataset with automatic table display
+   * Initialize CODAP plugin
    */
-  private async createDatasetWithTable(args: any): Promise<any> {
-    const { name, attributes, data = [], title, tableName } = args;
-
-    // 1. Create data context
-    const dataContextResult = await sendMessage("create", "dataContext", {
-      name,
+  private async initializePlugin(args: any): Promise<any> {
+    const { name, title, version, dimensions } = args;
+    return await sendMessage("update", "interactiveFrame", {
+      name: name || title,
       title: title || name,
-      collections: [{
-        name: "Cases",
-        attrs: attributes
-      }]
+      version,
+      ...(dimensions && { dimensions })
     });
+  }
 
-    // 2. Add data if provided
-    let itemsResult = null;
-    if (data.length > 0) {
-      itemsResult = await createItems(name, data);
-    }
+  /**
+   * Create data context
+   */
+  private async createDataContext(args: any): Promise<any> {
+    return await sendMessage("create", "dataContext", args);
+  }
 
-    // 3. Create table for immediate feedback
-    const tableResult = await createTable(name, tableName || `${name} Table`);
-
-    return {
-      dataContext: dataContextResult,
-      items: itemsResult,
-      table: tableResult,
-      recordCount: data.length
-    };
+  /**
+   * Create items in data context
+   */
+  private async createItems(args: any): Promise<any> {
+    const { dataContextName, items } = args;
+    return await createItems(dataContextName, items);
   }
 
   /**
@@ -521,50 +473,6 @@ export class ToolExecutor implements ToolExecutorInterface {
   }
 
   /**
-   * Create data context
-   */
-  private async createDataContext(args: any): Promise<any> {
-    return await sendMessage("create", "dataContext", args);
-  }
-
-  /**
-   * Create collection in data context
-   */
-  private async createCollection(args: any): Promise<any> {
-    const { dataContextName, collectionName, attributes, parent } = args;
-    const values: any = {
-      name: collectionName,
-      title: collectionName,
-      attrs: attributes
-    };
-    
-    if (parent) {
-      values.parent = parent;
-    }
-    
-    return await sendMessage("create", `dataContext[${dataContextName}].collection`, values);
-  }
-
-  /**
-   * Create items in data context
-   */
-  private async createItems(args: any): Promise<any> {
-    const { dataContextName, items } = args;
-    return await createItems(dataContextName, items);
-  }
-
-  /**
-   * Create table component
-   */
-  private async createTable(args: any): Promise<any> {
-    const { dataContext, name } = args;
-    return await createTable(dataContext, name);
-  }
-
-  // Removed createComponent - not a valid CODAP API call
-  // Use specific tools like create_graph, create_table, create_map instead
-
-  /**
    * Update component (for graph axis assignment)
    */
   private async updateComponent(args: any): Promise<any> {
@@ -592,11 +500,11 @@ export class ToolExecutor implements ToolExecutorInterface {
   }
 
   /**
-   * Get specific data context
+   * Create table component
    */
-  private async getDataContext(args: any): Promise<any> {
-    const { name } = args;
-    return await sendMessage("get", "dataContext", { name });
+  private async createTable(args: any): Promise<any> {
+    const { dataContext, name } = args;
+    return await createTable(dataContext, name);
   }
 
   // ==================== SageModeler Tool Implementations ====================
@@ -620,354 +528,22 @@ export class ToolExecutor implements ToolExecutorInterface {
       // Set up response listener
       const responseHandler = (event: MessageEvent) => {
         if (event.data && event.data.requestId === id) {
-          window.removeEventListener('message', responseHandler);
+          window.removeEventListener("message", responseHandler);
           resolve(event.data);
         }
       };
       
-      window.addEventListener('message', responseHandler);
+      window.addEventListener("message", responseHandler);
       
       // Send message to SageModeler
-      window.parent.postMessage({ ...message, requestId: id }, '*');
+      window.parent.postMessage({ ...message, requestId: id }, "*");
       
       // Timeout after 10 seconds
       setTimeout(() => {
-        window.removeEventListener('message', responseHandler);
-        reject(new Error('SageModeler API timeout'));
+        window.removeEventListener("message", responseHandler);
+        reject(new Error("SageModeler API timeout"));
       }, 10000);
     });
-  }
-
-  // Node Management Functions
-  
-  /**
-   * Create a new node in SageModeler
-   */
-  private async sageCreateNode(args: any): Promise<any> {
-    const { title, initialValue, x, y, min, max, isAccumulator, isFlowVariable, 
-            allowNegativeValues, valueDefinedSemiQuantitatively, color, combineMethod, 
-            image, usesDefaultImage, paletteItem, sourceApp } = args;
-    
-    const nodeData = {
-      title,
-      ...(initialValue !== undefined && { initialValue }),
-      ...(x !== undefined && { x }),
-      ...(y !== undefined && { y }),
-      ...(min !== undefined && { min }),
-      ...(max !== undefined && { max }),
-      ...(isAccumulator !== undefined && { isAccumulator }),
-      ...(isFlowVariable !== undefined && { isFlowVariable }),
-      ...(allowNegativeValues !== undefined && { allowNegativeValues }),
-      ...(valueDefinedSemiQuantitatively !== undefined && { valueDefinedSemiQuantitatively }),
-      ...(color && { color }),
-      ...(combineMethod && { combineMethod }),
-      ...(image && { image }),
-      ...(usesDefaultImage !== undefined && { usesDefaultImage }),
-      ...(paletteItem && { paletteItem }),
-      ...(sourceApp && { sourceApp })
-    };
-    
-    return await this.sendSageMessage("create", "nodes", nodeData);
-  }
-
-  /**
-   * Create a random node in SageModeler
-   */
-  private async sageCreateRandomNode(args: any): Promise<any> {
-    // Generate random node properties
-    const randomNodeData = {
-      title: `Node_${Math.random().toString(36).substr(2, 9)}`,
-      initialValue: Math.floor(Math.random() * 100),
-      x: Math.floor(Math.random() * 500),
-      y: Math.floor(Math.random() * 500),
-      min: 0,
-      max: 100
-    };
-    
-    return await this.sendSageMessage("create", "nodes", randomNodeData);
-  }
-
-  /**
-   * Update an existing node in SageModeler
-   */
-  private async sageUpdateNode(args: any): Promise<any> {
-    const { nodeId, ...updateData } = args;
-    
-    if (!nodeId) {
-      throw new Error("nodeId is required for updating a node");
-    }
-    
-    return await this.sendSageMessage("update", `nodes/${nodeId}`, updateData);
-  }
-
-  /**
-   * Delete a node in SageModeler
-   */
-  private async sageDeleteNode(args: any): Promise<any> {
-    const { nodeId } = args;
-    
-    if (!nodeId) {
-      throw new Error("nodeId is required for deleting a node");
-    }
-    
-    return await this.sendSageMessage("delete", `nodes/${nodeId}`);
-  }
-
-  /**
-   * Get all nodes in SageModeler
-   */
-  private async sageGetAllNodes(args: any): Promise<any> {
-    return await this.sendSageMessage("get", "nodes");
-  }
-
-  /**
-   * Get a specific node by ID in SageModeler
-   */
-  private async sageGetNodeById(args: any): Promise<any> {
-    const { nodeId } = args;
-    
-    if (!nodeId) {
-      throw new Error("nodeId is required for getting a node");
-    }
-    
-    return await this.sendSageMessage("get", `nodes/${nodeId}`);
-  }
-
-  /**
-   * Select a node in SageModeler UI
-   */
-  private async sageSelectNode(args: any): Promise<any> {
-    const { nodeId } = args;
-    
-    if (!nodeId) {
-      throw new Error("nodeId is required for selecting a node");
-    }
-    
-    return await this.sendSageMessage("call", "ui/selectNode", { nodeId });
-  }
-
-  // Link Management Functions
-  
-  /**
-   * Create a link between nodes in SageModeler
-   */
-  private async sageCreateLink(args: any): Promise<any> {
-    const { source, target, relationVector, relationScalar, customData, label, color, sourceApp } = args;
-    
-    if (!source || !target || !relationVector) {
-      throw new Error("source, target, and relationVector are required for creating a link");
-    }
-    
-    const linkData = {
-      source,
-      target,
-      relationVector,
-      ...(relationScalar && { relationScalar }),
-      ...(customData && { customData }),
-      ...(label && { label }),
-      ...(color && { color }),
-      ...(sourceApp && { sourceApp })
-    };
-    
-    return await this.sendSageMessage("create", "links", linkData);
-  }
-
-  /**
-   * Update an existing link in SageModeler
-   */
-  private async sageUpdateLink(args: any): Promise<any> {
-    const { linkId, ...updateData } = args;
-    
-    if (!linkId) {
-      throw new Error("linkId is required for updating a link");
-    }
-    
-    return await this.sendSageMessage("update", `links/${linkId}`, updateData);
-  }
-
-  /**
-   * Delete a link in SageModeler
-   */
-  private async sageDeleteLink(args: any): Promise<any> {
-    const { linkId } = args;
-    
-    if (!linkId) {
-      throw new Error("linkId is required for deleting a link");
-    }
-    
-    return await this.sendSageMessage("delete", `links/${linkId}`);
-  }
-
-  /**
-   * Get all links in SageModeler
-   */
-  private async sageGetAllLinks(args: any): Promise<any> {
-    return await this.sendSageMessage("get", "links");
-  }
-
-  /**
-   * Get a specific link by ID in SageModeler
-   */
-  private async sageGetLinkById(args: any): Promise<any> {
-    const { linkId } = args;
-    
-    if (!linkId) {
-      throw new Error("linkId is required for getting a link");
-    }
-    
-    return await this.sendSageMessage("get", `links/${linkId}`);
-  }
-
-  // Experiment Functions
-  
-  /**
-   * Reload experiment nodes in SageModeler
-   */
-  private async sageReloadExperimentNodes(args: any): Promise<any> {
-    return await this.sendSageMessage("call", "experiment/reloadNodes");
-  }
-
-  /**
-   * Run an experiment in SageModeler
-   */
-  private async sageRunExperiment(args: any): Promise<any> {
-    const { mode, duration, stepUnit, delivery, parameters } = args;
-    
-    if (!mode || !parameters) {
-      throw new Error("mode and parameters are required for running an experiment");
-    }
-    
-    const experimentData = {
-      mode,
-      parameters,
-      ...(duration !== undefined && { duration }),
-      ...(stepUnit && { stepUnit }),
-      ...(delivery && { delivery })
-    };
-    
-    return await this.sendSageMessage("call", "simulation/experimentRun", experimentData);
-  }
-
-  // Recording Functions
-  
-  /**
-   * Start recording in SageModeler
-   */
-  private async sageStartRecording(args: any): Promise<any> {
-    const { duration, units } = args;
-    
-    const recordingData = {
-      ...(duration !== undefined && { duration }),
-      ...(units && { units })
-    };
-    
-    return await this.sendSageMessage("call", "simulation/record", recordingData);
-  }
-
-  /**
-   * Stop recording in SageModeler
-   */
-  private async sageStopRecording(args: any): Promise<any> {
-    return await this.sendSageMessage("call", "simulation/stopRecord");
-  }
-
-  /**
-   * Set recording options in SageModeler
-   */
-  private async sageSetRecordingOptions(args: any): Promise<any> {
-    const { options } = args;
-    
-    if (!options) {
-      throw new Error("options are required for setting recording options");
-    }
-    
-    return await this.sendSageMessage("update", "simulation/settings", options);
-  }
-
-  // Model Import/Export Functions
-  
-  /**
-   * Load a model in SageModeler
-   */
-  private async sageLoadModel(args: any): Promise<any> {
-    const { model } = args;
-    
-    if (!model) {
-      throw new Error("model data is required for loading a model");
-    }
-    
-    return await this.sendSageMessage("update", "model", model);
-  }
-
-  /**
-   * Export the current model from SageModeler
-   */
-  private async sageExportModel(args: any): Promise<any> {
-    return await this.sendSageMessage("get", "model");
-  }
-
-  /**
-   * Import SD-JSON format in SageModeler
-   */
-  private async sageImportSdJson(args: any): Promise<any> {
-    const { sdJson } = args;
-    
-    if (!sdJson) {
-      throw new Error("sdJson data is required for importing SD-JSON");
-    }
-    
-    return await this.sendSageMessage("call", "model/importSdJson", sdJson);
-  }
-
-  /**
-   * Export to SD-JSON format from SageModeler
-   */
-  private async sageExportSdJson(args: any): Promise<any> {
-    return await this.sendSageMessage("call", "model/exportSdJson");
-  }
-
-  // Settings Functions
-  
-  /**
-   * Set model complexity in SageModeler
-   */
-  private async sageSetModelComplexity(args: any): Promise<any> {
-    const { complexity } = args;
-    
-    if (!complexity) {
-      throw new Error("complexity level is required for setting model complexity");
-    }
-    
-    return await this.sendSageMessage("update", "settings/complexity", { complexity });
-  }
-
-  /**
-   * Set UI settings in SageModeler
-   */
-  private async sageSetUiSettings(args: any): Promise<any> {
-    const { settings } = args;
-    
-    if (!settings) {
-      throw new Error("settings are required for setting UI settings");
-    }
-    
-    return await this.sendSageMessage("update", "settings/ui", settings);
-  }
-
-  /**
-   * Restore default settings in SageModeler
-   */
-  private async sageRestoreDefaultSettings(args: any): Promise<any> {
-    return await this.sendSageMessage("call", "settings/restoreDefaults");
-  }
-
-  // Simulation State Functions
-  
-  /**
-   * Get simulation state from SageModeler
-   */
-  private async sageGetSimulationState(args: any): Promise<any> {
-    return await this.sendSageMessage("get", "simulation/state");
   }
 
   /**
@@ -977,5 +553,233 @@ export class ToolExecutor implements ToolExecutorInterface {
     if (this.config.enableLogging) {
       console.log(`[ToolExecutor] ${message}`, details || "");
     }
+  }
+
+  // ==================== Missing CODAP Tool Method Stubs ====================
+
+  /**
+   * Update items in data context
+   */
+  private async updateItems(args: any): Promise<any> {
+    const { dataContextName, items } = args;
+    return await sendMessage("update", `dataContext[${dataContextName}].item`, items);
+  }
+
+  /**
+   * Delete items from data context
+   */
+  private async deleteItems(args: any): Promise<any> {
+    const { dataContextName, itemIds } = args;
+    return await sendMessage("delete", `dataContext[${dataContextName}].item`, { itemIds });
+  }
+
+  /**
+   * Get all items from data context
+   */
+  private async getAllItems(args: any): Promise<any> {
+    const { dataContextName } = args;
+    return await sendMessage("get", `dataContext[${dataContextName}].itemCount`);
+  }
+
+  /**
+   * Get item count from data context
+   */
+  private async getItemCount(args: any): Promise<any> {
+    const { dataContextName } = args;
+    return await sendMessage("get", `dataContext[${dataContextName}].itemCount`);
+  }
+
+  /**
+   * Get item by ID from data context
+   */
+  private async getItemByID(args: any): Promise<any> {
+    const { dataContextName, itemId } = args;
+    return await sendMessage("get", `dataContext[${dataContextName}].item[${itemId}]`);
+  }
+
+  /**
+   * Select items in data context
+   */
+  private async selectItems(args: any): Promise<any> {
+    const { dataContextName, itemIds } = args;
+    return await sendMessage("update", `dataContext[${dataContextName}].selectionList`, itemIds);
+  }
+
+  /**
+   * Create collection in data context
+   */
+  private async createCollection(args: any): Promise<any> {
+    const { dataContextName, collectionName, attributes, parent } = args;
+    const values: any = {
+      name: collectionName,
+      title: collectionName,
+      attrs: attributes
+    };
+    
+    if (parent) {
+      values.parent = parent;
+    }
+    
+    return await sendMessage("create", `dataContext[${dataContextName}].collection`, values);
+  }
+
+  /**
+   * Create attribute in collection
+   */
+  private async createAttribute(args: any): Promise<any> {
+    const { dataContextName, collectionName, attribute } = args;
+    return await sendMessage("create", `dataContext[${dataContextName}].collection[${collectionName}].attribute`, attribute);
+  }
+
+  /**
+   * Update attribute in collection
+   */
+  private async updateAttribute(args: any): Promise<any> {
+    const { dataContextName, collectionName, attributeName, attribute } = args;
+    return await sendMessage("update", `dataContext[${dataContextName}].collection[${collectionName}].attribute[${attributeName}]`, attribute);
+  }
+
+  /**
+   * Delete attribute from collection
+   */
+  private async deleteAttribute(args: any): Promise<any> {
+    const { dataContextName, collectionName, attributeName } = args;
+    return await sendMessage("delete", `dataContext[${dataContextName}].collection[${collectionName}].attribute[${attributeName}]`);
+  }
+
+  /**
+   * Create slider component
+   */
+  private async createSlider(args: any): Promise<any> {
+    return await sendMessage("create", "component", { type: "slider", ...args });
+  }
+
+  /**
+   * Create calculator component
+   */
+  private async createCalculator(args: any): Promise<any> {
+    return await sendMessage("create", "component", { type: "calculator", ...args });
+  }
+
+  /**
+   * Create text component
+   */
+  private async createText(args: any): Promise<any> {
+    return await sendMessage("create", "component", { type: "text", ...args });
+  }
+
+  /**
+   * Create web view component
+   */
+  private async createWebView(args: any): Promise<any> {
+    return await sendMessage("create", "component", { type: "webView", ...args });
+  }
+
+  /**
+   * Delete component
+   */
+  private async deleteComponent(args: any): Promise<any> {
+    const { componentId } = args;
+    return await sendMessage("delete", `component[${componentId}]`);
+  }
+
+  /**
+   * Get all components
+   */
+  private async getAllComponents(args: any): Promise<any> {
+    return await sendMessage("get", "componentList");
+  }
+
+  /**
+   * Get specific component
+   */
+  private async getComponent(args: any): Promise<any> {
+    const { componentId } = args;
+    return await sendMessage("get", `component[${componentId}]`);
+  }
+
+  /**
+   * Get list of data contexts
+   */
+  private async getListOfDataContexts(args: any): Promise<any> {
+    return await sendMessage("get", "dataContextList");
+  }
+
+  /**
+   * Get data context
+   */
+  private async getDataContext(args: any): Promise<any> {
+    const { dataContextName } = args;
+    return await sendMessage("get", `dataContext[${dataContextName}]`);
+  }
+
+  /**
+   * Delete data context
+   */
+  private async deleteDataContext(args: any): Promise<any> {
+    const { dataContextName } = args;
+    return await sendMessage("delete", `dataContext[${dataContextName}]`);
+  }
+
+  /**
+   * Get selected items
+   */
+  private async getSelectedItems(args: any): Promise<any> {
+    const { dataContextName } = args;
+    return await sendMessage("get", `dataContext[${dataContextName}].selectionList`);
+  }
+
+  /**
+   * Deselect all items
+   */
+  private async deselectAll(args: any): Promise<any> {
+    const { dataContextName } = args;
+    return await sendMessage("update", `dataContext[${dataContextName}].selectionList`, []);
+  }
+
+  /**
+   * Get collection list
+   */
+  private async getCollectionList(args: any): Promise<any> {
+    const { dataContextName } = args;
+    return await sendMessage("get", `dataContext[${dataContextName}].collectionList`);
+  }
+
+  /**
+   * Get collection
+   */
+  private async getCollection(args: any): Promise<any> {
+    const { dataContextName, collectionName } = args;
+    return await sendMessage("get", `dataContext[${dataContextName}].collection[${collectionName}]`);
+  }
+
+  /**
+   * Get attribute list
+   */
+  private async getAttributeList(args: any): Promise<any> {
+    const { dataContextName, collectionName } = args;
+    return await sendMessage("get", `dataContext[${dataContextName}].collection[${collectionName}].attributeList`);
+  }
+
+  /**
+   * Get attribute
+   */
+  private async getAttribute(args: any): Promise<any> {
+    const { dataContextName, collectionName, attributeName } = args;
+    return await sendMessage("get", `dataContext[${dataContextName}].collection[${collectionName}].attribute[${attributeName}]`);
+  }
+
+  /**
+   * Register for notifications
+   */
+  private async registerForNotifications(args: any): Promise<any> {
+    return await sendMessage("create", "notificationSubscription", args);
+  }
+
+  /**
+   * Unregister for notifications
+   */
+  private async unregisterForNotifications(args: any): Promise<any> {
+    return await sendMessage("delete", "notificationSubscription", args);
   }
 } 

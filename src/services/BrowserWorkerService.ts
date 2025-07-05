@@ -33,6 +33,8 @@ export interface BrowserWorkerServiceConfig {
   sessionCode: string;
   debug?: boolean;
   autoStart?: boolean;
+  /** Supported capabilities for this session (e.g., ["CODAP", "SAGEMODELER"]) */
+  capabilities?: string[];
 }
 
 /**
@@ -48,6 +50,7 @@ export class BrowserWorkerService {
   private claudeConnected = false; // Track Claude connection status
   private lastClaudeActivity = 0; // Track last Claude activity
   private claudeTimeoutTimer: NodeJS.Timeout | null = null; // Timeout timer
+  private capabilities: string[]; // Supported capabilities
 
   private static readonly CLAUDE_TIMEOUT_MS = 120000; // 2 minutes of inactivity
 
@@ -59,6 +62,7 @@ export class BrowserWorkerService {
 
   constructor(config: BrowserWorkerServiceConfig) {
     this.config = config;
+    this.capabilities = config.capabilities || ["CODAP"]; // Default to CODAP only
     this.errorSystem = new BrowserWorkerErrorSystem({ debug: config.debug });
     
     // Initialize ConnectionManager with proper configuration
@@ -321,6 +325,18 @@ export class BrowserWorkerService {
   }
 
   /**
+   * Execute tool directly (for direct UI calls)
+   */
+  async executeTool(toolName: string, args: any): Promise<any> {
+    if (!this.isStarted) {
+      throw new Error("Browser worker service is not started");
+    }
+    
+    const requestId = `direct-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    return this.executeToolRequest(toolName, args, requestId);
+  }
+
+  /**
    * Execute tool request using dynamic handler system
    */
   private async executeToolRequest(toolName: string, args: any, requestId: string): Promise<any> {
@@ -360,8 +376,9 @@ export class BrowserWorkerService {
         return await this.executeCreateDatasetWithTable(legacyRequest);
       }
       
-      // Tool not found
-      throw new Error(`Unknown tool: ${toolName}. Available tools: ${Object.keys(this.comprehensiveToolHandlers || {}).join(", ")}`);
+      // Tool not found - provide detailed error with available tools
+      const availableTools = Object.keys(this.comprehensiveToolHandlers || {});
+      throw new Error(`Unknown tool: ${toolName}. Available tools: ${availableTools.join(", ")}`);
       
     } catch (error) {
       console.error(`❌ Tool execution failed: ${toolName}`, {
@@ -488,7 +505,7 @@ export class BrowserWorkerService {
    * Using server naming conventions that exactly match the MCP tool registry
    */
   private createComprehensiveToolHandlers(): Record<string, (args: any) => Promise<any>> {
-    return {
+    const handlers: Record<string, (args: any) => Promise<any>> = {
       // Plugin Initialization
       initializePlugin: async (args: any) => {
         const { name, title, version } = args;
@@ -823,6 +840,173 @@ export class BrowserWorkerService {
         return await sendMessage("delete", "notificationSubscription", { request });
       }
     };
+
+    // Add SageModeler tools if SAGEMODELER capability is present
+    if (this.capabilities.includes("SAGEMODELER")) {
+      if (this.config.debug) {
+        console.log("🔧 Adding SageModeler tool handlers...");
+      }
+
+      // SageModeler Node Management Tools
+      handlers.sage_create_node = async (args: any) => {
+        return await this.sendSageModelerMessage("create", "nodes", args);
+      };
+
+      handlers.sage_create_random_node = async (args: any) => {
+        return await this.sendSageModelerMessage("create", "nodes/random", args);
+      };
+
+      handlers.sage_update_node = async (args: any) => {
+        const { nodeId, ...values } = args;
+        return await this.sendSageModelerMessage("update", `nodes/${nodeId}`, values);
+      };
+
+      handlers.sage_delete_node = async (args: any) => {
+        const { nodeId } = args;
+        return await this.sendSageModelerMessage("delete", `nodes/${nodeId}`, {});
+      };
+
+      handlers.sage_get_all_nodes = async (args: any) => {
+        return await this.sendSageModelerMessage("get", "nodes", {});
+      };
+
+      handlers.sage_get_node_by_id = async (args: any) => {
+        const { nodeId } = args;
+        return await this.sendSageModelerMessage("get", `nodes/${nodeId}`, {});
+      };
+
+      handlers.sage_select_node = async (args: any) => {
+        const { nodeId } = args;
+        return await this.sendSageModelerMessage("call", "nodes/select", { nodeId });
+      };
+
+      // SageModeler Link Management Tools
+      handlers.sage_create_link = async (args: any) => {
+        return await this.sendSageModelerMessage("create", "links", args);
+      };
+
+      handlers.sage_update_link = async (args: any) => {
+        const { linkId, ...values } = args;
+        return await this.sendSageModelerMessage("update", `links/${linkId}`, values);
+      };
+
+      handlers.sage_delete_link = async (args: any) => {
+        const { linkId } = args;
+        return await this.sendSageModelerMessage("delete", `links/${linkId}`, {});
+      };
+
+      handlers.sage_get_all_links = async (args: any) => {
+        return await this.sendSageModelerMessage("get", "links", {});
+      };
+
+      handlers.sage_get_link_by_id = async (args: any) => {
+        const { linkId } = args;
+        return await this.sendSageModelerMessage("get", `links/${linkId}`, {});
+      };
+
+      // SageModeler Experiment Tools
+      handlers.sage_reload_experiment_nodes = async (args: any) => {
+        return await this.sendSageModelerMessage("call", "experiment/reloadNodes", args);
+      };
+
+      handlers.sage_run_experiment = async (args: any) => {
+        return await this.sendSageModelerMessage("call", "simulation/experimentRun", args);
+      };
+
+      // SageModeler Recording Tools
+      handlers.sage_start_recording = async (args: any) => {
+        return await this.sendSageModelerMessage("call", "simulation/recordStream", args);
+      };
+
+      handlers.sage_stop_recording = async (args: any) => {
+        return await this.sendSageModelerMessage("call", "simulation/stopRecording", args);
+      };
+
+      handlers.sage_set_recording_options = async (args: any) => {
+        return await this.sendSageModelerMessage("call", "simulation/setRecordingOptions", args);
+      };
+
+      // SageModeler Model Import/Export Tools
+      handlers.sage_load_model = async (args: any) => {
+        return await this.sendSageModelerMessage("update", "model", args);
+      };
+
+      handlers.sage_export_model = async (args: any) => {
+        return await this.sendSageModelerMessage("get", "model", {});
+      };
+
+      handlers.sage_import_sd_json = async (args: any) => {
+        return await this.sendSageModelerMessage("call", "model/importSdJson", args);
+      };
+
+      handlers.sage_export_sd_json = async (args: any) => {
+        return await this.sendSageModelerMessage("call", "model/exportSdJson", {});
+      };
+
+      // SageModeler Settings Tools
+      handlers.sage_set_model_complexity = async (args: any) => {
+        return await this.sendSageModelerMessage("update", "model/complexity", args);
+      };
+
+      handlers.sage_set_ui_settings = async (args: any) => {
+        return await this.sendSageModelerMessage("update", "ui/settings", args);
+      };
+
+      handlers.sage_restore_default_settings = async (args: any) => {
+        return await this.sendSageModelerMessage("call", "settings/restoreDefaults", {});
+      };
+
+      // SageModeler Simulation State Tools
+      handlers.sage_get_simulation_state = async (args: any) => {
+        return await this.sendSageModelerMessage("get", "simulation/state", {});
+      };
+
+      if (this.config.debug) {
+        console.log(`✅ Added ${Object.keys(handlers).filter(key => key.startsWith("sage_")).length} SageModeler tool handlers`);
+      }
+    }
+
+    return handlers;
+  }
+
+  /**
+   * Send a message to SageModeler with proper API prefixing
+   */
+  private async sendSageModelerMessage(action: string, resource: string, values: any): Promise<any> {
+    const message = {
+      sageApi: true,
+      action,
+      resource,
+      values
+    };
+
+    return new Promise((resolve, reject) => {
+      // Generate request ID
+      const requestId = `sage_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Set up response listener
+      const responseHandler = (event: MessageEvent) => {
+        if (event.data && event.data.requestId === requestId) {
+          window.removeEventListener("message", responseHandler);
+          if (event.data.success) {
+            resolve(event.data);
+          } else {
+            reject(new Error(event.data.error || "SageModeler API call failed"));
+          }
+        }
+      };
+      
+      window.addEventListener("message", responseHandler);
+      
+      // Send message to SageModeler with proper prefix
+      window.parent.postMessage({ ...message, requestId }, "*");
+      
+      // Timeout after 10 seconds
+      setTimeout(() => {
+        window.removeEventListener("message", responseHandler);
+        reject(new Error("SageModeler API timeout"));
+      }, 10000);
+    });
   }
 
   async start(): Promise<void> {
@@ -889,6 +1073,16 @@ export class BrowserWorkerService {
    */
   updateConfig(newConfig: Partial<BrowserWorkerServiceConfig>): void {
     this.config = { ...this.config, ...newConfig };
+    
+    // Update capabilities if provided
+    if (newConfig.capabilities) {
+      this.capabilities = newConfig.capabilities;
+      // Reload tool handlers with new capabilities
+      this.comprehensiveToolHandlers = this.createComprehensiveToolHandlers();
+      if (this.config.debug) {
+        console.log("✅ Tool handlers reloaded with new capabilities:", this.capabilities);
+      }
+    }
     
     // Recreate ConnectionManager with new configuration if needed
     if (this.connectionManager && (newConfig.relayBaseUrl || newConfig.sessionCode)) {

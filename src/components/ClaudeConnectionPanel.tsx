@@ -11,6 +11,7 @@ interface ClaudeConnectionPanelProps {
   onShowSetupGuide: () => void;
   isLoading?: boolean;
   promptCopyFeedback?: string;
+  pluginMode?: "codap" | "sagemodeler";
 }
 
 export const ClaudeConnectionPanel: React.FC<ClaudeConnectionPanelProps> = ({ 
@@ -21,7 +22,8 @@ export const ClaudeConnectionPanel: React.FC<ClaudeConnectionPanelProps> = ({
   onCopyConnectionPrompt,
   onShowSetupGuide,
   isLoading = false,
-  promptCopyFeedback
+  promptCopyFeedback,
+  pluginMode = "codap"
 }) => {
   const clipboard = useClipboard();
   const [sessionCopyFeedback, setSessionCopyFeedback] = useState<string>("");
@@ -56,7 +58,7 @@ export const ClaudeConnectionPanel: React.FC<ClaudeConnectionPanelProps> = ({
     <div className="claude-connection-panel">
       {/* Header */}
       <div className="panel-header">
-        <h2>🤖 CODAP + Claude AI</h2>
+        <h2>🤖 {pluginMode === "codap" ? "CODAP + Claude AI" : "SageModeler + Claude"}</h2>
         <div className="connection-indicators">
           <StatusIndicator 
             label="Relay" 

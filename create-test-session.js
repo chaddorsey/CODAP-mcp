@@ -16,10 +16,10 @@ async function createTestSession() {
   // that will trigger session creation
   try {
     const response = await fetch(`${VERCEL_URL}/api/mcp`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'x-vercel-protection-bypass': BYPASS_HEADER,
-        'Content-Type': 'application/json'
+        "x-vercel-protection-bypass": BYPASS_HEADER,
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
         jsonrpc: "2.0",

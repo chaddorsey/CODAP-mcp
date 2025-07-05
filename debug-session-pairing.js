@@ -10,8 +10,8 @@ const BYPASS_HEADER = "pAg5Eon3T8qOwMaWKzo9k6T4pdbYiCye";
 async function makeRequest(url, options = {}) {
   const response = await fetch(url, {
     headers: {
-      'x-vercel-protection-bypass': BYPASS_HEADER,
-      'Content-Type': 'application/json',
+      "x-vercel-protection-bypass": BYPASS_HEADER,
+      "Content-Type": "application/json",
       ...options.headers
     },
     ...options
@@ -25,13 +25,13 @@ async function debugSessionPairing() {
   console.log("🔍 Debugging Session Pairing Logic\n");
   
   const claudeHeaders = {
-    'user-agent': 'Claude-Desktop/1.0 (Mac)',
-    'origin': 'claude-desktop://debug-test'
+    "user-agent": "Claude-Desktop/1.0 (Mac)",
+    "origin": "claude-desktop://debug-test"
   };
   
   console.log("1. Initial tools list (should be 1 tool):");
   const { data: initialTools } = await makeRequest(`${VERCEL_URL}/api/mcp`, {
-    method: 'POST',
+    method: "POST",
     headers: claudeHeaders,
     body: JSON.stringify({
       jsonrpc: "2.0",
@@ -45,7 +45,7 @@ async function debugSessionPairing() {
   
   console.log("\n2. Try to connect to UBJ25TFW (might fail if session doesn't exist):");
   const { data: connectResult } = await makeRequest(`${VERCEL_URL}/api/mcp`, {
-    method: 'POST',
+    method: "POST",
     headers: claudeHeaders,
     body: JSON.stringify({
       jsonrpc: "2.0",
@@ -61,7 +61,7 @@ async function debugSessionPairing() {
   
   console.log("\n3. Tools list after connection attempt:");
   const { data: afterTools } = await makeRequest(`${VERCEL_URL}/api/mcp`, {
-    method: 'POST',
+    method: "POST",
     headers: claudeHeaders,
     body: JSON.stringify({
       jsonrpc: "2.0",
@@ -74,7 +74,7 @@ async function debugSessionPairing() {
   
   console.log("\n4. Try to execute a CODAP tool:");
   const { data: toolResult } = await makeRequest(`${VERCEL_URL}/api/mcp`, {
-    method: 'POST',
+    method: "POST",
     headers: claudeHeaders,
     body: JSON.stringify({
       jsonrpc: "2.0",
@@ -90,7 +90,7 @@ async function debugSessionPairing() {
   
   console.log("\n5. Check session metrics:");
   const { data: metrics } = await makeRequest(`${VERCEL_URL}/api/mcp/metrics`, {
-    method: 'GET',
+    method: "GET",
     headers: claudeHeaders
   });
   console.log(`   Global metrics:`, JSON.stringify(metrics.globalMetrics, null, 2));

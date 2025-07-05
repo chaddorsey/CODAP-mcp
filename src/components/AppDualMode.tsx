@@ -1,17 +1,21 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { initializePlugin } from "@concord-consortium/codap-plugin-api";
 import { ClaudeConnectionPanel } from "./ClaudeConnectionPanel";
 import { ClaudeSetupModal } from "./ClaudeSetupModal";
+import { SageModelerAPIPanel } from "./SageModelerAPIPanel";
 import { createSessionService } from "../services";
 import { useBrowserWorker } from "../hooks/useBrowserWorker";
 import { useClipboard } from "../hooks/useClipboard";
 import { generateClaudeConnectionPrompt } from "../utils/claudeInstructions";
 import "./App.css";
 import "../styles/claude-integration.css";
+import { ConnectionStatus, BrowserWorkerError } from "../services/browserWorker";
 
 const RELAY_BASE_URL = "https://codap-mcp-stable.vercel.app";
 
-export const AppCODAPOnly = () => {
+type PluginMode = "codap" | "sagemodeler";
+
+export const AppDualMode = () => {
   // Core state for Claude MVP
   const [sessionId, setSessionId] = useState<string>("");
   const [relayConnected, setRelayConnected] = useState(false);
@@ -21,6 +25,11 @@ export const AppCODAPOnly = () => {
   const [isInitializing, setIsInitializing] = useState(true);
   const [initializationError, setInitializationError] = useState<string | null>(null);
   const [promptCopyFeedback, setPromptCopyFeedback] = useState<string>("");
+  
+  // Dual-mode state
+  const [pluginMode, setPluginMode] = useState<PluginMode>("codap");
+  const [showSageAccordion, setShowSageAccordion] = useState(false);
+  const [apiCallLogs, setApiCallLogs] = useState<string[]>([]);
 
   // Prevent multiple initializations
   const initializationRef = useRef(false);
@@ -29,56 +38,14 @@ export const AppCODAPOnly = () => {
   const sessionService = createSessionService(RELAY_BASE_URL);
   const clipboard = useClipboard();
 
-  // Stable initialization function
-  const initializeSession = useCallback(async () => {
-    // Prevent multiple simultaneous initializations
-    if (initializationRef.current) {
-      return;
-    }
-    initializationRef.current = true;
-
-    try {
-      setIsInitializing(true);
-      setInitializationError(null);
-
-      // Initialize CODAP plugin
-      try {
-        await initializePlugin({
-          pluginName: "CODAP + Claude AI",
-          version: "1.0.0",
-          dimensions: { width: 415, height: 295 } // Increased height by 25px for modal visibility
-        });
-        console.log("CODAP plugin initialized");
-      } catch (error) {
-        console.log("CODAP plugin initialization had issues, but continuing...", error);
-      }
-
-      // Auto-generate session (only if we don't have one)
-      const session = await sessionService.createSession();
-      setSessionId(session.code);
-      console.log("Session auto-generated:", session.code);
-
-      setIsInitializing(false);
-      
-    } catch (error) {
-      console.error("Auto-initialization failed:", error);
-      setInitializationError(error instanceof Error ? error.message : "Failed to initialize");
-      setIsInitializing(false);
-    } finally {
-      initializationRef.current = false;
-    }
-  }, [sessionService]);
-
-  // Browser worker for automatic startup - only when we have a session
-  const browserWorker = useBrowserWorker({
+  // Memoize the config for useBrowserWorker
+  const browserWorkerConfig = useMemo(() => ({
     relayBaseUrl: RELAY_BASE_URL,
     sessionCode: sessionId,
-    debug: true, // Enable debug logging to help troubleshoot
-    autoStart: Boolean(sessionId), // Only auto-start when we have a valid session
-    capabilities: ["CODAP"], // Explicitly set CODAP-only capabilities
-    onStatusChange: (status) => {
-      console.log("Browser worker status:", status);
-      // Update relay connected state more responsively
+    debug: false, // No debug toggle
+    autoStart: true, // Ensure worker starts automatically
+    capabilities: pluginMode === "sagemodeler" ? ["CODAP", "SAGEMODELER"] : ["CODAP"],
+    onStatusChange: (status: ConnectionStatus) => {
       if (status.state === "connected") {
         setRelayConnected(true);
         setRelayConnecting(false);
@@ -89,32 +56,48 @@ export const AppCODAPOnly = () => {
         setRelayConnected(false);
         setRelayConnecting(false);
       }
-      // Note: This provides immediate feedback for all connection states
     },
-    onError: (error) => {
-      console.error("Browser worker error:", error);
+    onError: (error: BrowserWorkerError) => {
       setRelayConnected(false);
     }
-  });
+  }), [sessionId, pluginMode]);
 
-  // Auto-initialize CODAP plugin and session on mount
+  const browserWorker = useBrowserWorker(browserWorkerConfig);
+
+  // Modified initialization function
+  const initializeSession = useCallback(async () => {
+    if (initializationRef.current) return;
+    initializationRef.current = true;
+    try {
+      setIsInitializing(true);
+      setInitializationError(null);
+      // Only generate a session if not present
+      if (!sessionId) {
+        const session = await sessionService.createSession();
+        setSessionId(session.code);
+        console.log("Session auto-generated:", session.code);
+      }
+      setIsInitializing(false);
+    } catch (error) {
+      console.error("Auto-initialization failed:", error);
+      setInitializationError(error instanceof Error ? error.message : "Failed to initialize");
+      setIsInitializing(false);
+    } finally {
+      initializationRef.current = false;
+    }
+  }, [sessionService, sessionId]);
+
+  // Auto-initialize session on mount
   useEffect(() => {
-    // Only initialize if we don't already have a session
     if (!sessionId) {
       initializeSession();
     }
   }, [initializeSession, sessionId]);
 
-  // Start browser worker when session is available
+  // Add logging to confirm worker start
   useEffect(() => {
     if (sessionId && browserWorker && !browserWorker.isRunning) {
-      console.log("Starting browser worker for session:", sessionId);
-      setRelayConnecting(true); // Set connecting state immediately
-      browserWorker.start().catch((error) => {
-        console.error("Failed to start browser worker:", error);
-        setRelayConnecting(false);
-        setRelayConnected(false);
-      });
+      console.log("[AppDualMode] Attempting to start browser worker for session:", sessionId);
     }
   }, [sessionId, browserWorker]);
 
@@ -127,6 +110,19 @@ export const AppCODAPOnly = () => {
     window.addEventListener("claude-connected", handleClaudeConnection as EventListener);
     return () => {
       window.removeEventListener("claude-connected", handleClaudeConnection as EventListener);
+    };
+  }, []);
+
+  // Listen for API call logs from SageModeler panel
+  useEffect(() => {
+    const handleApiCallLog = (event: CustomEvent) => {
+      const logEntry = `[${new Date().toISOString()}] ${event.detail.message}`;
+      setApiCallLogs(prev => [...prev, logEntry]);
+    };
+
+    window.addEventListener("sage-api-call", handleApiCallLog as EventListener);
+    return () => {
+      window.removeEventListener("sage-api-call", handleApiCallLog as EventListener);
     };
   }, []);
 
@@ -154,13 +150,28 @@ export const AppCODAPOnly = () => {
     setShowSetupModal(false);
   };
 
+  const handleModeSwitch = (newMode: PluginMode) => {
+    setPluginMode(newMode);
+    setShowSageAccordion(false); // Close accordion when switching modes
+    
+    // Log the mode switch
+    const logEntry = `[${new Date().toISOString()}] Mode switched to: "${newMode}"`;
+    setApiCallLogs(prev => [...prev, logEntry]);
+  };
+
+  const handleClearLogs = () => {
+    setApiCallLogs([]);
+  };
+
   // Loading state
   if (isInitializing) {
     return (
       <div className="codap-mcp-plugin minimal">
         <div className="initialization-loading">
           <div className="loading-spinner">⏳</div>
-          <div className="loading-text">Initializing CODAP + Claude...</div>
+          <div className="loading-text">
+            Initializing {pluginMode === "codap" ? "CODAP" : "SageModeler"} + Claude...
+          </div>
         </div>
       </div>
     );
@@ -188,7 +199,7 @@ export const AppCODAPOnly = () => {
     );
   }
 
-  // Main minimal interface
+  // Main dual-mode interface
   return (
     <div className="codap-mcp-plugin minimal">
       <ClaudeConnectionPanel
@@ -200,7 +211,37 @@ export const AppCODAPOnly = () => {
         onShowSetupGuide={handleShowSetupGuide}
         isLoading={clipboard.state.isLoading}
         promptCopyFeedback={promptCopyFeedback}
+        pluginMode={pluginMode}
       />
+      
+      {/* SageModeler API Panel - only visible in SageModeler mode */}
+      {pluginMode === "sagemodeler" && (
+        <SageModelerAPIPanel
+          isVisible={showSageAccordion}
+          onToggle={() => setShowSageAccordion(!showSageAccordion)}
+          apiCallLogs={apiCallLogs}
+          onClearLogs={handleClearLogs}
+          browserWorker={browserWorker.service}
+        />
+      )}
+      
+      {/* Mode Switch Controls - positioned in lower-left corner */}
+      <div className="mode-switch-controls">
+        <span className="mode-switch-label">Mode:</span>
+        <button
+          className={`mode-switch-btn ${pluginMode === "codap" ? "active" : ""}`}
+          onClick={() => handleModeSwitch("codap")}
+        >
+          CODAP
+        </button>
+        <span className="mode-switch-separator">|</span>
+        <button
+          className={`mode-switch-btn ${pluginMode === "sagemodeler" ? "active" : ""}`}
+          onClick={() => handleModeSwitch("sagemodeler")}
+        >
+          SageModeler
+        </button>
+      </div>
       
       {showSetupModal && (
         <ClaudeSetupModal
@@ -212,7 +253,4 @@ export const AppCODAPOnly = () => {
       )}
     </div>
   );
-};
-
-// Export the dual-mode version as the main App
-export { AppDualMode as App } from "./AppDualMode";
+}; 

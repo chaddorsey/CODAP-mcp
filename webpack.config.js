@@ -32,7 +32,7 @@ module.exports = (env, argv) => {
         'Access-Control-Allow-Origin': '*'
       },
       server: {
-        type: 'https',
+        type: 'http',
         options: {
           key: PLAYWRIGHT_CI
             ? 'playwright/certificate/localhost.key'
@@ -48,6 +48,7 @@ module.exports = (env, argv) => {
           warnings: false,
         },
       },
+      host: '127.0.0.1',
     },
     devtool: devMode ? 'eval-cheap-module-source-map' : 'source-map',
     entry: './src/index.tsx',

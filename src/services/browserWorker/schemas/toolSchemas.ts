@@ -1,10 +1,46 @@
 /**
- * Tool schema definitions for CODAP and SageModeler tools
- * Defines parameter validation and structure for supported Plugin API tools
- * Based on official CODAP Plugin API documentation and SageModeler API specifications
+ * Tool Schema Definitions for Browser Worker
+ * Provides validation and routing for CODAP and SageModeler tools
  */
 
-import { ToolRegistry, ToolSchema } from "../types";
+// Import from the API tool registry
+import { 
+  getAllToolsByCapability, 
+  getToolsByCapabilities, 
+  CAPABILITY_DEFINITIONS 
+} from "../../../../api/tool-registry.js";
+
+/**
+ * Tool schema interface
+ */
+export interface ToolSchema {
+  name: string;
+  description: string;
+  parameters: {
+    type: "object";
+    properties: Record<string, any>;
+    required?: string[];
+  };
+  /** Capability this tool belongs to (CODAP, SAGEMODELER, etc.) */
+  capability?: string;
+  /** Target application for routing */
+  target?: string;
+}
+
+/**
+ * Tool registry mapping tool names to schemas
+ */
+export type ToolRegistry = Record<string, ToolSchema>;
+
+/**
+ * Tool routing information
+ */
+export interface ToolRouting {
+  /** Target application (CODAP, SAGEMODELER) */
+  target: string;
+  /** Whether this tool requires SageModeler API prefix */
+  requiresPrefix: boolean;
+}
 
 /**
  * Schema for creating a CODAP dataset with automatic table display
@@ -392,25 +428,181 @@ const sageRunExperimentSchema: ToolSchema = {
   }
 };
 
+// ==================== TOOL CAPABILITY MAPPING ====================
+
 /**
- * Check if a tool is supported by the registry
+ * Mapping of tool names to their routing information
+ */
+const TOOL_ROUTING_MAP: Record<string, { target: "CODAP" | "SAGEMODELER"; requiresSagePrefix: boolean }> = {
+  // CODAP Tools - Standard CODAP API calls
+  "initializePlugin": { target: "CODAP", requiresSagePrefix: false },
+  "createDataContext": { target: "CODAP", requiresSagePrefix: false },
+  "createItems": { target: "CODAP", requiresSagePrefix: false },
+  "updateItems": { target: "CODAP", requiresSagePrefix: false },
+  "deleteItems": { target: "CODAP", requiresSagePrefix: false },
+  "getAllItems": { target: "CODAP", requiresSagePrefix: false },
+  "getItemCount": { target: "CODAP", requiresSagePrefix: false },
+  "getItemByID": { target: "CODAP", requiresSagePrefix: false },
+  "selectItems": { target: "CODAP", requiresSagePrefix: false },
+  "createCollection": { target: "CODAP", requiresSagePrefix: false },
+  "createAttribute": { target: "CODAP", requiresSagePrefix: false },
+  "updateAttribute": { target: "CODAP", requiresSagePrefix: false },
+  "deleteAttribute": { target: "CODAP", requiresSagePrefix: false },
+  "createGraph": { target: "CODAP", requiresSagePrefix: false },
+  "createTable": { target: "CODAP", requiresSagePrefix: false },
+  "createSlider": { target: "CODAP", requiresSagePrefix: false },
+  "createCalculator": { target: "CODAP", requiresSagePrefix: false },
+  "createText": { target: "CODAP", requiresSagePrefix: false },
+  "createWebView": { target: "CODAP", requiresSagePrefix: false },
+  "deleteComponent": { target: "CODAP", requiresSagePrefix: false },
+  "updateComponent": { target: "CODAP", requiresSagePrefix: false },
+  "getAllComponents": { target: "CODAP", requiresSagePrefix: false },
+  "getComponent": { target: "CODAP", requiresSagePrefix: false },
+  "getListOfDataContexts": { target: "CODAP", requiresSagePrefix: false },
+  "getDataContext": { target: "CODAP", requiresSagePrefix: false },
+  "deleteDataContext": { target: "CODAP", requiresSagePrefix: false },
+  "getSelectedItems": { target: "CODAP", requiresSagePrefix: false },
+  "deselectAll": { target: "CODAP", requiresSagePrefix: false },
+  "getCollectionList": { target: "CODAP", requiresSagePrefix: false },
+  "getCollection": { target: "CODAP", requiresSagePrefix: false },
+  "getAttributeList": { target: "CODAP", requiresSagePrefix: false },
+  "getAttribute": { target: "CODAP", requiresSagePrefix: false },
+  "registerForNotifications": { target: "CODAP", requiresSagePrefix: false },
+  "unregisterForNotifications": { target: "CODAP", requiresSagePrefix: false },
+
+  // SageModeler Tools - Require sageApi prefix
+  "sage_create_node": { target: "SAGEMODELER", requiresSagePrefix: true },
+  "sage_create_random_node": { target: "SAGEMODELER", requiresSagePrefix: true },
+  "sage_update_node": { target: "SAGEMODELER", requiresSagePrefix: true },
+  "sage_delete_node": { target: "SAGEMODELER", requiresSagePrefix: true },
+  "sage_get_all_nodes": { target: "SAGEMODELER", requiresSagePrefix: true },
+  "sage_get_node_by_id": { target: "SAGEMODELER", requiresSagePrefix: true },
+  "sage_select_node": { target: "SAGEMODELER", requiresSagePrefix: true },
+  "sage_create_link": { target: "SAGEMODELER", requiresSagePrefix: true },
+  "sage_update_link": { target: "SAGEMODELER", requiresSagePrefix: true },
+  "sage_delete_link": { target: "SAGEMODELER", requiresSagePrefix: true },
+  "sage_get_all_links": { target: "SAGEMODELER", requiresSagePrefix: true },
+  "sage_get_link_by_id": { target: "SAGEMODELER", requiresSagePrefix: true },
+  "sage_reload_experiment_nodes": { target: "SAGEMODELER", requiresSagePrefix: true },
+  "sage_run_experiment": { target: "SAGEMODELER", requiresSagePrefix: true },
+  "sage_start_recording": { target: "SAGEMODELER", requiresSagePrefix: true },
+  "sage_stop_recording": { target: "SAGEMODELER", requiresSagePrefix: true },
+  "sage_set_recording_options": { target: "SAGEMODELER", requiresSagePrefix: true },
+  "sage_load_model": { target: "SAGEMODELER", requiresSagePrefix: true },
+  "sage_export_model": { target: "SAGEMODELER", requiresSagePrefix: true },
+  "sage_import_sd_json": { target: "SAGEMODELER", requiresSagePrefix: true },
+  "sage_export_sd_json": { target: "SAGEMODELER", requiresSagePrefix: true },
+  "sage_set_model_complexity": { target: "SAGEMODELER", requiresSagePrefix: true },
+  "sage_set_ui_settings": { target: "SAGEMODELER", requiresSagePrefix: true },
+  "sage_restore_default_settings": { target: "SAGEMODELER", requiresSagePrefix: true },
+  "sage_get_simulation_state": { target: "SAGEMODELER", requiresSagePrefix: true }
+};
+
+// ==================== CAPABILITY-BASED TOOL FUNCTIONS ====================
+
+/**
+ * Get routing information for a tool
+ */
+export function getToolRouting(toolName: string): { target: "CODAP" | "SAGEMODELER"; requiresSagePrefix: boolean } | null {
+  return TOOL_ROUTING_MAP[toolName] || null;
+}
+
+/**
+ * Check if a tool requires the sageApi prefix
+ */
+export function requiresSagePrefix(toolName: string): boolean {
+  const routing = getToolRouting(toolName);
+  return routing ? routing.requiresSagePrefix : false;
+}
+
+/**
+ * Get tools filtered by capabilities
+ */
+export function getToolsByCapability(capabilities: string[] = ["CODAP"]): string[] {
+  try {
+    const tools = getToolsByCapabilities(capabilities) as { name: string }[];
+    return tools.map(tool => tool.name);
+  } catch (error) {
+    console.warn("Failed to get tools by capability:", error);
+    return [];
+  }
+}
+
+/**
+ * Get all available capabilities
+ */
+export function getAvailableCapabilities(): Record<string, any> {
+  return CAPABILITY_DEFINITIONS;
+}
+
+/**
+ * Validate if a tool is supported for given capabilities
+ */
+export function isToolSupportedForCapabilities(toolName: string, capabilities: string[]): boolean {
+  const supportedTools = getToolsByCapability(capabilities);
+  return supportedTools.includes(toolName);
+}
+
+/**
+ * Legacy function for backward compatibility - checks if tool is supported for CODAP
  */
 export function isToolSupported(toolName: string): boolean {
-  return toolName in DEFAULT_TOOL_REGISTRY;
+  return isToolSupportedForCapabilities(toolName, ["CODAP"]);
 }
 
 /**
- * Get schema for a specific tool
+ * Validate tool parameters against schema
  */
-export function getToolSchema(toolName: string): ToolSchema | undefined {
-  return DEFAULT_TOOL_REGISTRY[toolName];
-}
+export function validateToolParameters(
+  toolName: string, 
+  parameters: Record<string, unknown>
+): { valid: boolean; errors: string[] } {
+  const schema = getToolSchema(toolName);
+  if (!schema) {
+    return { valid: false, errors: [`Unknown tool: ${toolName}`] };
+  }
 
-/**
- * Get list of all supported tools
- */
-export function getSupportedTools(): string[] {
-  return Object.keys(DEFAULT_TOOL_REGISTRY);
+  const errors: string[] = [];
+  
+  // Check required parameters
+  if (schema.parameters.required) {
+    for (const required of schema.parameters.required) {
+      if (!(required in parameters)) {
+        errors.push(`Missing required parameter: ${required}`);
+      }
+    }
+  }
+
+  // Check parameter types and constraints
+  if (schema.parameters.properties) {
+    for (const [paramName, paramValue] of Object.entries(parameters)) {
+      const paramSchema = schema.parameters.properties[paramName];
+      if (!paramSchema) {
+        errors.push(`Unknown parameter: ${paramName}`);
+        continue;
+      }
+
+      // Type checking
+      if (paramSchema.type === "string" && typeof paramValue !== "string") {
+        errors.push(`Parameter ${paramName} must be a string`);
+      } else if (paramSchema.type === "number" && typeof paramValue !== "number") {
+        errors.push(`Parameter ${paramName} must be a number`);
+      } else if (paramSchema.type === "boolean" && typeof paramValue !== "boolean") {
+        errors.push(`Parameter ${paramName} must be a boolean`);
+      } else if (paramSchema.type === "array" && !Array.isArray(paramValue)) {
+        errors.push(`Parameter ${paramName} must be an array`);
+      } else if (paramSchema.type === "object" && (typeof paramValue !== "object" || paramValue === null)) {
+        errors.push(`Parameter ${paramName} must be an object`);
+      }
+
+      // Enum checking
+      if (paramSchema.enum && typeof paramValue === "string" && !paramSchema.enum.includes(paramValue)) {
+        errors.push(`Parameter ${paramName} must be one of: ${paramSchema.enum.join(", ")}`);
+      }
+    }
+  }
+
+  return { valid: errors.length === 0, errors };
 }
 
 /**
@@ -468,57 +660,16 @@ export const DEFAULT_TOOL_REGISTRY: ToolRegistry = {
 };
 
 /**
- * Validate tool parameters against schema
+ * Get schema for a specific tool
  */
-export function validateToolParameters(
-  toolName: string, 
-  parameters: Record<string, unknown>
-): { valid: boolean; errors: string[] } {
-  const schema = getToolSchema(toolName);
-  if (!schema) {
-    return { valid: false, errors: [`Unknown tool: ${toolName}`] };
-  }
+export function getToolSchema(toolName: string): ToolSchema | undefined {
+  return DEFAULT_TOOL_REGISTRY[toolName];
+}
 
-  const errors: string[] = [];
-  
-  // Check required parameters
-  if (schema.parameters.required) {
-    for (const required of schema.parameters.required) {
-      if (!(required in parameters)) {
-        errors.push(`Missing required parameter: ${required}`);
-      }
-    }
-  }
-
-  // Check parameter types and constraints
-  if (schema.parameters.properties) {
-    for (const [paramName, paramValue] of Object.entries(parameters)) {
-      const paramSchema = schema.parameters.properties[paramName];
-      if (!paramSchema) {
-        errors.push(`Unknown parameter: ${paramName}`);
-        continue;
-      }
-
-      // Type checking
-      if (paramSchema.type === "string" && typeof paramValue !== "string") {
-        errors.push(`Parameter ${paramName} must be a string`);
-      } else if (paramSchema.type === "number" && typeof paramValue !== "number") {
-        errors.push(`Parameter ${paramName} must be a number`);
-      } else if (paramSchema.type === "boolean" && typeof paramValue !== "boolean") {
-        errors.push(`Parameter ${paramName} must be a boolean`);
-      } else if (paramSchema.type === "array" && !Array.isArray(paramValue)) {
-        errors.push(`Parameter ${paramName} must be an array`);
-      } else if (paramSchema.type === "object" && (typeof paramValue !== "object" || paramValue === null)) {
-        errors.push(`Parameter ${paramName} must be an object`);
-      }
-
-      // Enum checking
-      if (paramSchema.enum && typeof paramValue === "string" && !paramSchema.enum.includes(paramValue)) {
-        errors.push(`Parameter ${paramName} must be one of: ${paramSchema.enum.join(", ")}`);
-      }
-    }
-  }
-
-  return { valid: errors.length === 0, errors };
-} 
+/**
+ * Get list of all supported tools
+ */
+export function getSupportedTools(): string[] {
+  return Object.keys(DEFAULT_TOOL_REGISTRY);
+}
  

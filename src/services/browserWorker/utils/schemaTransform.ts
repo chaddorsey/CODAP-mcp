@@ -1,4 +1,5 @@
-import { ToolSchema, ToolParameterSchema } from "../types";
+import { ToolSchema } from "../schemas/toolSchemas";
+import { ToolParameterSchema } from "../types";
 
 /**
  * Transforms a ToolSchema (internal format) to JSON Schema draft-07.
