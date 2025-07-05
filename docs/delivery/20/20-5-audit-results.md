@@ -440,4 +440,10 @@ This fix resolves both the core issue where SageModeler tools were unavailable i
 3. **Build Success**: Code compiles without errors, only style warnings remain
 4. **Stable Operation**: All troubleshooting options work correctly without causing re-render loops
 
-The dual-mode plugin is now fully operational and ready for production use. 
+The dual-mode plugin is now fully operational and ready for production use.
+
+## Documentation Status
+
+- The README and PRD have been updated to reflect dual-mode (CODAP + SageModeler) support.
+- All setup, usage, testing, and development guidance is now centralized in the [README.md](../../README.md).
+- This audit document, the PRD, and the README together provide a complete reference for dual-application plugin usage and extension. 

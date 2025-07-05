@@ -1,169 +1,74 @@
-# CODAP MCP Integration
+# CODAP MCP Dual-Mode Plugin
 
-A Model Context Protocol (MCP) server for the CODAP (Common Online Data Analysis Platform) data analysis tool, enabling large language models to interact directly with CODAP for data manipulation and visualization.
+## Overview
 
-## 🌟 **Status: Fully Operational**
+The CODAP MCP plugin now supports both CODAP and SageModeler environments in a single, unified interface. Users can dynamically switch between modes, with the plugin automatically loading the appropriate tool registry and API routing for each environment. This enables seamless LLM-driven and direct API tool calls for both applications.
 
-The system is now fully deployed and operational! LLMs can:
-- ✅ **Discover tools** via the metadata endpoint
-- ✅ **Queue tool requests** which are processed asynchronously  
-- ✅ **Create real datasets** in your CODAP session
-- ✅ **Generate visualizations** (graphs, tables, etc.)
-- ✅ **Execute all tools** through the web-based API
+- **Dual-Mode:** Switch between CODAP and SageModeler modes using the UI
+- **Dynamic Tool Registry:** Tools are registered and routed based on the selected mode
+- **Direct API Panel:** SageModeler mode includes a developer-facing API test panel
+- **Robust Worker Startup:** Stable, session-driven worker management ensures reliability
 
-No local installation required - everything runs through web APIs.
+## Getting Started
 
-## 🚀 Quick Start for LLMs
-
-1. **Get session code** from your CODAP session (e.g., `T5SDQIRW`)
-2. **Discover available tools**:
+1. **Install dependencies:**
    ```bash
-   GET https://codap-mcp-cdorsey-concordorgs-projects.vercel.app/api/metadata?code=YOUR_SESSION_CODE
+   npm install
    ```
-3. **Queue tool requests**:
+2. **Run the plugin:**
    ```bash
-   POST https://codap-mcp-cdorsey-concordorgs-projects.vercel.app/api/request
-   {
-     "sessionCode": "YOUR_SESSION_CODE",
-     "requestId": "unique-id-123",
-     "toolName": "create_dataset_with_table",
-     "params": { ... }
-   }
+   npm start
    ```
+3. **Switch modes:**
+   - Use the mode switch in the lower-left corner to toggle between CODAP and SageModeler
+4. **Connect to Claude:**
+   - Use the connection panel to copy the prompt and connect Claude Desktop for LLM-driven tool calls
 
-## 🔧 System Architecture
+## Tool Registry and Capabilities
 
-### Web-Based Operation
-- **Request Queue**: Tools are queued via HTTP POST to `/api/request`
-- **SSE Streaming**: Browser worker receives requests via Server-Sent Events from `/api/stream`
-- **Tool Execution**: Browser worker executes tools directly against CODAP Plugin API
-- **Response Storage**: Results stored in KV and accessible via web APIs
+- **CODAP Mode:**
+  - All standard CODAP tools are available
+- **SageModeler Mode:**
+  - All CODAP tools **plus** SageModeler-specific tools (see audit doc for full list)
+- The plugin automatically registers and routes tool calls based on the selected mode
 
-### Available Tools (9 total)
-- `create_dataset_with_table` - Create datasets with automatic table display
-- `create_graph` - Generate visualizations (scatter plots, bar charts, etc.)
-- `create_data_context` - Create new data contexts
-- `create_items` - Add cases to existing datasets
-- `get_data_contexts` - List all data contexts
-- `get_components` - List all visualization components
-- And more...
+## Using the SageModeler API Panel
 
-## 📊 Example Usage
+- In SageModeler mode, open the "Direct SageModeler API tools" panel
+- Use the UI to trigger API calls, view responses, and debug tool execution
+- All calls are routed through the MCP relay and tool registry
 
-### Create a Student Performance Dataset
-```json
-POST /api/request
-{
-  "sessionCode": "T5SDQIRW",
-  "requestId": "create-students-001",
-  "toolName": "create_dataset_with_table",
-  "params": {
-    "name": "StudentPerformance",
-    "attributes": [
-      {"name": "student_id", "type": "categorical"},
-      {"name": "math_score", "type": "numeric"},
-      {"name": "reading_score", "type": "numeric"}
-    ],
-    "data": [
-      {"student_id": "S001", "math_score": 85, "reading_score": 78},
-      {"student_id": "S002", "math_score": 92, "reading_score": 88}
-    ]
-  }
-}
-```
+## E2E Testing
 
-### Create a Scatter Plot Visualization
-```json
-POST /api/request
-{
-  "sessionCode": "T5SDQIRW", 
-  "requestId": "viz-scatter-001",
-  "toolName": "create_graph",
-  "params": {
-    "dataContext": "StudentPerformance",
-    "graphType": "scatterplot",
-    "xAttribute": "math_score",
-    "yAttribute": "reading_score",
-    "title": "Math vs Reading Scores"
-  }
-}
-```
+- Run all end-to-end tests with:
+  ```bash
+  npm run test:playwright
+  ```
+- Tests cover both LLM-driven and direct UI tool calls in both modes
+- See `playwright/e2e/` for test definitions
 
-## 🌐 API Endpoints
+## Troubleshooting
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/metadata?code={sessionCode}` | GET | Get available tools and schemas |
-| `/api/request` | POST | Queue tool execution request |
-| `/api/response` | POST | Store tool execution response |
-| `/api/stream?code={sessionCode}` | GET | SSE stream for browser worker |
+- **Worker not starting?**
+  - Ensure a session is generated and the plugin is connected
+  - Check browser console for errors
+- **Tools not available?**
+  - Verify the correct mode is selected
+  - Check the tool registry in the developer console
+- **Logs and Debugging:**
+  - Use the API panel and browser console for detailed logs
 
-## 🔧 For Developers
+## Developer Notes
 
-### Local Development
-```bash
-npm install
-npm run dev
-```
+- **Adding New Tools:**
+  - Update the tool registry and schemas in `src/services/browserWorker/schemas/toolSchemas.ts`
+  - Register new tools in the appropriate capability section
+- **Extending Dual-Mode Support:**
+  - Add new capabilities or modes by updating the plugin mode logic and registry
+- **Maintaining E2E Tests:**
+  - Add new tests in `playwright/e2e/` as new tools or features are added
 
-### Testing
-```bash
-npm test                    # Unit tests
-npm run test:integration   # Integration tests
-npm run test:playwright    # E2E tests
-```
+## Links
 
-### Project Structure
-- `api/` - Vercel serverless functions (HTTP API)
-- `src/services/browserWorker/` - Browser-based tool execution
-- `docs/` - API documentation and examples
-- `playwright/` - End-to-end tests
-
-## 📖 Documentation
-
-- [API Documentation](docs/api/metadata-endpoint.md)
-- [Integration Guide](docs/integration-guide.md)
-- [Troubleshooting](docs/troubleshooting.md)
-- [JavaScript Examples](docs/examples/javascript/)
-- [Python Examples](docs/examples/python/)
-- [cURL Examples](docs/examples/curl/)
-
-## 🔒 Security & Session Management
-
-- Session codes are 8-character Base32 format (e.g., `T5SDQIRW`)
-- Sessions auto-expire after inactivity
-- CORS enabled for cross-origin requests
-- Rate limiting on API endpoints
-
-## 🎯 LLM Integration Patterns
-
-### For LLMs with MCP Support
-Use the native MCP protocol with tool calling capabilities.
-
-### For LLMs without MCP Support
-Use the HTTP API endpoints directly:
-1. Call metadata endpoint for tool discovery
-2. POST to request endpoint for tool execution
-3. Monitor results through web interface
-
-### For LLMs without Web Access (like ChatGPT)
-Use the action-triggered URL patterns or copy-paste workflows described in the integration guide.
-
-## 📈 Version Management
-
-The API supports version negotiation:
-- Current API Version: `1.0.0`
-- Tool Manifest Version: `1.0.0`
-- Use `Accept-Version` header for version control
-
-## 🤝 Contributing
-
-See project documentation in `docs/delivery/` for development workflow and task management.
-
-## 📄 License
-
-MIT License - see LICENSE file for details.
-
----
-
-**Ready to integrate with any LLM!** 🚀
+- [PBI 20 PRD](docs/delivery/20/prd.md)
+- [Audit Results](docs/delivery/20/20-5-audit-results.md)

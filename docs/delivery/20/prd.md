@@ -57,4 +57,21 @@ Currently, the plugin only supports CODAP tools. There is a need to support Sage
 - [Develop E2E tests for SageModeler tool calls]
 - [Update documentation for dual-application support]
 
+## Dual-Mode Plugin Architecture
+
+The CODAP MCP plugin now supports both CODAP and SageModeler environments in a single, unified interface. Users can switch between modes using the UI, and the plugin dynamically loads the appropriate tool registry and API routing for each environment. This enables seamless LLM-driven and direct API tool calls for both applications.
+
+### User Stories
+- As a user, I can switch between CODAP and SageModeler modes in the plugin UI.
+- As a developer, I can register tools for either or both modes and have them routed correctly.
+- As a tester, I can verify tool calls in both modes using E2E tests and the direct API panel.
+
+### E2E Test Coverage
+- Comprehensive E2E tests verify LLM-driven and direct UI tool calls in both modes.
+- See [README.md](../../README.md) and [Audit Results](./20-5-audit-results.md) for details on test coverage and plugin usage.
+
+### Documentation Links
+- [README.md](../../README.md): Authoritative entry point for setup, usage, and development
+- [Audit Results](./20-5-audit-results.md): Detailed audit and implementation summary
+
 [View in Backlog](../backlog.md#user-content-20) 
