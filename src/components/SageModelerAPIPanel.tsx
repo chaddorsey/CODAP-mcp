@@ -70,42 +70,95 @@ export const SageModelerAPIPanel: React.FC<SageModelerAPIPanelProps> = ({
     }
   }, [apiCallLogs]);
 
-  // Log API calls
-  const logApiCall = (message: string) => {
+  // Enhanced logging system with different message types
+  const logApiCall = (message: string, type: "info" | "success" | "error" | "request" | "response" = "info") => {
+    const timestamp = new Date().toLocaleTimeString();
+    let formattedMessage = `[${timestamp}] `;
+    
+    switch (type) {
+      case "request":
+        formattedMessage += `📤 REQUEST: ${message}`;
+        break;
+      case "response":
+        formattedMessage += `📥 RESPONSE: ${message}`;
+        break;
+      case "success":
+        formattedMessage += `✅ SUCCESS: ${message}`;
+        break;
+      case "error":
+        formattedMessage += `❌ ERROR: ${message}`;
+        break;
+      case "info":
+      default:
+        formattedMessage += `ℹ️ ${message}`;
+        break;
+    }
+
     const event = new CustomEvent("sage-api-call", {
-      detail: { message }
+      detail: { message: formattedMessage }
     });
     window.dispatchEvent(event);
   };
 
-  // Execute tool via browser worker
+  // Enhanced tool execution with comprehensive error handling and logging
   const executeTool = async (toolName: string, parameters: any) => {
     if (!browserWorker) {
-      logApiCall(`❌ Error: Browser worker not available`);
-      return;
+      const errorMsg = "Browser worker not available";
+      logApiCall(errorMsg, "error");
+      setStatus(`Error: ${errorMsg}`);
+      return Promise.reject(new Error(errorMsg));
     }
 
     if (!browserWorker?.isRunning) {
-      return;
+      const errorMsg = "Browser worker not running";
+      logApiCall(errorMsg, "error");
+      setStatus(`Error: ${errorMsg}`);
+      return Promise.reject(new Error(errorMsg));
     }
 
     try {
-      logApiCall(`🔄 Executing ${toolName} with parameters: ${JSON.stringify(parameters)}`);
-      const result = await browserWorker.executeTool(toolName, parameters);
-      logApiCall(`✅ ${toolName} completed: ${JSON.stringify(result)}`);
+      // Update status and log request
+      setStatus(`Executing ${toolName}...`);
+      logApiCall(`${toolName}`, "request");
+      logApiCall(JSON.stringify(parameters, null, 2), "request");
+
+      // Execute the tool with timeout
+      const startTime = Date.now();
+      const result = await Promise.race([
+        browserWorker.executeTool(toolName, parameters),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("Tool execution timeout")), 30000)
+        )
+      ]);
+      
+      const duration = Date.now() - startTime;
+      
+      // Log successful response
+      logApiCall(`${toolName} completed in ${duration}ms`, "success");
+      if (result && typeof result === "object") {
+        logApiCall(JSON.stringify(result, null, 2), "response");
+      } else {
+        logApiCall(String(result), "response");
+      }
+      
+      setStatus(`${toolName} completed successfully`);
       return result;
     } catch (error) {
-      logApiCall(`❌ ${toolName} failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      logApiCall(`${toolName} failed: ${errorMessage}`, "error");
+      setStatus(`${toolName} failed: ${errorMessage}`);
       throw error;
     }
   };
 
+  // Enhanced status management
+  const updateStatus = (message: string, type: "info" | "success" | "error" = "info") => {
+    setStatus(message);
+    logApiCall(message, type === "info" ? "info" : type);
+  };
+
   // Node Management Functions
   const createRandomNode = async () => {
-    if (!browserWorker?.isRunning) {
-      return;
-    }
-
     const randomNode = {
       title: `Node_${Date.now()}`,
       initialValue: Math.floor(Math.random() * 100),
@@ -119,15 +172,18 @@ export const SageModelerAPIPanel: React.FC<SageModelerAPIPanelProps> = ({
       if (result?.id) {
         setSelectedNodeId(result.id);
         await refreshAvailableNodes();
+        updateStatus(`Random node "${randomNode.title}" created with ID: ${result.id}`, "success");
+      } else {
+        updateStatus("Random node created successfully", "success");
       }
-      setStatus("Random node created successfully");
     } catch (error) {
-      setStatus("Failed to create random node");
+      // Error already logged and status set by executeTool
     }
   };
 
   const createNewNode = async () => {
-    if (!browserWorker?.isRunning) {
+    if (!nodeData.title?.trim()) {
+      updateStatus("Node title is required", "error");
       return;
     }
 
@@ -136,120 +192,132 @@ export const SageModelerAPIPanel: React.FC<SageModelerAPIPanelProps> = ({
       if (result?.id) {
         setSelectedNodeId(result.id);
         await refreshAvailableNodes();
+        updateStatus(`Node "${nodeData.title}" created with ID: ${result.id}`, "success");
+      } else {
+        updateStatus("Node created successfully", "success");
       }
-      setStatus("Node created successfully");
     } catch (error) {
-      setStatus("Failed to create node");
+      // Error already logged and status set by executeTool
     }
   };
 
   const updateSelectedNode = async () => {
     if (!selectedNodeId) {
-      setStatus("No node selected for update");
+      updateStatus("No node selected for update", "error");
       return;
     }
 
-    if (!browserWorker?.isRunning) {
+    if (!nodeData.title?.trim()) {
+      updateStatus("Node title is required", "error");
       return;
     }
 
     try {
       await executeTool("sage_update_node", { id: selectedNodeId, ...nodeData });
-      setStatus("Node updated successfully");
+      updateStatus(`Node "${nodeData.title}" updated successfully`, "success");
     } catch (error) {
-      setStatus("Failed to update node");
+      // Error already logged and status set by executeTool
     }
   };
 
   const deleteSelectedNode = async () => {
     if (!selectedNodeId) {
-      setStatus("No node selected for deletion");
-      return;
-    }
-
-    if (!browserWorker?.isRunning) {
+      updateStatus("No node selected for deletion", "error");
       return;
     }
 
     try {
       await executeTool("sage_delete_node", { id: selectedNodeId });
+      const deletedTitle = nodeData.title;
       setSelectedNodeId("");
+      // Reset node data to defaults
+      setNodeData({
+        title: "Test Node",
+        initialValue: 0,
+        color: "#f7be33"
+      });
       await refreshAvailableNodes();
-      setStatus("Node deleted successfully");
+      updateStatus(`Node "${deletedTitle}" deleted successfully`, "success");
     } catch (error) {
-      setStatus("Failed to delete node");
+      // Error already logged and status set by executeTool
     }
   };
 
   const refreshAvailableNodes = async () => {
-    if (!browserWorker?.isRunning) {
-      return;
-    }
-
     try {
+      updateStatus("Refreshing available nodes...", "info");
       const result = await executeTool("sage_get_all_nodes", {});
       if (result?.nodes) {
-        setAvailableNodes(result.nodes.map((node: any) => ({ 
+        const nodeList = result.nodes.map((node: any) => ({ 
           id: node.id || node.key, 
           title: node.title || node.data?.title || `Node ${node.id}` 
-        })));
+        }));
+        setAvailableNodes(nodeList);
+        updateStatus(`Loaded ${nodeList.length} nodes`, "success");
+      } else {
+        setAvailableNodes([]);
+        updateStatus("No nodes found in model", "info");
       }
     } catch (error) {
-      console.error("Failed to refresh nodes:", error);
+      // Error already logged and status set by executeTool
+      setAvailableNodes([]);
     }
   };
 
   const createSelectedLink = async () => {
     if (!linkData.sourceNode || !linkData.targetNode) {
-      setStatus("Please select both source and target nodes");
+      updateStatus("Please select both source and target nodes", "error");
       return;
     }
 
-    if (!browserWorker?.isRunning) {
+    if (linkData.sourceNode === linkData.targetNode) {
+      updateStatus("Source and target nodes must be different", "error");
       return;
     }
 
     try {
-      await executeTool("sage_create_link", linkData);
-      setStatus("Link created successfully");
+      const result = await executeTool("sage_create_link", linkData);
+      const sourceNode = availableNodes.find(n => n.id === linkData.sourceNode);
+      const targetNode = availableNodes.find(n => n.id === linkData.targetNode);
+      updateStatus(`Link created: ${sourceNode?.title || linkData.sourceNode} → ${targetNode?.title || linkData.targetNode}`, "success");
+      
+      if (result?.id) {
+        setSelectedLinkId(result.id);
+      }
     } catch (error) {
-      setStatus("Failed to create link");
+      // Error already logged and status set by executeTool
     }
   };
 
   const updateSelectedLink = async () => {
     if (!selectedLinkId) {
-      setStatus("No link selected for update");
-      return;
-    }
-
-    if (!browserWorker?.isRunning) {
+      updateStatus("No link selected for update", "error");
       return;
     }
 
     try {
       await executeTool("sage_update_link", { id: selectedLinkId, ...linkData });
-      setStatus("Link updated successfully");
+      updateStatus(`Link ${selectedLinkId} updated successfully`, "success");
     } catch (error) {
-      setStatus("Failed to update link");
+      // Error already logged and status set by executeTool
     }
   };
 
   const reloadNodes = async () => {
     await refreshAvailableNodes();
-    setStatus("Nodes reloaded");
   };
 
   const runExperiment = async () => {
-    if (!browserWorker?.isRunning) {
-      return;
-    }
-
     try {
-      await executeTool("sage_run_experiment", {});
-      setStatus("Experiment started");
+      updateStatus("Starting experiment...", "info");
+      const result = await executeTool("sage_run_experiment", {});
+      if (result) {
+        updateStatus("Experiment completed successfully", "success");
+      } else {
+        updateStatus("Experiment started", "success");
+      }
     } catch (error) {
-      setStatus("Failed to start experiment");
+      // Error already logged and status set by executeTool
     }
   };
 
@@ -263,11 +331,13 @@ export const SageModelerAPIPanel: React.FC<SageModelerAPIPanelProps> = ({
   }, [browserWorker?.isRunning]);
 
   const handleTabChange = useCallback((tabId: TabId) => {
-    logApiCall(`📋 Switched to ${tabId} tab`);
+    logApiCall(`Switched to ${tabId} tab`, "info");
+    updateStatus(`Viewing ${tabId} tab`, "info");
   }, []);
 
   const handleSubTabChange = useCallback((subTabId: SubTabId) => {
-    logApiCall(`📋 Switched to ${subTabId} sub-tab`);
+    logApiCall(`Switched to ${subTabId} sub-tab`, "info");
+    updateStatus(`Viewing ${subTabId} controls`, "info");
   }, []);
 
   return (
@@ -307,7 +377,48 @@ export const SageModelerAPIPanel: React.FC<SageModelerAPIPanelProps> = ({
                       <label>Selected Node:</label>
                       <select 
                         value={selectedNodeId} 
-                        onChange={(e) => setSelectedNodeId(e.target.value)}
+                        onChange={async (e) => {
+                          const nodeId = e.target.value;
+                          setSelectedNodeId(nodeId);
+                          
+                          if (nodeId) {
+                            try {
+                              // Fetch node details to populate form
+                              const nodeDetails = await executeTool("sage_get_node", { id: nodeId });
+                              if (nodeDetails) {
+                                setNodeData({
+                                  title: nodeDetails.title || nodeDetails.data?.title || "",
+                                  initialValue: nodeDetails.initialValue || nodeDetails.data?.initialValue,
+                                  min: nodeDetails.min || nodeDetails.data?.min,
+                                  max: nodeDetails.max || nodeDetails.data?.max,
+                                  x: nodeDetails.x || nodeDetails.data?.x,
+                                  y: nodeDetails.y || nodeDetails.data?.y,
+                                  color: nodeDetails.color || nodeDetails.data?.color || "#f7be33",
+                                  isAccumulator: nodeDetails.isAccumulator || nodeDetails.data?.isAccumulator,
+                                  isFlowVariable: nodeDetails.isFlowVariable || nodeDetails.data?.isFlowVariable,
+                                  allowNegativeValues: nodeDetails.allowNegativeValues || nodeDetails.data?.allowNegativeValues,
+                                  valueDefinedSemiQuantitatively: nodeDetails.valueDefinedSemiQuantitatively || nodeDetails.data?.valueDefinedSemiQuantitatively,
+                                  combineMethod: nodeDetails.combineMethod || nodeDetails.data?.combineMethod,
+                                  image: nodeDetails.image || nodeDetails.data?.image,
+                                  usesDefaultImage: nodeDetails.usesDefaultImage || nodeDetails.data?.usesDefaultImage,
+                                  paletteItem: nodeDetails.paletteItem || nodeDetails.data?.paletteItem,
+                                  sourceApp: nodeDetails.sourceApp || nodeDetails.data?.sourceApp
+                                });
+                                updateStatus(`Loaded properties for node: ${nodeDetails.title || nodeDetails.data?.title}`, "success");
+                              }
+                            } catch (error) {
+                              // Error already logged by executeTool
+                            }
+                          } else {
+                            // Reset form when no node selected
+                            setNodeData({
+                              title: "Test Node",
+                              initialValue: 0,
+                              color: "#f7be33"
+                            });
+                            updateStatus("Node selection cleared", "info");
+                          }
+                        }}
                       >
                         <option value="">Select a node...</option>
                         {availableNodes.map(node => (
