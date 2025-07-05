@@ -19,7 +19,8 @@ import { BrowserWorkerConfig, SSEEvent } from "./browserWorker/types";
 import { 
   createItems,
   createTable,
-  sendMessage
+  sendMessage,
+  initializePlugin
 } from "@concord-consortium/codap-plugin-api";
 
 // Import comprehensive tool handlers for dynamic execution
@@ -51,6 +52,7 @@ export class BrowserWorkerService {
   private lastClaudeActivity = 0; // Track last Claude activity
   private claudeTimeoutTimer: NodeJS.Timeout | null = null; // Timeout timer
   private capabilities: string[]; // Supported capabilities
+  private codapInitialized = false; // Track CODAP interface initialization
 
   private static readonly CLAUDE_TIMEOUT_MS = 120000; // 2 minutes of inactivity
 
@@ -501,6 +503,79 @@ export class BrowserWorkerService {
   }
 
   /**
+   * Initialize CODAP Plugin API interface
+   */
+  private async initializeCODAPInterface(): Promise<void> {
+    if (this.codapInitialized) {
+      return; // Already initialized
+    }
+    
+    try {
+      console.log("🔧 [BrowserWorkerService] Initializing CODAP Plugin API interface...");
+      
+      await initializePlugin({
+        pluginName: "CODAP-MCP",
+        version: "1.0.0",
+        dimensions: { width: 300, height: 200 }
+      });
+      
+      this.codapInitialized = true;
+      console.log("🔧 [BrowserWorkerService] CODAP Plugin API interface initialized successfully");
+    } catch (error) {
+      console.error("🔧 [BrowserWorkerService] Failed to initialize CODAP interface:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Send CODAP message using the proper CODAP Plugin API interface
+   */
+  private async sendCODAPMessage(action: "create" | "get" | "update" | "delete", resource: string, values?: any): Promise<any> {
+    console.log("🔧 [BrowserWorkerService] Sending CODAP API message via sendMessage:", { action, resource, values });
+    
+    try {
+      // Ensure CODAP interface is initialized before sending messages
+      await this.initializeCODAPInterface();
+      
+      const message = {
+        action,
+        resource,
+        values
+      };
+      
+      // Use the existing sendMessage function which properly handles CODAP communication
+      const response = await sendMessage(action, resource, values);
+      console.log("🔧 [BrowserWorkerService] Received CODAP response:", response);
+      
+      return response;
+    } catch (error) {
+      console.error("🔧 [BrowserWorkerService] CODAP API error:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Send CODAP message with timeout protection (legacy - using Plugin API)
+   */
+  private async sendCODAPMessageWithTimeout(action: "create" | "get" | "update" | "delete", resource: string, values?: any): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error("CODAP API timeout after 10 seconds"));
+      }, 10000);
+      
+      sendMessage(action, resource, values)
+        .then((result) => {
+          clearTimeout(timeout);
+          resolve(result);
+        })
+        .catch((error) => {
+          clearTimeout(timeout);
+          reject(error);
+        });
+    });
+  }
+
+  /**
    * Create comprehensive tool handlers using CODAP Plugin API
    * Using server naming conventions that exactly match the MCP tool registry
    */
@@ -518,19 +593,11 @@ export class BrowserWorkerService {
 
       // Data Context Tools
       createDataContext: async (args: any) => {
-        const { name, title, description, collections } = args;
-        const payload: any = {
-          name,
-          title: title || name,
-          description: description || ""
-        };
+        console.log("🔧 [BrowserWorkerService] createDataContext handler called:", args);
         
-        // If collections are provided, include them in the data context creation
-        if (collections && collections.length > 0) {
-          payload.collections = collections;
-        }
-        
-        return await sendMessage("create", "dataContext", payload);
+        // CODAP Plugin API doesn't work in our context (not in iframe)
+        // Use direct postMessage communication like SageModeler does
+        return await this.sendCODAPMessage("create", "dataContext", args);
       },
 
       getListOfDataContexts: async () => {

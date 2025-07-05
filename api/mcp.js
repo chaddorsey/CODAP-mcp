@@ -1117,7 +1117,8 @@ class MCPProtocolHandler {
     
     try {
       // Queue request using existing system
-      console.log(`[MCP] Queueing tool execution: ${toolName} for session ${session.legacyCode}`);
+      console.log(`[MCP] DEBUG: sessionId=${sessionId}, session.legacyCode=${session.legacyCode}, sessionCode=${sessionCode}`);
+      console.log(`[MCP] Queueing tool execution: ${toolName} for session ${session.legacyCode} (queue: queue:${sessionCode})`);
       await queueToolRequest(internalRequest);
       
       // Wait for browser worker response
@@ -1179,9 +1180,9 @@ class MCPProtocolHandler {
     }
   }
 
-  async waitForResponse(requestId, internalRequest, timeout = 30000) {
+  async waitForResponse(requestId, internalRequest, timeout = 8000) {
     const startTime = Date.now();
-    const pollInterval = 500; // Poll every 500ms
+    const pollInterval = 200; // Poll every 200ms for faster response
     
     while (Date.now() - startTime < timeout) {
       try {
@@ -1198,7 +1199,7 @@ class MCPProtocolHandler {
       await new Promise(resolve => setTimeout(resolve, pollInterval));
     }
     
-    throw new Error(`Tool execution timeout after ${timeout}ms`);
+    throw new Error(`MCP error -32099: Relay error: Request timed out after ${timeout}ms. This may indicate browser worker connection issues or slow CODAP operations. Try refreshing the CODAP plugin or reconnecting.`);
   }
   
   createErrorResponse(id, code, message, data = null) {
