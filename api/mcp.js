@@ -850,6 +850,9 @@ class MCPProtocolHandler {
         };
       }
       
+      // Remove environment checking to avoid execution delays
+      // Rely on clear tool descriptions and guidance to prevent inappropriate calls
+      
       // Check if session has active browser worker
       const hasBrowserWorker = await this.checkBrowserWorkerConnection(effectiveSessionId, session.legacyCode);
       
@@ -1007,32 +1010,7 @@ class MCPProtocolHandler {
         
         console.log(`[MCP] Successfully created and verified pairing session ${pairingSessionId} between Claude ${sessionId} and CODAP ${targetSessionId}`);
         
-        // CAPABILITY TRANSFER: Create unified session entry for Claude with target session capabilities
-        try {
-          const { setSession } = require("./kv-utils.js");
-          const targetUnifiedSession = await getUnifiedSession(targetSessionId);
-          
-          if (targetUnifiedSession && targetUnifiedSession.capabilities) {
-            console.log(`[MCP] Transferring capabilities from ${targetSessionId} to Claude session ${sessionId}:`, targetUnifiedSession.capabilities);
-            
-            // Create a unified session entry for Claude's session with inherited capabilities
-            const claudeUnifiedSession = {
-              sessionId: sessionId,
-              capabilities: targetUnifiedSession.capabilities, // Inherit capabilities
-              connectedTo: targetSessionId,
-              connectionTime: Date.now(),
-              expiresAt: Date.now() + (24 * 60 * 60 * 1000), // 24 hours
-              createdAt: Date.now(),
-              type: "claude-desktop-unified"
-            };
-            
-            await setSession(sessionId, claudeUnifiedSession);
-            console.log(`[MCP] Created unified session entry for Claude ${sessionId} with capabilities:`, claudeUnifiedSession.capabilities);
-          }
-        } catch (error) {
-          console.error(`[MCP] Failed to transfer capabilities:`, error);
-          // Don't fail the connection if capability transfer fails
-        }
+
         
         // CAPABILITY TRANSFER: Inherit target session's capabilities
         try {
@@ -1236,13 +1214,6 @@ class MCPProtocolHandler {
   }
 
   /**
-   * Get CODAP tools list
-   */
-  getCODAPTools() {
-    return CODAP_TOOLS;
-  }
-
-  /**
    * Generate contextual instructions based on session capabilities
    */
   async generateContextualInstructions(sessionId) {
@@ -1300,6 +1271,15 @@ class MCPProtocolHandler {
     }
     
     return instructions;
+  }
+
+
+
+  /**
+   * Get CODAP tools list
+   */
+  getCODAPTools() {
+    return CODAP_TOOLS;
   }
 
   /**
@@ -1412,11 +1392,13 @@ class MCPProtocolHandler {
     const startTime = Date.now();
     const pollInterval = 200; // Poll every 200ms for faster response
     
+    console.log(`[MCP] Waiting for response ${requestId} with ${timeout}ms timeout`);
+    
     while (Date.now() - startTime < timeout) {
       try {
         const response = await getToolResponse(requestId);
         if (response) {
-          console.log(`[MCP] Response received for ${requestId}`);
+          console.log(`[MCP] Response received for ${requestId} after ${Date.now() - startTime}ms`);
           return response;
         }
       } catch (error) {
@@ -1610,7 +1592,7 @@ async function POST(req) {
         const { setSession } = require("./kv-utils.js");
         const claudeSessionData = {
           sessionId: sessionId,
-          capabilities: ["CODAP", "SAGEMODELER"], // Give Claude dual capabilities from start
+          capabilities: ["CODAP"], // Start with CODAP-only by default
           type: "claude-desktop-auto",
           createdAt: Date.now(),
           expiresAt: Date.now() + (24 * 60 * 60 * 1000), // 24 hours
