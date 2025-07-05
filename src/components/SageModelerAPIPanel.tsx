@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { BrowserWorkerService } from "../services/BrowserWorkerService";
+import { TabSystem, TabContent, RecordingTab, SettingsTab, InspectorTab } from "./tabs";
+import { TabId, SubTabId } from "../types/tabs";
 import "./SageModelerAPIPanel.css";
 
 interface SageModelerAPIPanelProps {
@@ -46,8 +48,6 @@ export const SageModelerAPIPanel: React.FC<SageModelerAPIPanelProps> = ({
   onClearLogs,
   browserWorker
 }) => {
-  const [activeTab, setActiveTab] = useState("nodes");
-  const [activeSubTab, setActiveSubTab] = useState("nodes");
   const [selectedNodeId, setSelectedNodeId] = useState<string>("");
   const [selectedLinkId, setSelectedLinkId] = useState<string>("");
   const [nodeData, setNodeData] = useState<NodeData>({
@@ -199,10 +199,9 @@ export const SageModelerAPIPanel: React.FC<SageModelerAPIPanelProps> = ({
     }
   };
 
-  // Link Management Functions
   const createSelectedLink = async () => {
     if (!linkData.sourceNode || !linkData.targetNode) {
-      setStatus("Source and target nodes must be selected");
+      setStatus("Please select both source and target nodes");
       return;
     }
 
@@ -211,10 +210,7 @@ export const SageModelerAPIPanel: React.FC<SageModelerAPIPanelProps> = ({
     }
 
     try {
-      const result = await executeTool("sage_create_link", linkData);
-      if (result?.id) {
-        setSelectedLinkId(result.id);
-      }
+      await executeTool("sage_create_link", linkData);
       setStatus("Link created successfully");
     } catch (error) {
       setStatus("Failed to create link");
@@ -239,19 +235,9 @@ export const SageModelerAPIPanel: React.FC<SageModelerAPIPanelProps> = ({
     }
   };
 
-  // Experiment Functions
   const reloadNodes = async () => {
-    if (!browserWorker?.isRunning) {
-      return;
-    }
-
-    try {
-      await executeTool("sage_reload_nodes", {});
-      await refreshAvailableNodes();
-      setStatus("Nodes reloaded successfully");
-    } catch (error) {
-      setStatus("Failed to reload nodes");
-    }
+    await refreshAvailableNodes();
+    setStatus("Nodes reloaded");
   };
 
   const runExperiment = async () => {
@@ -261,9 +247,9 @@ export const SageModelerAPIPanel: React.FC<SageModelerAPIPanelProps> = ({
 
     try {
       await executeTool("sage_run_experiment", {});
-      setStatus("Experiment started successfully");
+      setStatus("Experiment started");
     } catch (error) {
-      setStatus("Failed to run experiment");
+      setStatus("Failed to start experiment");
     }
   };
 
@@ -275,6 +261,14 @@ export const SageModelerAPIPanel: React.FC<SageModelerAPIPanelProps> = ({
     // Only run when browserWorker?.isRunning transitions to true
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [browserWorker?.isRunning]);
+
+  const handleTabChange = useCallback((tabId: TabId) => {
+    logApiCall(`📋 Switched to ${tabId} tab`);
+  }, []);
+
+  const handleSubTabChange = useCallback((subTabId: SubTabId) => {
+    logApiCall(`📋 Switched to ${subTabId} sub-tab`);
+  }, []);
 
   return (
     <div className="sage-api-panel">
@@ -292,214 +286,176 @@ export const SageModelerAPIPanel: React.FC<SageModelerAPIPanelProps> = ({
             <div className="sage-controls-panel">
               <div className="sage-status">{status}</div>
               
-              {/* Tab Bar */}
-              <div className="sage-tab-bar">
-                <button 
-                  className={`sage-tab-btn ${activeTab === "nodes" ? "selected" : ""}`}
-                  onClick={() => setActiveTab("nodes")}
-                >
-                  Nodes/Links
-                </button>
-                <button 
-                  className={`sage-tab-btn ${activeTab === "experiment" ? "selected" : ""}`}
-                  onClick={() => setActiveTab("experiment")}
-                >
-                  Experiment
-                </button>
-                <button 
-                  className={`sage-tab-btn ${activeTab === "import" ? "selected" : ""}`}
-                  onClick={() => setActiveTab("import")}
-                >
-                  Import/Export
-                </button>
-              </div>
+              <TabSystem onTabChange={handleTabChange} onSubTabChange={handleSubTabChange}>
+                {/* Nodes/Links Tab */}
+                <TabContent tabId="nodes" subTabId="nodes">
+                  <div className="sage-subtab-content">
+                    <div className="sage-button-row">
+                      <button onClick={createRandomNode}>Create Random Node</button>
+                    </div>
+                    <div className="sage-button-row">
+                      <button onClick={createNewNode}>Create New Node</button>
+                      <button 
+                        onClick={updateSelectedNode}
+                        disabled={!selectedNodeId}
+                      >
+                        Update Node
+                      </button>
+                    </div>
+                    
+                    <div className="sage-input-group">
+                      <label>Selected Node:</label>
+                      <select 
+                        value={selectedNodeId} 
+                        onChange={(e) => setSelectedNodeId(e.target.value)}
+                      >
+                        <option value="">Select a node...</option>
+                        {availableNodes.map(node => (
+                          <option key={node.id} value={node.id}>{node.title}</option>
+                        ))}
+                      </select>
+                    </div>
 
-              {/* Nodes/Links Tab */}
-              {activeTab === "nodes" && (
-                <div className="sage-tab-content">
-                  <div className="sage-tab-bar">
-                    <button 
-                      className={`sage-tab-btn ${activeSubTab === "nodes" ? "selected" : ""}`}
-                      onClick={() => setActiveSubTab("nodes")}
-                    >
-                      Nodes
-                    </button>
-                    <button 
-                      className={`sage-tab-btn ${activeSubTab === "links" ? "selected" : ""}`}
-                      onClick={() => setActiveSubTab("links")}
-                    >
-                      Links
-                    </button>
-                  </div>
-
-                  {/* Nodes Sub-tab */}
-                  {activeSubTab === "nodes" && (
-                    <div className="sage-subtab-content">
-                      <div className="sage-button-row">
-                        <button onClick={createRandomNode}>Create Random Node</button>
-                      </div>
-                      <div className="sage-button-row">
-                        <button onClick={createNewNode}>Create New Node</button>
-                        <button 
-                          onClick={updateSelectedNode}
-                          disabled={!selectedNodeId}
-                        >
-                          Update Node
-                        </button>
-                      </div>
-                      
+                    <div className="sage-input-row">
                       <div className="sage-input-group">
-                        <label>Selected Node:</label>
+                        <label>Title:</label>
+                        <input 
+                          type="text" 
+                          value={nodeData.title}
+                          onChange={(e) => setNodeData({...nodeData, title: e.target.value})}
+                        />
+                      </div>
+                      <div className="sage-input-group">
+                        <label>Initial Value:</label>
+                        <input 
+                          type="number" 
+                          value={nodeData.initialValue || ""}
+                          onChange={(e) => setNodeData({...nodeData, initialValue: Number(e.target.value)})}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="sage-input-row">
+                      <div className="sage-input-group">
+                        <label>X Position:</label>
+                        <input 
+                          type="number" 
+                          value={nodeData.x || ""}
+                          onChange={(e) => setNodeData({...nodeData, x: Number(e.target.value)})}
+                        />
+                      </div>
+                      <div className="sage-input-group">
+                        <label>Y Position:</label>
+                        <input 
+                          type="number" 
+                          value={nodeData.y || ""}
+                          onChange={(e) => setNodeData({...nodeData, y: Number(e.target.value)})}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="sage-button-row">
+                      <button 
+                        onClick={deleteSelectedNode}
+                        disabled={!selectedNodeId}
+                        className="sage-delete-btn"
+                      >
+                        Delete Node
+                      </button>
+                    </div>
+                  </div>
+                </TabContent>
+
+                {/* Links Sub-tab */}
+                <TabContent tabId="nodes" subTabId="links">
+                  <div className="sage-subtab-content">
+                    <div className="sage-button-row">
+                      <button 
+                        onClick={createSelectedLink}
+                        disabled={!linkData.sourceNode || !linkData.targetNode}
+                      >
+                        Create Link
+                      </button>
+                      <button 
+                        onClick={updateSelectedLink}
+                        disabled={!selectedLinkId}
+                      >
+                        Update Link
+                      </button>
+                    </div>
+
+                    <div className="sage-input-row">
+                      <div className="sage-input-group">
+                        <label>Source Node:</label>
                         <select 
-                          value={selectedNodeId} 
-                          onChange={(e) => setSelectedNodeId(e.target.value)}
+                          value={linkData.sourceNode || ""} 
+                          onChange={(e) => setLinkData({...linkData, sourceNode: e.target.value})}
                         >
-                          <option value="">Select a node...</option>
+                          <option value="">Select source...</option>
                           {availableNodes.map(node => (
                             <option key={node.id} value={node.id}>{node.title}</option>
                           ))}
                         </select>
                       </div>
-
-                      <div className="sage-input-row">
-                        <div className="sage-input-group">
-                          <label>Title:</label>
-                          <input 
-                            type="text" 
-                            value={nodeData.title}
-                            onChange={(e) => setNodeData({...nodeData, title: e.target.value})}
-                          />
-                        </div>
-                        <div className="sage-input-group">
-                          <label>Initial Value:</label>
-                          <input 
-                            type="number" 
-                            value={nodeData.initialValue || ""}
-                            onChange={(e) => setNodeData({...nodeData, initialValue: Number(e.target.value)})}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="sage-input-row">
-                        <div className="sage-input-group">
-                          <label>X Position:</label>
-                          <input 
-                            type="number" 
-                            value={nodeData.x || ""}
-                            onChange={(e) => setNodeData({...nodeData, x: Number(e.target.value)})}
-                          />
-                        </div>
-                        <div className="sage-input-group">
-                          <label>Y Position:</label>
-                          <input 
-                            type="number" 
-                            value={nodeData.y || ""}
-                            onChange={(e) => setNodeData({...nodeData, y: Number(e.target.value)})}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="sage-button-row">
-                        <button 
-                          onClick={deleteSelectedNode}
-                          disabled={!selectedNodeId}
-                          className="sage-delete-btn"
+                      <div className="sage-input-group">
+                        <label>Target Node:</label>
+                        <select 
+                          value={linkData.targetNode || ""} 
+                          onChange={(e) => setLinkData({...linkData, targetNode: e.target.value})}
                         >
-                          Delete Node
-                        </button>
+                          <option value="">Select target...</option>
+                          {availableNodes.map(node => (
+                            <option key={node.id} value={node.id}>{node.title}</option>
+                          ))}
+                        </select>
                       </div>
                     </div>
-                  )}
 
-                  {/* Links Sub-tab */}
-                  {activeSubTab === "links" && (
-                    <div className="sage-subtab-content">
-                      <div className="sage-button-row">
-                        <button 
-                          onClick={createSelectedLink}
-                          disabled={!linkData.sourceNode || !linkData.targetNode}
+                    <div className="sage-input-row">
+                      <div className="sage-input-group">
+                        <label>Relation Vector:</label>
+                        <select 
+                          value={linkData.relationVector || "increase"} 
+                          onChange={(e) => setLinkData({...linkData, relationVector: e.target.value})}
                         >
-                          Create Link
-                        </button>
-                        <button 
-                          onClick={updateSelectedLink}
-                          disabled={!selectedLinkId}
+                          <option value="increase">Increase</option>
+                          <option value="decrease">Decrease</option>
+                          <option value="vary">Vary (Custom)</option>
+                        </select>
+                      </div>
+                      <div className="sage-input-group">
+                        <label>Relation Scalar:</label>
+                        <select 
+                          value={linkData.relationScalar || "aboutTheSame"} 
+                          onChange={(e) => setLinkData({...linkData, relationScalar: e.target.value})}
                         >
-                          Update Link
-                        </button>
-                      </div>
-
-                      <div className="sage-input-row">
-                        <div className="sage-input-group">
-                          <label>Source Node:</label>
-                          <select 
-                            value={linkData.sourceNode || ""} 
-                            onChange={(e) => setLinkData({...linkData, sourceNode: e.target.value})}
-                          >
-                            <option value="">Select source...</option>
-                            {availableNodes.map(node => (
-                              <option key={node.id} value={node.id}>{node.title}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="sage-input-group">
-                          <label>Target Node:</label>
-                          <select 
-                            value={linkData.targetNode || ""} 
-                            onChange={(e) => setLinkData({...linkData, targetNode: e.target.value})}
-                          >
-                            <option value="">Select target...</option>
-                            {availableNodes.map(node => (
-                              <option key={node.id} value={node.id}>{node.title}</option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-
-                      <div className="sage-input-row">
-                        <div className="sage-input-group">
-                          <label>Relation Vector:</label>
-                          <select 
-                            value={linkData.relationVector || "increase"} 
-                            onChange={(e) => setLinkData({...linkData, relationVector: e.target.value})}
-                          >
-                            <option value="increase">Increase</option>
-                            <option value="decrease">Decrease</option>
-                            <option value="vary">Vary (Custom)</option>
-                          </select>
-                        </div>
-                        <div className="sage-input-group">
-                          <label>Relation Scalar:</label>
-                          <select 
-                            value={linkData.relationScalar || "aboutTheSame"} 
-                            onChange={(e) => setLinkData({...linkData, relationScalar: e.target.value})}
-                          >
-                            <option value="aboutTheSame">About the Same</option>
-                            <option value="aLittle">A Little</option>
-                            <option value="aLot">A Lot</option>
-                            <option value="moreAndMore">More and More</option>
-                            <option value="lessAndLess">Less and Less</option>
-                          </select>
-                        </div>
+                          <option value="aboutTheSame">About the Same</option>
+                          <option value="aLittle">A Little</option>
+                          <option value="aLot">A Lot</option>
+                          <option value="moreAndMore">More and More</option>
+                          <option value="lessAndLess">Less and Less</option>
+                        </select>
                       </div>
                     </div>
-                  )}
-                </div>
-              )}
+                  </div>
+                </TabContent>
 
-              {/* Experiment Tab */}
-              {activeTab === "experiment" && (
-                <div className="sage-tab-content">
+                {/* Experiment Tab */}
+                <TabContent tabId="experiment">
                   <div className="sage-button-row">
                     <button onClick={reloadNodes}>Reload Nodes</button>
                     <button onClick={runExperiment}>Run Experiment</button>
                   </div>
-                </div>
-              )}
+                </TabContent>
 
-              {/* Import/Export Tab */}
-              {activeTab === "import" && (
-                <div className="sage-tab-content">
+                {/* Recording Tab */}
+                <RecordingTab 
+                  tabId="recording" 
+                  onExecuteTool={executeTool}
+                />
+
+                {/* Import/Export Tab */}
+                <TabContent tabId="import">
                   <div className="sage-button-row">
                     <button onClick={() => executeTool("sage_export_model", {})}>
                       Export Model
@@ -508,8 +464,20 @@ export const SageModelerAPIPanel: React.FC<SageModelerAPIPanelProps> = ({
                       Get Simulation State
                     </button>
                   </div>
-                </div>
-              )}
+                </TabContent>
+
+                {/* Settings Tab */}
+                <SettingsTab 
+                  tabId="settings" 
+                  onExecuteTool={executeTool}
+                />
+
+                {/* Inspector Tab */}
+                <InspectorTab 
+                  tabId="inspector" 
+                  onExecuteTool={executeTool}
+                />
+              </TabSystem>
 
               {/* API Call Log */}
               <div className="sage-log-section">
