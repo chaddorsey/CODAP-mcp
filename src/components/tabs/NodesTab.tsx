@@ -29,6 +29,8 @@ export const NodesTab: React.FC<NodesTabProps> = ({
   toggleAccordion,
   onExecuteTool
 }) => {
+
+
   const [nodeManagement, setNodeManagement] = useState<NodeManagementState>({
     formState: {
       properties: DEFAULT_NODE_PROPERTIES,
@@ -75,7 +77,7 @@ export const NodesTab: React.FC<NodesTabProps> = ({
       try {
         // Get the selected node's properties
         const result = await onExecuteTool("sage_get_node_by_id", { nodeId });
-        if (result && result.node) {
+        if (result?.node) {
           setNodeManagement(prev => ({
             ...prev,
             selection: {
@@ -111,31 +113,6 @@ export const NodesTab: React.FC<NodesTabProps> = ({
     }
   }, [onExecuteTool]);
 
-  // Handle refreshing the nodes list
-  const handleRefreshNodes = useCallback(async () => {
-    if (!onExecuteTool) return;
-
-    try {
-      const result = await onExecuteTool("sage_get_all_nodes", {});
-      if (result && result.nodes) {
-        const availableNodes = result.nodes.map((node: any) => ({
-          id: node.id || node.key,
-          title: node.title || node.data?.title || `Node ${node.id || node.key}`
-        }));
-        
-        setNodeManagement(prev => ({
-          ...prev,
-          selection: {
-            ...prev.selection,
-            availableNodes
-          }
-        }));
-      }
-    } catch (error) {
-      console.error("Error refreshing nodes:", error);
-    }
-  }, [onExecuteTool]);
-
   // Handle creating a new node
   const handleCreateNode = useCallback(async (properties: NodeProperties) => {
     if (!onExecuteTool) return;
@@ -144,9 +121,8 @@ export const NodesTab: React.FC<NodesTabProps> = ({
     
     try {
       const result = await onExecuteTool("sage_create_node", properties);
-      if (result && result.id) {
-        // Refresh the nodes list and select the new node
-        await handleRefreshNodes();
+      if (result?.id) {
+        // Select the new node
         await handleNodeSelect(result.id);
         
         setNodeManagement(prev => ({
@@ -159,7 +135,7 @@ export const NodesTab: React.FC<NodesTabProps> = ({
     } finally {
       setNodeManagement(prev => ({ ...prev, isCreating: false }));
     }
-  }, [onExecuteTool, handleRefreshNodes, handleNodeSelect]);
+  }, [onExecuteTool, handleNodeSelect]);
 
   // Handle creating a random node
   const handleCreateRandomNode = useCallback(async () => {
@@ -215,9 +191,25 @@ export const NodesTab: React.FC<NodesTabProps> = ({
         nodeId: nodeManagement.selection.selectedNodeId
       });
       
-      // Clear selection and refresh nodes list
+      // Clear selection and manually refresh the nodes list
       await handleNodeSelect(null);
-      await handleRefreshNodes();
+      
+      // Refresh nodes list after deletion
+      const result = await onExecuteTool("sage_get_all_nodes", {});
+      if (result?.nodes) {
+        const availableNodes = result.nodes.map((node: any) => ({
+          id: node.id || node.key,
+          title: node.title || node.data?.title || `Node ${node.id || node.key}`
+        }));
+        
+        setNodeManagement(prev => ({
+          ...prev,
+          selection: {
+            ...prev.selection,
+            availableNodes
+          }
+        }));
+      }
       
       setNodeManagement(prev => ({
         ...prev,
@@ -226,14 +218,62 @@ export const NodesTab: React.FC<NodesTabProps> = ({
     } catch (error) {
       console.error("Error deleting node:", error);
     }
-  }, [onExecuteTool, nodeManagement.selection.selectedNodeId, handleNodeSelect, handleRefreshNodes]);
+  }, [onExecuteTool, nodeManagement.selection.selectedNodeId, handleNodeSelect]);
+
+  // Handle manual refresh of nodes list
+  const handleRefreshNodes = useCallback(async () => {
+    if (!onExecuteTool) return;
+
+    try {
+      const result = await onExecuteTool("sage_get_all_nodes", {});
+      if (result?.nodes) {
+        const availableNodes = result.nodes.map((node: any) => ({
+          id: node.id || node.key,
+          title: node.title || node.data?.title || `Node ${node.id || node.key}`
+        }));
+        
+        setNodeManagement(prev => ({
+          ...prev,
+          selection: {
+            ...prev.selection,
+            availableNodes
+          }
+        }));
+      }
+    } catch (error) {
+      console.error("Error refreshing nodes:", error);
+    }
+  }, [onExecuteTool]);
 
   // Auto-refresh nodes when tab becomes active
   React.useEffect(() => {
     if (isActive && onExecuteTool) {
-      handleRefreshNodes();
+      // Call handleRefreshNodes directly without including it in dependencies
+      const refreshNodes = async () => {
+        try {
+          const result = await onExecuteTool("sage_get_all_nodes", {});
+          if (result?.nodes) {
+            const availableNodes = result.nodes.map((node: any) => ({
+              id: node.id || node.key,
+              title: node.title || node.data?.title || `Node ${node.id || node.key}`
+            }));
+            
+            setNodeManagement(prev => ({
+              ...prev,
+              selection: {
+                ...prev.selection,
+                availableNodes
+              }
+            }));
+          }
+        } catch (error) {
+          console.error("Error refreshing nodes:", error);
+        }
+      };
+      
+      refreshNodes();
     }
-  }, [isActive, onExecuteTool, handleRefreshNodes]);
+  }, [isActive, onExecuteTool]);
 
   return (
     <TabContent tabId={tabId} subTabId={subTabId} isActive={isActive}>

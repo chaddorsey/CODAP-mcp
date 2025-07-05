@@ -46,50 +46,79 @@ export const SageModelerAPIPanel: React.FC<SageModelerAPIPanelProps> = ({
     }
   }, [apiCallLogs]);
 
-  // Enhanced logging system with different message types
-  const logApiCall = (message: string, type: "info" | "success" | "error" | "request" | "response" = "info") => {
-    const timestamp = new Date().toLocaleTimeString();
-    let formattedMessage = `[${timestamp}] `;
-    
-    switch (type) {
-      case "request":
-        formattedMessage += `📤 REQUEST: ${message}`;
-        break;
-      case "response":
-        formattedMessage += `📥 RESPONSE: ${message}`;
-        break;
-      case "success":
-        formattedMessage += `✅ SUCCESS: ${message}`;
-        break;
-      case "error":
-        formattedMessage += `❌ ERROR: ${message}`;
-        break;
-      case "info":
+  // Memoize the logApiCall function to prevent unnecessary re-renders
+  const logApiCall = useCallback((message: string, type: "info" | "success" | "error" | "request" | "response" = "info") => {
+    if (typeof onClearLogs === "function") {
+      // Add the log entry to the parent component's log state
+      const timestamp = new Date().toISOString();
+      const logEntry = `[${timestamp}] ${type.toUpperCase()}: ${message}`;
+      console.log(logEntry);
+      
+      // Notify parent component about the new log
+      if (typeof window !== "undefined" && (window as any).handleApiCallLog) {
+        (window as any).handleApiCallLog(logEntry);
+      }
+    }
+  }, [onClearLogs]);
+
+  // Enhanced status management
+  const updateStatus = useCallback((message: string, type: "info" | "success" | "error" = "info") => {
+    setStatus(message);
+    logApiCall(message, type === "info" ? "info" : type);
+  }, [logApiCall]);
+
+  // Mock data function for UI testing
+  const getMockResult = useCallback((toolName: string, parameters: any) => {
+    switch (toolName) {
+      case "sage_get_all_nodes":
+        return {
+          nodes: [
+            { id: "node1", title: "Population", data: { title: "Population" } },
+            { id: "node2", title: "Birth Rate", data: { title: "Birth Rate" } },
+            { id: "node3", title: "Death Rate", data: { title: "Death Rate" } }
+          ]
+        };
+      case "sage_get_node_by_id":
+        return {
+          node: {
+            id: parameters.nodeId,
+            title: "Sample Node",
+            initialValue: 100,
+            x: 200,
+            y: 150,
+            color: "#f7be33",
+            allowNegativeValues: true,
+            usesDefaultImage: true,
+            isAccumulator: false,
+            isFlowVariable: false,
+            valueDefinedSemiQuantitatively: false
+          }
+        };
+      case "sage_create_node":
+        return {
+          id: `node_${Date.now()}`,
+          ...parameters
+        };
+      case "sage_update_node":
+        return { success: true };
+      case "sage_delete_node":
+        return { success: true };
       default:
-        formattedMessage += `ℹ️ ${message}`;
-        break;
+        return { success: true, message: `Mock result for ${toolName}` };
     }
+  }, []);
 
-    const event = new CustomEvent("sage-api-call", {
-      detail: { message: formattedMessage }
-    });
-    window.dispatchEvent(event);
-  };
-
-  // Enhanced tool execution with comprehensive error handling and logging
-  const executeTool = async (toolName: string, parameters: any) => {
-    if (!browserWorker) {
-      const errorMsg = "Browser worker not available";
-      logApiCall(errorMsg, "error");
-      setStatus(`Error: ${errorMsg}`);
-      return Promise.reject(new Error(errorMsg));
-    }
-
-    if (!browserWorker?.isRunning) {
-      const errorMsg = "Browser worker not running";
-      logApiCall(errorMsg, "error");
-      setStatus(`Error: ${errorMsg}`);
-      return Promise.reject(new Error(errorMsg));
+  // Memoize the executeTool function to prevent infinite loops
+  const executeTool = useCallback(async (toolName: string, parameters: any) => {
+    if (!browserWorker || !browserWorker?.isRunning) {
+      // For UI testing when backend is down - return mock data
+      const mockResult = getMockResult(toolName, parameters);
+      logApiCall(`${toolName} (MOCK DATA)`, "request");
+      logApiCall(JSON.stringify(parameters, null, 2), "request");
+      logApiCall(`${toolName} completed with mock data`, "success");
+      logApiCall(JSON.stringify(mockResult, null, 2), "response");
+      setStatus(`${toolName} completed successfully (MOCK DATA)`);
+      return mockResult;
     }
 
     try {
@@ -125,18 +154,10 @@ export const SageModelerAPIPanel: React.FC<SageModelerAPIPanelProps> = ({
       setStatus(`${toolName} failed: ${errorMessage}`);
       throw error;
     }
-  };
-
-  // Enhanced status management
-  const updateStatus = (message: string, type: "info" | "success" | "error" = "info") => {
-    setStatus(message);
-    logApiCall(message, type === "info" ? "info" : type);
-  };
+  }, [browserWorker, logApiCall, getMockResult]);
 
   // Node Management Functions
-  // Node management functions removed - now handled by NodesTab component
-
-  const refreshAvailableNodes = async () => {
+  const refreshAvailableNodes = useCallback(async () => {
     try {
       updateStatus("Refreshing available nodes...", "info");
       const result = await executeTool("sage_get_all_nodes", {});
@@ -151,13 +172,13 @@ export const SageModelerAPIPanel: React.FC<SageModelerAPIPanelProps> = ({
         setAvailableNodes([]);
         updateStatus("No nodes found in model", "info");
       }
-    } catch (error) {
+    } catch {
       // Error already logged and status set by executeTool
       setAvailableNodes([]);
     }
-  };
+  }, [executeTool, updateStatus]);
 
-  const createSelectedLink = async () => {
+  const createSelectedLink = useCallback(async () => {
     if (!linkData.sourceNode || !linkData.targetNode) {
       updateStatus("Please select both source and target nodes", "error");
       return;
@@ -172,17 +193,19 @@ export const SageModelerAPIPanel: React.FC<SageModelerAPIPanelProps> = ({
       const result = await executeTool("sage_create_link", linkData);
       const sourceNode = availableNodes.find(n => n.id === linkData.sourceNode);
       const targetNode = availableNodes.find(n => n.id === linkData.targetNode);
-      updateStatus(`Link created: ${sourceNode?.title || linkData.sourceNode} → ${targetNode?.title || linkData.targetNode}`, "success");
+      const statusMessage = 
+        `Link created: ${sourceNode?.title || linkData.sourceNode} → ${targetNode?.title || linkData.targetNode}`;
+      updateStatus(statusMessage, "success");
       
       if (result?.id) {
         setSelectedLinkId(result.id);
       }
-    } catch (error) {
+    } catch {
       // Error already logged and status set by executeTool
     }
-  };
+  }, [linkData, availableNodes, executeTool, updateStatus]);
 
-  const updateSelectedLink = async () => {
+  const updateSelectedLink = useCallback(async () => {
     if (!selectedLinkId) {
       updateStatus("No link selected for update", "error");
       return;
@@ -191,16 +214,16 @@ export const SageModelerAPIPanel: React.FC<SageModelerAPIPanelProps> = ({
     try {
       await executeTool("sage_update_link", { id: selectedLinkId, ...linkData });
       updateStatus(`Link ${selectedLinkId} updated successfully`, "success");
-    } catch (error) {
+    } catch {
       // Error already logged and status set by executeTool
     }
-  };
+  }, [selectedLinkId, linkData, executeTool, updateStatus]);
 
-  const reloadNodes = async () => {
+  const reloadNodes = useCallback(async () => {
     await refreshAvailableNodes();
-  };
+  }, [refreshAvailableNodes]);
 
-  const runExperiment = async () => {
+  const runExperiment = useCallback(async () => {
     try {
       updateStatus("Starting experiment...", "info");
       const result = await executeTool("sage_run_experiment", {});
@@ -209,29 +232,27 @@ export const SageModelerAPIPanel: React.FC<SageModelerAPIPanelProps> = ({
       } else {
         updateStatus("Experiment started", "success");
       }
-    } catch (error) {
+    } catch {
       // Error already logged and status set by executeTool
     }
-  };
+  }, [executeTool, updateStatus]);
 
-  // Ensure the following useEffect is inside the SageModelerAPIPanel component, after browserWorker and refreshAvailableNodes are defined
+  // Initialize nodes when browser worker becomes available
   useEffect(() => {
     if (browserWorker?.isRunning) {
       refreshAvailableNodes();
     }
-    // Only run when browserWorker?.isRunning transitions to true
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [browserWorker?.isRunning]);
+  }, [browserWorker?.isRunning, refreshAvailableNodes]);
 
   const handleTabChange = useCallback((tabId: TabId) => {
     logApiCall(`Switched to ${tabId} tab`, "info");
     updateStatus(`Viewing ${tabId} tab`, "info");
-  }, []);
+  }, [logApiCall, updateStatus]);
 
   const handleSubTabChange = useCallback((subTabId: SubTabId) => {
     logApiCall(`Switched to ${subTabId} sub-tab`, "info");
     updateStatus(`Viewing ${subTabId} controls`, "info");
-  }, []);
+  }, [logApiCall, updateStatus]);
 
   return (
     <div className="sage-api-panel">
@@ -245,16 +266,17 @@ export const SageModelerAPIPanel: React.FC<SageModelerAPIPanelProps> = ({
         </button>
         
         {isVisible && (
-          <div className="sage-accordion-content">
+          <div className={`sage-accordion-content ${isVisible ? "active" : ""}`}>
             <div className="sage-controls-panel">
               <div className="sage-status">{status}</div>
               
+
+
               <TabSystem onTabChange={handleTabChange} onSubTabChange={handleSubTabChange}>
                 {/* Nodes Sub-tab */}
                 <NodesTab 
                   tabId="nodes" 
                   subTabId="nodes" 
-                  isActive={true}
                   onExecuteTool={executeTool}
                 />
 
@@ -349,12 +371,8 @@ export const SageModelerAPIPanel: React.FC<SageModelerAPIPanelProps> = ({
                 {/* Import/Export Tab */}
                 <TabContent tabId="import">
                   <div className="sage-button-row">
-                    <button onClick={() => executeTool("sage_export_model", {})}>
-                      Export Model
-                    </button>
-                    <button onClick={() => executeTool("sage_get_simulation_state", {})}>
-                      Get Simulation State
-                    </button>
+                    <button onClick={() => executeTool("sage_export_model", {})}>Export Model</button>
+                    <button onClick={() => executeTool("sage_import_model", {})}>Import Model</button>
                   </div>
                 </TabContent>
 

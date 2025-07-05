@@ -24,11 +24,9 @@ export const Accordion: React.FC<AccordionProps> = ({
         <span className="arrow">&#9660;</span>
         {title}
       </button>
-      {isOpen && (
-        <div className="sage-accordion-content">
-          {children}
-        </div>
-      )}
+      <div className={`sage-accordion-content ${isOpen ? "active" : ""}`}>
+        {children}
+      </div>
     </div>
   );
 };

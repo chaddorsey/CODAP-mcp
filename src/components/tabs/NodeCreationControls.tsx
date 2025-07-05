@@ -20,6 +20,8 @@ export const NodeCreationControls: React.FC<NodeCreationControlsProps> = ({
 }) => {
   const [isProcessing, setIsProcessing] = useState(false);
 
+
+
   const handleCreateNode = useCallback(async () => {
     if (!onCreateNode || !nodeProperties || isProcessing) return;
 

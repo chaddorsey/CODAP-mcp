@@ -25,7 +25,6 @@ export const TabContent: React.FC<TabContentProps> = ({
   if (!isActive) {
     return null;
   }
-
   return (
     <div 
       className={`sage-tab-content ${className}`}

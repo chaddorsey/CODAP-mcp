@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { NodeProperties, NodeFormState, SAGE_NODE_COLORS, DEFAULT_NODE_PROPERTIES } from "../../types/tabs";
+import Accordion from "./Accordion";
 
 interface NodePropertiesFormProps {
   nodeData?: NodeProperties;
@@ -14,12 +15,17 @@ export const NodePropertiesForm: React.FC<NodePropertiesFormProps> = ({
   onValidationChange,
   disabled = false
 }) => {
+
+
   const [formState, setFormState] = useState<NodeFormState>({
     properties: nodeData || DEFAULT_NODE_PROPERTIES,
     hasChanges: false,
     isValid: true,
     errors: {}
   });
+
+  // State for advanced properties accordion
+  const [advancedPropertiesOpen, setAdvancedPropertiesOpen] = useState(false);
 
   // Validation function
   const validateProperties = useCallback((properties: NodeProperties): { isValid: boolean; errors: Record<string, string> } => {
@@ -54,6 +60,27 @@ export const NodePropertiesForm: React.FC<NodePropertiesFormProps> = ({
     }
     if (properties.min !== undefined && properties.max !== undefined && properties.min >= properties.max) {
       errors.max = "Max value must be greater than min value";
+    }
+
+    // Advanced property validation
+    if (properties.image && properties.image.trim() !== "") {
+      // Basic URL validation
+      try {
+        new URL(properties.image);
+      } catch {
+        errors.image = "Image must be a valid URL";
+      }
+    }
+
+    // String length validation for advanced properties
+    if (properties.combineMethod && properties.combineMethod.length > 100) {
+      errors.combineMethod = "Combine method must be 100 characters or less";
+    }
+    if (properties.paletteItem && properties.paletteItem.length > 100) {
+      errors.paletteItem = "Palette item must be 100 characters or less";
+    }
+    if (properties.sourceApp && properties.sourceApp.length > 100) {
+      errors.sourceApp = "Source app must be 100 characters or less";
     }
 
     return {
@@ -261,6 +288,81 @@ export const NodePropertiesForm: React.FC<NodePropertiesFormProps> = ({
           </label>
         </div>
       </div>
+
+      {/* Advanced Properties Accordion */}
+      <Accordion 
+        title="Advanced Properties" 
+        isOpen={advancedPropertiesOpen} 
+        onToggle={() => setAdvancedPropertiesOpen(!advancedPropertiesOpen)} 
+        className="sage-advanced-properties"
+      >
+        {/* Combine Method */}
+        <div className="sage-input-group">
+          <label htmlFor="node-combine-method">Combine Method:</label>
+          <input
+            id="node-combine-method"
+            type="text"
+            value={formState.properties.combineMethod || ""}
+            onChange={(e) => handlePropertyChange("combineMethod", e.target.value)}
+            disabled={disabled}
+            placeholder="Enter combine method"
+          />
+        </div>
+
+        {/* Image Properties */}
+        <div className="sage-input-row">
+          <div className="sage-input-group">
+            <label htmlFor="node-image">Image URL:</label>
+            <input
+              id="node-image"
+              type="text"
+              value={formState.properties.image || ""}
+              onChange={(e) => handlePropertyChange("image", e.target.value)}
+              disabled={disabled}
+              placeholder="Enter image URL"
+              className={formState.errors.image ? "error" : ""}
+            />
+            {formState.errors.image && <span className="error-message">{formState.errors.image}</span>}
+          </div>
+          <div className="sage-input-group">
+            <label>
+              <input
+                type="checkbox"
+                checked={formState.properties.usesDefaultImage !== false}
+                onChange={(e) => handleBooleanChange("usesDefaultImage", e.target.checked)}
+                disabled={disabled}
+              />
+              Uses Default Image
+            </label>
+          </div>
+        </div>
+
+        {/* Palette and Source */}
+        <div className="sage-input-row">
+          <div className="sage-input-group">
+            <label htmlFor="node-palette-item">Palette Item:</label>
+            <input
+              id="node-palette-item"
+              type="text"
+              value={formState.properties.paletteItem || ""}
+              onChange={(e) => handlePropertyChange("paletteItem", e.target.value)}
+              disabled={disabled}
+              placeholder="Enter palette item"
+            />
+          </div>
+          <div className="sage-input-group">
+            <label htmlFor="node-source-app">Source App:</label>
+            <input
+              id="node-source-app"
+              type="text"
+              value={formState.properties.sourceApp || ""}
+              onChange={(e) => handlePropertyChange("sourceApp", e.target.value)}
+              disabled={disabled}
+              placeholder="Enter source app"
+            />
+          </div>
+        </div>
+      </Accordion>
 
       {/* Form Status */}
       {formState.hasChanges && (

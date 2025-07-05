@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
-import { initializePlugin } from "@concord-consortium/codap-plugin-api";
 import { ClaudeConnectionPanel } from "./ClaudeConnectionPanel";
 import { ClaudeSetupModal } from "./ClaudeSetupModal";
 import { SageModelerAPIPanel } from "./SageModelerAPIPanel";
@@ -17,18 +16,18 @@ type PluginMode = "codap" | "sagemodeler";
 
 export const AppDualMode = () => {
   // Core state for Claude MVP
-  const [sessionId, setSessionId] = useState<string>("");
+  const [sessionId, setSessionId] = useState<string>("UI-TEST-SESSION"); // Temporary for UI testing
   const [relayConnected, setRelayConnected] = useState(false);
   const [relayConnecting, setRelayConnecting] = useState(false);
   const [claudeConnected, setClaudeConnected] = useState(false);
   const [showSetupModal, setShowSetupModal] = useState(false);
-  const [isInitializing, setIsInitializing] = useState(true);
+  const [isInitializing, setIsInitializing] = useState(false); // Skip initialization for UI testing
   const [initializationError, setInitializationError] = useState<string | null>(null);
   const [promptCopyFeedback, setPromptCopyFeedback] = useState<string>("");
   
   // Dual-mode state
-  const [pluginMode, setPluginMode] = useState<PluginMode>("codap");
-  const [showSageAccordion, setShowSageAccordion] = useState(false);
+  const [pluginMode, setPluginMode] = useState<PluginMode>("sagemodeler"); // Start in SageModeler mode for testing
+  const [showSageAccordion, setShowSageAccordion] = useState(true); // Show accordion by default for testing
   const [apiCallLogs, setApiCallLogs] = useState<string[]>([]);
 
   // Add state for SageModeler info message and session ID flash
@@ -127,16 +126,17 @@ export const AppDualMode = () => {
   }, [sessionService, sessionId, pluginMode, determineCapabilities]);
 
   // Auto-initialize session on mount with small delay to allow SageModeler to initialize
-  useEffect(() => {
-    if (!sessionId) {
-      // Small delay to allow SageModeler to initialize if present
-      const timer = setTimeout(() => {
-        initializeSession();
-      }, 500); // 500ms delay
-      
-      return () => clearTimeout(timer);
-    }
-  }, [initializeSession, sessionId]);
+  // TEMPORARILY DISABLED for UI testing while backend is down
+  // useEffect(() => {
+  //   if (!sessionId) {
+  //     // Small delay to allow SageModeler to initialize if present
+  //     const timer = setTimeout(() => {
+  //       initializeSession();
+  //     }, 500); // 500ms delay
+  //     
+  //     return () => clearTimeout(timer);
+  //   }
+  // }, [initializeSession, sessionId]);
 
   // Add logging to confirm worker start
   useEffect(() => {

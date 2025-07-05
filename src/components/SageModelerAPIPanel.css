@@ -523,4 +523,208 @@
   border-radius: 4px;
   font-size: 12px;
   margin: 4px 0;
+}
+
+/* Section dividers */
+.sage-section {
+  margin: 12px 0;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.sage-section:last-child {
+  border-bottom: none;
+}
+
+/* Node Management Components */
+.sage-node-creation-controls {
+  padding: 8px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  border: 1px solid #e9ecef;
+  margin-bottom: 8px;
+}
+
+.sage-node-selection-list {
+  padding: 8px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  border: 1px solid #e9ecef;
+  margin-bottom: 8px;
+}
+
+.sage-node-properties-form {
+  padding: 8px;
+  background: #fff;
+  border-radius: 4px;
+}
+
+/* Advanced Properties Accordion Styling */
+.sage-advanced-properties {
+  margin-top: 12px;
+  border-top: 1px solid #e9ecef;
+  padding-top: 8px;
+}
+
+.sage-advanced-properties .sage-accordion-content {
+  padding-top: 8px;
+}
+
+.sage-advanced-properties .sage-input-group {
+  margin-bottom: 8px;
+}
+
+.sage-advanced-properties .sage-input-row {
+  margin-bottom: 8px;
+}
+
+.sage-select-with-refresh {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.sage-select-with-refresh select {
+  flex: 1;
+}
+
+.sage-button-icon {
+  background: #007cba;
+  color: white;
+  border: none;
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+  min-width: 32px;
+  text-align: center;
+}
+
+.sage-button-icon:hover:not(:disabled) {
+  background: #005a8b;
+}
+
+.sage-button-icon:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.sage-selection-info {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #666;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sage-info-text {
+  font-size: 12px;
+  color: #666;
+  line-height: 1.4;
+}
+
+.sage-form-status {
+  margin: 6px 0;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.sage-form-status.changes {
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+}
+
+.sage-form-status.errors {
+  background: #f8d7da;
+  color: #dc3545;
+  border: 1px solid #f5c6cb;
+}
+
+.sage-operation-status {
+  margin: 8px 0;
+  padding: 6px 8px;
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.sage-help-text {
+  margin: 6px 0;
+  padding: 4px 8px;
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.error-message {
+  color: #dc3545;
+  font-size: 11px;
+  margin-top: 2px;
+  display: block;
+}
+
+.sage-input-group input.error,
+.sage-input-group select.error {
+  border-color: #dc3545;
+  background-color: #f8d7da;
+}
+
+/* Additional button styling */
+.sage-button {
+  background: #007cba;
+  color: white;
+  border: none;
+  padding: 7px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background-color 0.2s;
+  margin: 2px;
+}
+
+.sage-button:hover:not(:disabled) {
+  background: #005a8b;
+}
+
+.sage-button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.sage-button-primary {
+  background: #007cba;
+}
+
+.sage-button-primary:hover:not(:disabled) {
+  background: #005a8b;
+}
+
+.sage-button-secondary {
+  background: #6c757d;
+}
+
+.sage-button-secondary:hover:not(:disabled) {
+  background: #5a6268;
+}
+
+.sage-button-danger {
+  background: #dc3545;
+}
+
+.sage-button-danger:hover:not(:disabled) {
+  background: #c82333;
+}
+
+.sage-mt-2 {
+  margin-top: 8px;
 } 
