@@ -14,7 +14,7 @@ This document lists all tasks associated with PBI 22.
 | 22-4 | [MCP Tool Execution Framework Enhancement](./22-4.md) | Done | Enhance MCP tool execution framework to support comprehensive API operations with logging and error handling |
 | 22-5 | [Node Management UI and Basic Properties](./22-5.md) | Done | Implement comprehensive node property controls including title, initial value, position, color, and basic flags |
 | 22-6 | [Node Advanced Properties and Accordion System](./22-6.md) | Done | Add advanced node properties (combine method, image, palette item, source app) with collapsible accordion sections |
-| 22-7 | [Node CRUD Operations via MCP Tools](./22-7.md) | Proposed | Integrate node create, read, update, delete operations using MCP tools with comprehensive error handling |
+| 22-7 | [Node CRUD Operations via MCP Tools](./22-7.md) | Done | Integrate node create, read, update, delete operations using MCP tools with comprehensive error handling |
 | 22-8 | [Node Property Validation and Change Tracking](./22-8.md) | Proposed | Implement property validation, change tracking, and button state management for node operations |
 | 22-9 | [Link Management UI and Relation System](./22-9.md) | Proposed | Implement link property controls including relation vectors, scalars, custom data, and direction control |
 | 22-10 | [Link Context Awareness and Dynamic Properties](./22-10.md) | Proposed | Add context-aware property availability based on node types and link validation |
