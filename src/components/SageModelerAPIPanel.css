@@ -1,74 +1,47 @@
-/* SageModeler API Panel Styles */
+/* SageModeler API Panel Styles - Enhanced with reference plugin styling */
 .sage-api-panel {
   margin-top: 10px;
-  border-top: 1px solid #eee;
-}
-
-.sage-accordion {
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  background: white;
-}
-
-.sage-accordion-header {
-  background: #f9f9f9;
-  color: #007cba;
-  font-size: 13px;
-  font-weight: bold;
-  padding: 8px 12px;
-  cursor: pointer;
-  border: none;
-  outline: none;
-  width: 100%;
-  text-align: left;
-  display: flex;
-  align-items: center;
-  border-radius: 4px 4px 0 0;
-  margin: 0;
-  transition: background-color 0.2s;
-}
-
-.sage-accordion-header:hover {
-  background: #f0f0f0;
-}
-
-.sage-accordion-header .arrow {
-  font-size: 11px;
-  margin-right: 8px;
-  transition: transform 0.2s;
-}
-
-.sage-accordion-header.collapsed .arrow {
-  transform: rotate(-90deg);
-}
-
-.sage-accordion-content {
-  padding: 12px;
   border-top: 1px solid #eee;
 }
 
 .sage-controls-panel {
   font-family: Arial, sans-serif;
   max-width: 100%;
+  width: 350px;
+  background: white;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  padding: 10px 10px 0 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  margin: 20px auto;
+  height: fit-content;
+}
+
+.sage-title {
+  font-size: 18px;
+  color: #333;
+  margin-bottom: 10px;
+  text-align: center;
+  font-weight: bold;
 }
 
 .sage-status {
-  padding: 8px;
+  padding: 7px;
   border-radius: 4px;
-  margin-bottom: 12px;
+  margin: 7px 0 10px 0;
   font-weight: bold;
   background: #d4edda;
   color: #155724;
   border: 1px solid #c3e6cb;
   text-align: center;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .sage-tab-bar {
   display: flex;
   flex-wrap: wrap;
   border-bottom: 1px solid #eee;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   background: #f5f5f5;
 }
 
@@ -76,21 +49,22 @@
   display: flex;
   flex-wrap: wrap;
   border-bottom: 1px solid #ddd;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   background: #f8f8f8;
 }
 
 .sage-tab-btn {
-  flex: 1;
+  flex: 1 1 33%;
   border: none;
   background: #f5f5f5;
   color: #333;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: bold;
-  padding: 6px 4px;
+  padding: 6px 0 4px 0;
   margin: 0;
   cursor: pointer;
   outline: none;
+  border-radius: 0;
   border-bottom: 2px solid transparent;
   transition: background 0.2s, color 0.2s;
   min-width: 0;
@@ -114,9 +88,55 @@
   padding: 8px 0;
 }
 
+.sage-accordion {
+  border-bottom: 1px solid #eee;
+}
+
+.sage-accordion-header {
+  background: #f9f9f9;
+  color: #007cba;
+  font-size: 13px;
+  font-weight: bold;
+  padding: 4px 8px;
+  cursor: pointer;
+  border: none;
+  outline: none;
+  width: 100%;
+  text-align: left;
+  min-height: 22px;
+  display: flex;
+  align-items: center;
+  border-radius: 3px 3px 0 0;
+  margin: 0;
+  transition: background-color 0.2s;
+}
+
+.sage-accordion-header:hover {
+  background: #f0f0f0;
+}
+
+.sage-accordion-header .arrow {
+  font-size: 11px;
+  margin-right: 6px;
+  transition: transform 0.2s;
+}
+
+.sage-accordion-header.collapsed .arrow {
+  transform: rotate(-90deg);
+}
+
+.sage-accordion-content {
+  padding: 6px 0 8px 0;
+  display: none;
+}
+
+.sage-accordion-content.active {
+  display: block;
+}
+
 .sage-button-row {
   display: flex;
-  gap: 8px;
+  gap: 4px;
   margin-bottom: 8px;
   flex-wrap: wrap;
 }
@@ -125,10 +145,11 @@
   background: #007cba;
   color: white;
   border: none;
-  padding: 6px 10px;
+  padding: 7px 10px;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 12px;
+  margin: 4px 4px 4px 0;
+  font-size: 13px;
   transition: background-color 0.2s;
   flex: 1;
   min-width: 0;
@@ -152,7 +173,7 @@
 }
 
 .sage-input-group {
-  margin-bottom: 8px;
+  margin: 7px 0;
 }
 
 .sage-input-group label {
@@ -160,16 +181,17 @@
   margin-bottom: 3px;
   font-weight: bold;
   color: #555;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .sage-input-group input,
-.sage-input-group select {
+.sage-input-group select,
+.sage-input-group textarea {
   width: 100%;
-  padding: 4px 6px;
+  padding: 6px;
   border: 1px solid #ddd;
-  border-radius: 3px;
-  font-size: 12px;
+  border-radius: 4px;
+  font-size: 13px;
   box-sizing: border-box;
 }
 
@@ -195,22 +217,24 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 6px;
+  font-weight: bold;
+  font-size: 13px;
 }
 
 .sage-log-header span {
-  font-weight: bold;
-  font-size: 12px;
   color: #333;
+  font-size: 14px;
+  font-weight: bold;
 }
 
 .sage-clear-btn {
   background: #dc3545;
   color: white;
   border: none;
-  padding: 3px 8px;
-  border-radius: 3px;
+  padding: 3px 7px;
+  border-radius: 4px;
   cursor: pointer;
-  font-size: 11px;
+  font-size: 12px;
   transition: background-color 0.2s;
 }
 
@@ -222,17 +246,18 @@
   background: #1e1e1e;
   color: #00ff00;
   padding: 8px;
-  border-radius: 4px;
+  border-radius: 6px;
   font-family: 'Courier New', monospace;
-  font-size: 11px;
-  height: 120px;
+  font-size: 12px;
+  height: 100px;
   overflow-y: auto;
+  margin-top: 10px;
   border: 1px solid #333;
 }
 
 .sage-log-entry {
   margin-bottom: 2px;
-  word-wrap: break-word;
+  color: #00ff00;
 }
 
 .sage-log-empty {
@@ -240,51 +265,52 @@
   font-style: italic;
 }
 
-/* Mode switch controls */
 .mode-switch-controls {
-  position: absolute;
-  bottom: 8px;
-  left: 8px;
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  color: #666;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 8px;
+  background: #f8f8f8;
+  border: 1px solid #ddd;
+  border-radius: 4px;
 }
 
 .mode-switch-label {
-  font-weight: bold;
+  font-size: 12px;
+  color: #666;
 }
 
 .mode-switch-btn {
-  background: none;
-  border: none;
-  color: #007cba;
+  background: #f5f5f5;
+  color: #333;
+  border: 1px solid #ddd;
+  padding: 6px 12px;
+  border-radius: 4px;
   cursor: pointer;
-  font-size: 11px;
-  text-decoration: underline;
-  padding: 2px 4px;
-  border-radius: 2px;
-  transition: background-color 0.2s;
+  font-size: 12px;
+  transition: all 0.2s;
 }
 
 .mode-switch-btn:hover {
-  background: #f0f0f0;
-}
-
-.mode-switch-btn.active {
-  color: #333;
-  font-weight: bold;
-  text-decoration: none;
   background: #e0e0e0;
 }
 
-.mode-switch-separator {
-  color: #ccc;
-  margin: 0 2px;
+.mode-switch-btn.active {
+  background: #007cba;
+  color: white;
+  border-color: #007cba;
 }
 
-/* Responsive adjustments */
+.mode-switch-separator {
+  width: 1px;
+  height: 16px;
+  background: #ddd;
+  margin: 0 4px;
+}
+
+/* Enhanced media queries for better responsive design */
 @media (max-width: 400px) {
   .sage-input-row {
     flex-direction: column;
@@ -297,8 +323,9 @@
   }
   
   .sage-tab-btn {
+    flex: 1 1 50%;
     font-size: 11px;
-    padding: 5px 2px;
+    padding: 4px 2px;
   }
 }
 
@@ -306,12 +333,194 @@
 .sage-inspector-result {
   background: #222;
   color: #b5e853;
-  padding: 10px;
+  padding: 7px;
   border-radius: 6px;
   font-family: 'Courier New', monospace;
   font-size: 12px;
-  max-height: 200px;
+  max-height: 120px;
   overflow-y: auto;
-  white-space: pre-wrap;
-  margin: 0;
+  margin-top: 8px;
+  border: 1px solid #333;
+}
+
+/* Enhanced list styling for Inspector */
+.sage-inspector-list {
+  width: 100%;
+  height: 80px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  padding: 4px;
+  font-size: 12px;
+  box-sizing: border-box;
+}
+
+.sage-inspector-list option {
+  padding: 2px 4px;
+}
+
+/* Direction control specific styling */
+.sage-direction-control {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+}
+
+.sage-direction-control select {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 40px;
+  padding: 2px 4px;
+  font-size: 12px;
+}
+
+.sage-direction-control span {
+  font-weight: bold;
+  color: #555;
+}
+
+/* Request preview styling */
+.sage-request-preview {
+  background: #222;
+  color: #b5e853;
+  padding: 7px;
+  border-radius: 6px;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  max-height: 100px;
+  overflow-y: auto;
+  margin: 6px 0;
+  border: 1px solid #333;
+}
+
+/* Experiment controls styling */
+.sage-experiment-controls {
+  margin: 8px 0;
+}
+
+.sage-experiment-warning {
+  color: red;
+  margin: 8px 0;
+  font-size: 12px;
+}
+
+.sage-experiment-estimate {
+  margin: 6px 0;
+  font-size: 12px;
+  color: #666;
+}
+
+/* Settings controls styling */
+.sage-settings-radio-group {
+  display: flex;
+  gap: 12px;
+  margin: 8px 0;
+}
+
+.sage-settings-radio-group label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #555;
+}
+
+.sage-settings-checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 0;
+}
+
+.sage-settings-checkbox-group label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #555;
+}
+
+.sage-settings-textarea {
+  width: 100%;
+  height: 60px;
+  padding: 6px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: monospace;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+/* Custom styles for enhanced visual hierarchy */
+.sage-section-divider {
+  border-top: 1px solid #eee;
+  margin: 12px 0;
+  padding-top: 8px;
+}
+
+.sage-property-section {
+  margin: 8px 0;
+  padding: 8px;
+  background: #fafafa;
+  border-radius: 4px;
+  border: 1px solid #eee;
+}
+
+.sage-property-section h4 {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  font-weight: bold;
+  color: #333;
+}
+
+/* Enhanced form styling */
+.sage-form-section {
+  margin: 8px 0;
+}
+
+.sage-form-section:last-child {
+  margin-bottom: 0;
+}
+
+/* Success/error state styling */
+.sage-success {
+  color: #28a745;
+  background: #d4edda;
+  border: 1px solid #c3e6cb;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  margin: 4px 0;
+}
+
+.sage-error {
+  color: #dc3545;
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  margin: 4px 0;
+}
+
+.sage-warning {
+  color: #856404;
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  margin: 4px 0;
+}
+
+.sage-info {
+  color: #0c5460;
+  background: #d1ecf1;
+  border: 1px solid #bee5eb;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  margin: 4px 0;
 } 
