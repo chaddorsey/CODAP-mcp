@@ -9,7 +9,7 @@
 const { kv } = require("@vercel/kv");
 
 // Import existing tool registry and utilities
-const { CODAP_TOOLS } = require("./tool-registry.js");
+const { CODAP_TOOLS, SAGEMODELER_TOOLS } = require("./tool-registry.js");
 const { queueToolRequest, getToolResponse, setToolResponse, getSession } = require("./kv-utils.js");
 const { DirectToolExecutor } = require("./mcp-tool-executor.js");
 
@@ -559,50 +559,14 @@ class MCPProtocolHandler {
     try {
       console.log(`[MCP] *** CLAUDE DESKTOP TOOLS REQUEST ***`);
       console.log(`[MCP] SessionId: ${sessionId}`);
-      console.log(`[MCP] Headers:`, JSON.stringify(headers, null, 2));
-      console.log(`[MCP] Request params:`, JSON.stringify(params, null, 2));
       
       // Get session to determine capabilities
       let capabilities = ["CODAP"]; // Default to CODAP tools only
       let sessionInfo = "no-session";
       
-      // DIRECT APPROACH: Check for recent connection activity
-      let recentConnection = null;
-      try {
-        const { getSession } = require("./kv-utils.js");
-        // Check for recent connection data stored with a special key
-        const connectionKey = `connection:${sessionId}`;
-        recentConnection = await getSession(connectionKey.replace('session:', ''));
-        if (recentConnection) {
-          console.log(`[MCP] Found recent connection data for ${sessionId}:`, recentConnection);
-          if (recentConnection.capabilities) {
-            capabilities = recentConnection.capabilities;
-            sessionInfo = `recent connection with capabilities: ${capabilities.join(", ")}`;
-            console.log(`[MCP] *** USING RECENT CONNECTION CAPABILITIES *** ${capabilities.join(", ")}`);
-          }
-        }
-      } catch (error) {
-        console.log(`[MCP] Failed to check recent connection:`, error.message);
-      }
-      
       if (sessionId) {
-        console.log(`[MCP] *** TOOLS LIST DEBUG *** for session ${sessionId}`);
-        
-        // Use unified session lookup for all sessions with retry logic
-        let session = await getUnifiedSession(sessionId);
-        
-        // CRITICAL FIX: Retry session lookup if not found (handles race conditions)
-        if (!session) {
-          console.log(`[MCP] Session ${sessionId} not found on first lookup, retrying...`);
-          await new Promise(resolve => setTimeout(resolve, 50)); // Small delay
-          session = await getUnifiedSession(sessionId);
-          
-          if (!session) {
-            console.log(`[MCP] Session ${sessionId} still not found on second lookup, trying one more time...`);
-            await new Promise(resolve => setTimeout(resolve, 100)); // Slightly longer delay
-            session = await getUnifiedSession(sessionId);
-          }
-        }
+        // Use unified session lookup for all sessions
+        const session = await getUnifiedSession(sessionId);
         
         console.log(`[MCP] Debug session lookup for ${sessionId}:`, {
           found: !!session,
@@ -610,48 +574,15 @@ class MCPProtocolHandler {
           capabilities: session?.capabilities || 'no capabilities found'
         });
         
-        // ADDITIONAL DEBUG: Try multiple lookup methods
-        try {
-          const { getSession } = require("./kv-utils.js");
-          const directLookup = await getSession(sessionId);
-          console.log(`[MCP] Direct KV lookup for session:${sessionId}:`, {
-            found: !!directLookup,
-            data: directLookup ? JSON.stringify(directLookup, null, 2) : 'null'
-          });
-        } catch (error) {
-          console.log(`[MCP] Direct KV lookup failed:`, error.message);
-        }
-        
-        // ALSO try MCP session lookup
-        try {
-          const mcpSession = await this.sessionManager.getSessionByMCP(sessionId);
-          console.log(`[MCP] MCP session lookup for ${sessionId}:`, {
-            found: !!mcpSession,
-            capabilities: mcpSession?.capabilities || 'no capabilities',
-            data: mcpSession ? JSON.stringify(mcpSession, null, 2) : 'null'
-          });
-          
-          // If unified session lookup failed but MCP session has capabilities, use those
-          if (!session && mcpSession && mcpSession.capabilities) {
-            console.log(`[MCP] Using MCP session capabilities as fallback`);
-            session = mcpSession;
-          }
-        } catch (error) {
-          console.log(`[MCP] MCP session lookup failed:`, error.message);
-        }
-        
         if (session) {
           if (Array.isArray(session.capabilities) && session.capabilities.length > 0) {
             capabilities = session.capabilities;
             sessionInfo = `session ${sessionId} with capabilities: ${capabilities.join(", ")}`;
-            console.log(`[MCP] *** CAPABILITY TRANSFER SUCCESS *** Using capabilities: ${capabilities.join(", ")}`);
           } else {
             sessionInfo = `session ${sessionId} (no capabilities, defaulting to CODAP)`;
-            console.log(`[MCP] *** CAPABILITY TRANSFER MISSING *** Session found but no capabilities`);
           }
         } else {
           sessionInfo = `session ${sessionId} (not found, defaulting to CODAP)`;
-          console.log(`[MCP] *** CAPABILITY TRANSFER FAILED *** Session not found in unified lookup`);
         }
       }
       
@@ -666,56 +597,26 @@ class MCPProtocolHandler {
         getToolsByCapabilities = null;
       }
       
-      // RADICAL FIX: Always return all tools but with clear capability annotations
-      // Let error handling deal with invalid tool usage rather than hiding tools
+      // Get filtered tools based on capabilities
       let availableTools;
       if (getToolsByCapabilities) {
-        // Always get ALL tools (both CODAP and SageModeler)
-        availableTools = getToolsByCapabilities(["CODAP", "SAGEMODELER"]);
-        console.log(`[MCP] *** RETURNING ALL TOOLS *** (${availableTools.length} tools) with capability annotations`);
-        console.log(`[MCP] Session ${sessionId} capabilities: ${capabilities.join(", ")}`);
+        availableTools = getToolsByCapabilities(capabilities);
       } else {
         // Fallback to CODAP_TOOLS only
         availableTools = CODAP_TOOLS;
       }
       
-      // Convert tools to MCP format with session-specific capability annotations
-      const hasCodeap = capabilities.includes("CODAP");
-      const hasSageModeler = capabilities.includes("SAGEMODELER");
+      // Convert tools to MCP format
+      const mcpTools = availableTools.map(tool => ({
+        name: tool.name,
+        description: tool.description,
+        inputSchema: tool.parameters
+      }));
       
-      const mcpTools = availableTools.map(tool => {
-        const isCodeapTool = !tool.name.startsWith('sage_');
-        const isSageModelerTool = tool.name.startsWith('sage_');
-        
-        let enhancedDescription = tool.description;
-        let availabilityStatus = "";
-        
-        // Add capability prefixes and availability status
-        if (isSageModelerTool) {
-          if (hasSageModeler) {
-            enhancedDescription = `**[SAGEMODELER]** ✅ AVAILABLE: ${enhancedDescription}`;
-          } else {
-            enhancedDescription = `**[SAGEMODELER]** ❌ NOT AVAILABLE IN THIS SESSION: ${enhancedDescription}`;
-          }
-        } else if (isCodeapTool) {
-          if (hasCodeap) {
-            enhancedDescription = `**[CODAP]** ✅ AVAILABLE: ${enhancedDescription}`;
-          } else {
-            enhancedDescription = `**[CODAP]** ❌ NOT AVAILABLE IN THIS SESSION: ${enhancedDescription}`;
-          }
-        }
-        
-        return {
-          name: tool.name,
-          description: enhancedDescription,
-          inputSchema: tool.parameters
-        };
-      });
-      
-      // Always include the connect_to_session tool first with clear categorization
+      // Always include the connect_to_session tool first
       const tools = [{
         name: "connect_to_session",
-        description: "**[CONNECTION]** Connect to a CODAP session using a session ID from the CODAP plugin. Use this to establish workspace context and inherit session capabilities.",
+        description: "Connect to a CODAP session using a session ID from the CODAP plugin. Required before using other CODAP tools.",
         inputSchema: {
           type: "object",
           properties: {
@@ -1570,15 +1471,17 @@ class MCPProtocolHandler {
     }
   }
 
-  async waitForResponse(requestId, internalRequest, timeout = 30000) {
+  async waitForResponse(requestId, internalRequest, timeout = 8000) {
     const startTime = Date.now();
-    const pollInterval = 500; // Poll every 500ms
+    const pollInterval = 200; // Poll every 200ms for faster response
+    
+    console.log(`[MCP] Waiting for response ${requestId} with ${timeout}ms timeout`);
     
     while (Date.now() - startTime < timeout) {
       try {
         const response = await getToolResponse(requestId);
         if (response) {
-          console.log(`[MCP] Response received for ${requestId}`);
+          console.log(`[MCP] Response received for ${requestId} after ${Date.now() - startTime}ms`);
           return response;
         }
       } catch (error) {
@@ -1589,7 +1492,9 @@ class MCPProtocolHandler {
       await new Promise(resolve => setTimeout(resolve, pollInterval));
     }
     
-    throw new Error(`Tool execution timeout after ${timeout}ms`);
+    const elapsed = Date.now() - startTime;
+    console.error(`[MCP] Tool execution timeout after ${elapsed}ms (limit: ${timeout}ms)`);
+    throw new Error(`Tool execution timeout after ${elapsed}ms. The browser worker may not be connected or the request may be queued. Please ensure the CODAP plugin is open and connected.`);
   }
   
   createErrorResponse(id, code, message, data = null) {
