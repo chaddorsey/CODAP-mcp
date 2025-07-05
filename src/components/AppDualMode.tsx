@@ -31,6 +31,10 @@ export const AppDualMode = () => {
   const [showSageAccordion, setShowSageAccordion] = useState(false);
   const [apiCallLogs, setApiCallLogs] = useState<string[]>([]);
 
+  // Add state for SageModeler info message and session ID flash
+  const [showSageInfo, setShowSageInfo] = useState(false);
+  const [flashSessionId, setFlashSessionId] = useState(false);
+
   // Prevent multiple initializations
   const initializationRef = useRef(false);
 
@@ -73,7 +77,8 @@ export const AppDualMode = () => {
       setInitializationError(null);
       // Only generate a session if not present
       if (!sessionId) {
-        const session = await sessionService.createSession();
+        const capabilities = pluginMode === "sagemodeler" ? ["CODAP", "SAGEMODELER"] : ["CODAP"];
+        const session = await sessionService.createSession(capabilities);
         setSessionId(session.code);
         console.log("Session auto-generated:", session.code);
       }
@@ -85,7 +90,7 @@ export const AppDualMode = () => {
     } finally {
       initializationRef.current = false;
     }
-  }, [sessionService, sessionId]);
+  }, [sessionService, sessionId, pluginMode]);
 
   // Auto-initialize session on mount
   useEffect(() => {
@@ -152,8 +157,15 @@ export const AppDualMode = () => {
 
   const handleModeSwitch = (newMode: PluginMode) => {
     setPluginMode(newMode);
-    setShowSageAccordion(false); // Close accordion when switching modes
-    
+    setShowSageAccordion(false);
+    setSessionId(""); // Clear session to trigger new session creation
+    // Show SageModeler info message if switching to SageModeler
+    if (newMode === "sagemodeler") {
+      setShowSageInfo(true);
+      setTimeout(() => setShowSageInfo(false), 30000); // Hide after 30 seconds
+    } else {
+      setShowSageInfo(false);
+    }
     // Log the mode switch
     const logEntry = `[${new Date().toISOString()}] Mode switched to: "${newMode}"`;
     setApiCallLogs(prev => [...prev, logEntry]);
@@ -162,6 +174,15 @@ export const AppDualMode = () => {
   const handleClearLogs = () => {
     setApiCallLogs([]);
   };
+
+  // Flash session ID when it changes
+  useEffect(() => {
+    if (sessionId) {
+      setFlashSessionId(true);
+      const timeout = setTimeout(() => setFlashSessionId(false), 1000);
+      return () => clearTimeout(timeout);
+    }
+  }, [sessionId]);
 
   // Loading state
   if (isInitializing) {
@@ -212,6 +233,8 @@ export const AppDualMode = () => {
         isLoading={clipboard.state.isLoading}
         promptCopyFeedback={promptCopyFeedback}
         pluginMode={pluginMode}
+        showSageInfo={showSageInfo}
+        flashSessionId={flashSessionId}
       />
       
       {/* SageModeler API Panel - only visible in SageModeler mode */}

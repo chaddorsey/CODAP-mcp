@@ -69,10 +69,20 @@ export default async function handler(req, res) {
                req.headers["x-real-ip"] || 
                "unknown";
     
-    // Validate request body (should be empty JSON object)
+    // Validate request body (should be empty JSON object or contain only 'capabilities')
+    let capabilities = ["CODAP"];
     if (req.body && Object.keys(req.body).length > 0) {
-      createErrorResponse(res, 400, "invalid_request", "Request body must be empty JSON object");
-      return;
+      // Accept only { capabilities: [...] }
+      if (
+        Object.keys(req.body).length === 1 &&
+        Array.isArray(req.body.capabilities) &&
+        req.body.capabilities.every((c) => typeof c === "string" && c.length > 0)
+      ) {
+        capabilities = req.body.capabilities;
+      } else {
+        createErrorResponse(res, 400, "invalid_request", "Request body must be empty or contain only a valid 'capabilities' array");
+        return;
+      }
     }
     
     // Generate session code
@@ -86,7 +96,8 @@ export default async function handler(req, res) {
       createdAt: now.toISOString(),
       expiresAt: expiresAt.toISOString(),
       ip,
-      active: true
+      active: true,
+      capabilities
     };
     
     await setSession(code, sessionData);

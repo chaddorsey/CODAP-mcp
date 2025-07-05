@@ -12,6 +12,8 @@ interface ClaudeConnectionPanelProps {
   isLoading?: boolean;
   promptCopyFeedback?: string;
   pluginMode?: "codap" | "sagemodeler";
+  showSageInfo?: boolean;
+  flashSessionId?: boolean;
 }
 
 export const ClaudeConnectionPanel: React.FC<ClaudeConnectionPanelProps> = ({ 
@@ -23,7 +25,9 @@ export const ClaudeConnectionPanel: React.FC<ClaudeConnectionPanelProps> = ({
   onShowSetupGuide,
   isLoading = false,
   promptCopyFeedback,
-  pluginMode = "codap"
+  pluginMode = "codap",
+  showSageInfo = false,
+  flashSessionId = false
 }) => {
   const clipboard = useClipboard();
   const [sessionCopyFeedback, setSessionCopyFeedback] = useState<string>("");
@@ -56,6 +60,24 @@ export const ClaudeConnectionPanel: React.FC<ClaudeConnectionPanelProps> = ({
 
   return (
     <div className="claude-connection-panel">
+      {/* Inline styles for flash and red message */}
+      <style>
+        {`
+        .session-id.flash {
+          background: yellow;
+          transition: background 0.5s;
+        }
+        .sage-info-message {
+          color: #c00;
+          font-weight: bold;
+          margin-bottom: 8px;
+          animation: fadeout 1s linear 29s forwards;
+        }
+        @keyframes fadeout {
+          to { opacity: 0; }
+        }
+        `}
+      </style>
       {/* Header */}
       <div className="panel-header">
         <h2>🤖 {pluginMode === "codap" ? "CODAP + Claude AI" : "SageModeler + Claude"}</h2>
@@ -74,12 +96,19 @@ export const ClaudeConnectionPanel: React.FC<ClaudeConnectionPanelProps> = ({
         </div>
       </div>
 
+      {/* SageModeler info message */}
+      {showSageInfo && (
+        <div className="sage-info-message">
+          SageModeler tools enabled. Make sure you&apos;re connected to the session ID below to use them!
+        </div>
+      )}
+
       {/* Session Display */}
       <div className="session-section">
         <label className="session-label">Session ID:</label>
         <div className="session-display">
-          <span 
-            className="session-id" 
+          <span
+            className={`session-id${flashSessionId ? " flash" : ""}`}
             onClick={selectSessionText}
             title="Click to select session ID"
           >

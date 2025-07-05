@@ -51,7 +51,7 @@
     "lint:build": "eslint . --config eslint.build.config.mjs",
     "type-check": "tsc --noEmit",
     "deploy": "vercel --prod",
-    "alias:update": "vercel alias set $(vercel ls --scope=cdorsey-concordorgs-projects | grep codap-mcp | head -1 | awk '{print $2}') codap-mcp-stable.vercel.app",
+    "alias:update": "vercel alias set $(vercel ls --scope=cdorsey-concordorgs-projects | grep codap-mcp | head -1 | awk '{print $3}') codap-mcp-stable.vercel.app",
     "deploy:gh-pages": "npm run build && npx gh-pages -d dist",
     "prepare": "npm run build"
   },

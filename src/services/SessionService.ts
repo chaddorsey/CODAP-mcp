@@ -40,10 +40,11 @@ export class SessionService implements SessionServiceInterface {
 
   /**
    * Creates a new session by calling POST /api/sessions
+   * @param capabilities - Array of capabilities to register for the session (e.g., ["CODAP", "SAGEMODELER"])
    * @returns Promise resolving to session data
    * @throws SessionServiceError on failure
    */
-  async createSession(): Promise<SessionData> {
+  async createSession(capabilities: string[] = ["CODAP"]): Promise<SessionData> {
     const url = `${this.config.baseUrl}/api/sessions`;
     
     let lastError: Error | undefined;
@@ -56,7 +57,7 @@ export class SessionService implements SessionServiceInterface {
             "Content-Type": "application/json",
             "x-sso-bypass": "pAg5Eon3T8qOwMaWKzo9k6T4pdbYiCye"
           },
-          body: JSON.stringify({})
+          body: JSON.stringify({ capabilities })
         });
 
         if (!response.ok) {

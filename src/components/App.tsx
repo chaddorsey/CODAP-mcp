@@ -54,7 +54,7 @@ export const AppCODAPOnly = () => {
       }
 
       // Auto-generate session (only if we don't have one)
-      const session = await sessionService.createSession();
+      const session = await sessionService.createSession(["CODAP"]);
       setSessionId(session.code);
       console.log("Session auto-generated:", session.code);
 

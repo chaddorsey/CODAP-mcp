@@ -515,7 +515,7 @@ export const PairingBanner: React.FC<PairingBannerProps> = ({
     }));
 
     try {
-      const sessionData = await sessionService.createSession();
+      const sessionData = await sessionService.createSession(["CODAP"]);
       
       setBannerState({
         state: BannerState.SUCCESS,

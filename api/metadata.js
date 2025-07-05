@@ -16,6 +16,16 @@ try {
   TOTAL_TOOL_COUNT = 0;
 }
 
+// Import multi-app tool registry for capability-based filtering
+let getToolsByCapabilities;
+try {
+  const toolRegistry = require("./tool-registry.js");
+  getToolsByCapabilities = toolRegistry.getToolsByCapabilities;
+} catch (error) {
+  console.error("❌ Failed to load tool registry for capability filtering:", error.message);
+  getToolsByCapabilities = null;
+}
+
 /**
  * Version management constants
  */
@@ -366,10 +376,34 @@ async function handler(req, res) {
     // Session validation is handled by middleware
     // req.session and req.sessionCode are available here
     
-    // Generate response with tool manifest and version information
+    // Determine capabilities from session
+    const capabilities = Array.isArray(req.session?.capabilities) && req.session.capabilities.length > 0
+      ? req.session.capabilities
+      : ["CODAP"];
+    // Get filtered tools
+    let filteredTools = null;
+    let toolSource = "fallback";
+    if (getToolsByCapabilities) {
+      filteredTools = getToolsByCapabilities(capabilities);
+      toolSource = "capability-filtered";
+    } else if (allCODAPTools) {
+      filteredTools = allCODAPTools;
+      toolSource = "comprehensive";
+    } else {
+      filteredTools = FALLBACK_TOOLS;
+      toolSource = "fallback";
+    }
+    // After retrieving the session
+    console.log("[MCP DEBUG] Session data for /api/metadata:", req.session);
+    // After filtering tools by capabilities
+    console.log("[MCP DEBUG] Filtered tools for capabilities:", filteredTools.map(t => t.name || t.id));
+    // Generate response with filtered tool manifest
     const now = new Date();
     const response = {
-      ...TOOL_MANIFEST,
+      version: TOOL_MANIFEST_VERSION,
+      tools: filteredTools,
+      toolCount: filteredTools.length,
+      source: toolSource,
       apiVersion: API_VERSION,
       toolManifestVersion: TOOL_MANIFEST_VERSION,
       supportedVersions: {
@@ -380,7 +414,6 @@ async function handler(req, res) {
       generatedAt: now.toISOString(),
       expiresAt: req.session.expiresAt
     };
-    
     createSuccessResponse(res, response);
     
   } catch (error) {
