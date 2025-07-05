@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { BrowserWorkerService } from "../services/BrowserWorkerService";
-import { TabSystem, TabContent, RecordingTab, SettingsTab, InspectorTab } from "./tabs";
+import { TabSystem, TabContent, NodesTab, RecordingTab, SettingsTab, InspectorTab } from "./tabs";
 import { TabId, SubTabId } from "../types/tabs";
 import "./SageModelerAPIPanel.css";
 
@@ -12,25 +12,7 @@ interface SageModelerAPIPanelProps {
   browserWorker: BrowserWorkerService | null;
 }
 
-interface NodeData {
-  id?: string;
-  title: string;
-  initialValue?: number;
-  min?: number;
-  max?: number;
-  isAccumulator?: boolean;
-  isFlowVariable?: boolean;
-  allowNegativeValues?: boolean;
-  valueDefinedSemiQuantitatively?: boolean;
-  x?: number;
-  y?: number;
-  color?: string;
-  combineMethod?: string;
-  image?: string;
-  usesDefaultImage?: boolean;
-  paletteItem?: string;
-  sourceApp?: string;
-}
+// NodeData interface removed - now handled by NodesTab component
 
 interface LinkData {
   id?: string;
@@ -48,13 +30,7 @@ export const SageModelerAPIPanel: React.FC<SageModelerAPIPanelProps> = ({
   onClearLogs,
   browserWorker
 }) => {
-  const [selectedNodeId, setSelectedNodeId] = useState<string>("");
   const [selectedLinkId, setSelectedLinkId] = useState<string>("");
-  const [nodeData, setNodeData] = useState<NodeData>({
-    title: "Test Node",
-    initialValue: 0,
-    color: "#f7be33"
-  });
   const [linkData, setLinkData] = useState<LinkData>({
     relationVector: "increase",
     relationScalar: "aboutTheSame"
@@ -158,90 +134,7 @@ export const SageModelerAPIPanel: React.FC<SageModelerAPIPanelProps> = ({
   };
 
   // Node Management Functions
-  const createRandomNode = async () => {
-    const randomNode = {
-      title: `Node_${Date.now()}`,
-      initialValue: Math.floor(Math.random() * 100),
-      x: Math.floor(Math.random() * 400),
-      y: Math.floor(Math.random() * 300),
-      color: nodeData.color
-    };
-    
-    try {
-      const result = await executeTool("sage_create_node", randomNode);
-      if (result?.id) {
-        setSelectedNodeId(result.id);
-        await refreshAvailableNodes();
-        updateStatus(`Random node "${randomNode.title}" created with ID: ${result.id}`, "success");
-      } else {
-        updateStatus("Random node created successfully", "success");
-      }
-    } catch (error) {
-      // Error already logged and status set by executeTool
-    }
-  };
-
-  const createNewNode = async () => {
-    if (!nodeData.title?.trim()) {
-      updateStatus("Node title is required", "error");
-      return;
-    }
-
-    try {
-      const result = await executeTool("sage_create_node", nodeData);
-      if (result?.id) {
-        setSelectedNodeId(result.id);
-        await refreshAvailableNodes();
-        updateStatus(`Node "${nodeData.title}" created with ID: ${result.id}`, "success");
-      } else {
-        updateStatus("Node created successfully", "success");
-      }
-    } catch (error) {
-      // Error already logged and status set by executeTool
-    }
-  };
-
-  const updateSelectedNode = async () => {
-    if (!selectedNodeId) {
-      updateStatus("No node selected for update", "error");
-      return;
-    }
-
-    if (!nodeData.title?.trim()) {
-      updateStatus("Node title is required", "error");
-      return;
-    }
-
-    try {
-      await executeTool("sage_update_node", { id: selectedNodeId, ...nodeData });
-      updateStatus(`Node "${nodeData.title}" updated successfully`, "success");
-    } catch (error) {
-      // Error already logged and status set by executeTool
-    }
-  };
-
-  const deleteSelectedNode = async () => {
-    if (!selectedNodeId) {
-      updateStatus("No node selected for deletion", "error");
-      return;
-    }
-
-    try {
-      await executeTool("sage_delete_node", { id: selectedNodeId });
-      const deletedTitle = nodeData.title;
-      setSelectedNodeId("");
-      // Reset node data to defaults
-      setNodeData({
-        title: "Test Node",
-        initialValue: 0,
-        color: "#f7be33"
-      });
-      await refreshAvailableNodes();
-      updateStatus(`Node "${deletedTitle}" deleted successfully`, "success");
-    } catch (error) {
-      // Error already logged and status set by executeTool
-    }
-  };
+  // Node management functions removed - now handled by NodesTab component
 
   const refreshAvailableNodes = async () => {
     try {
@@ -357,125 +250,13 @@ export const SageModelerAPIPanel: React.FC<SageModelerAPIPanelProps> = ({
               <div className="sage-status">{status}</div>
               
               <TabSystem onTabChange={handleTabChange} onSubTabChange={handleSubTabChange}>
-                {/* Nodes/Links Tab */}
-                <TabContent tabId="nodes" subTabId="nodes">
-                  <div className="sage-subtab-content">
-                    <div className="sage-button-row">
-                      <button onClick={createRandomNode}>Create Random Node</button>
-                    </div>
-                    <div className="sage-button-row">
-                      <button onClick={createNewNode}>Create New Node</button>
-                      <button 
-                        onClick={updateSelectedNode}
-                        disabled={!selectedNodeId}
-                      >
-                        Update Node
-                      </button>
-                    </div>
-                    
-                    <div className="sage-input-group">
-                      <label>Selected Node:</label>
-                      <select 
-                        value={selectedNodeId} 
-                        onChange={async (e) => {
-                          const nodeId = e.target.value;
-                          setSelectedNodeId(nodeId);
-                          
-                          if (nodeId) {
-                            try {
-                              // Fetch node details to populate form
-                              const nodeDetails = await executeTool("sage_get_node", { id: nodeId });
-                              if (nodeDetails) {
-                                setNodeData({
-                                  title: nodeDetails.title || nodeDetails.data?.title || "",
-                                  initialValue: nodeDetails.initialValue || nodeDetails.data?.initialValue,
-                                  min: nodeDetails.min || nodeDetails.data?.min,
-                                  max: nodeDetails.max || nodeDetails.data?.max,
-                                  x: nodeDetails.x || nodeDetails.data?.x,
-                                  y: nodeDetails.y || nodeDetails.data?.y,
-                                  color: nodeDetails.color || nodeDetails.data?.color || "#f7be33",
-                                  isAccumulator: nodeDetails.isAccumulator || nodeDetails.data?.isAccumulator,
-                                  isFlowVariable: nodeDetails.isFlowVariable || nodeDetails.data?.isFlowVariable,
-                                  allowNegativeValues: nodeDetails.allowNegativeValues || nodeDetails.data?.allowNegativeValues,
-                                  valueDefinedSemiQuantitatively: nodeDetails.valueDefinedSemiQuantitatively || nodeDetails.data?.valueDefinedSemiQuantitatively,
-                                  combineMethod: nodeDetails.combineMethod || nodeDetails.data?.combineMethod,
-                                  image: nodeDetails.image || nodeDetails.data?.image,
-                                  usesDefaultImage: nodeDetails.usesDefaultImage || nodeDetails.data?.usesDefaultImage,
-                                  paletteItem: nodeDetails.paletteItem || nodeDetails.data?.paletteItem,
-                                  sourceApp: nodeDetails.sourceApp || nodeDetails.data?.sourceApp
-                                });
-                                updateStatus(`Loaded properties for node: ${nodeDetails.title || nodeDetails.data?.title}`, "success");
-                              }
-                            } catch (error) {
-                              // Error already logged by executeTool
-                            }
-                          } else {
-                            // Reset form when no node selected
-                            setNodeData({
-                              title: "Test Node",
-                              initialValue: 0,
-                              color: "#f7be33"
-                            });
-                            updateStatus("Node selection cleared", "info");
-                          }
-                        }}
-                      >
-                        <option value="">Select a node...</option>
-                        {availableNodes.map(node => (
-                          <option key={node.id} value={node.id}>{node.title}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="sage-input-row">
-                      <div className="sage-input-group">
-                        <label>Title:</label>
-                        <input 
-                          type="text" 
-                          value={nodeData.title}
-                          onChange={(e) => setNodeData({...nodeData, title: e.target.value})}
-                        />
-                      </div>
-                      <div className="sage-input-group">
-                        <label>Initial Value:</label>
-                        <input 
-                          type="number" 
-                          value={nodeData.initialValue || ""}
-                          onChange={(e) => setNodeData({...nodeData, initialValue: Number(e.target.value)})}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="sage-input-row">
-                      <div className="sage-input-group">
-                        <label>X Position:</label>
-                        <input 
-                          type="number" 
-                          value={nodeData.x || ""}
-                          onChange={(e) => setNodeData({...nodeData, x: Number(e.target.value)})}
-                        />
-                      </div>
-                      <div className="sage-input-group">
-                        <label>Y Position:</label>
-                        <input 
-                          type="number" 
-                          value={nodeData.y || ""}
-                          onChange={(e) => setNodeData({...nodeData, y: Number(e.target.value)})}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="sage-button-row">
-                      <button 
-                        onClick={deleteSelectedNode}
-                        disabled={!selectedNodeId}
-                        className="sage-delete-btn"
-                      >
-                        Delete Node
-                      </button>
-                    </div>
-                  </div>
-                </TabContent>
+                {/* Nodes Sub-tab */}
+                <NodesTab 
+                  tabId="nodes" 
+                  subTabId="nodes" 
+                  isActive={true}
+                  onExecuteTool={executeTool}
+                />
 
                 {/* Links Sub-tab */}
                 <TabContent tabId="nodes" subTabId="links">
