@@ -38,33 +38,59 @@ export const AppDualMode = () => {
   // Prevent multiple initializations
   const initializationRef = useRef(false);
 
+  // Determine capabilities based on manual mode selection and auto-detection
+  const determineCapabilities = useCallback((): string[] => {
+    // PRIORITY 1: If manually set to SageModeler mode, ALWAYS enable dual capabilities (regardless of detection)
+    if (pluginMode === "sagemodeler") {
+      console.log("🎯 Manual SageModeler mode - enabling dual capabilities (forced)");
+      return ["CODAP", "SAGEMODELER"];
+    }
+    
+    // PRIORITY 2: If in CODAP mode, check if SageModeler is actually available for auto-upgrade
+    const sageAPI = (window as any).SageAPI;
+    const hasSageModeler = sageAPI && typeof sageAPI.isApiInitialized === "function" && sageAPI.isApiInitialized();
+    
+    if (hasSageModeler) {
+      console.log("🎯 SageModeler detected and available - enabling dual capabilities (auto-upgrade)");
+      return ["CODAP", "SAGEMODELER"];
+    } else {
+      console.log("📋 CODAP-only mode - using CODAP capabilities");
+      return ["CODAP"];
+    }
+  }, [pluginMode]);
+
   // Services
   const sessionService = createSessionService(RELAY_BASE_URL);
   const clipboard = useClipboard();
 
   // Memoize the config for useBrowserWorker
-  const browserWorkerConfig = useMemo(() => ({
-    relayBaseUrl: RELAY_BASE_URL,
-    sessionCode: sessionId,
-    debug: false, // No debug toggle
-    autoStart: true, // Ensure worker starts automatically
-    capabilities: pluginMode === "sagemodeler" ? ["CODAP", "SAGEMODELER"] : ["CODAP"],
-    onStatusChange: (status: ConnectionStatus) => {
-      if (status.state === "connected") {
-        setRelayConnected(true);
-        setRelayConnecting(false);
-      } else if (status.state === "connecting" || status.state === "reconnecting") {
-        setRelayConnecting(true);
+  const browserWorkerConfig = useMemo(() => {
+    // Use determined capabilities based on manual mode selection and auto-detection
+    const capabilities = determineCapabilities();
+    
+    return {
+      relayBaseUrl: RELAY_BASE_URL,
+      sessionCode: sessionId,
+      debug: false, // No debug toggle
+      autoStart: true, // Ensure worker starts automatically
+      capabilities,
+      onStatusChange: (status: ConnectionStatus) => {
+        if (status.state === "connected") {
+          setRelayConnected(true);
+          setRelayConnecting(false);
+        } else if (status.state === "connecting" || status.state === "reconnecting") {
+          setRelayConnecting(true);
+          setRelayConnected(false);
+        } else if (status.state === "disconnected" || status.state === "error") {
+          setRelayConnected(false);
+          setRelayConnecting(false);
+        }
+      },
+      onError: (error: BrowserWorkerError) => {
         setRelayConnected(false);
-      } else if (status.state === "disconnected" || status.state === "error") {
-        setRelayConnected(false);
-        setRelayConnecting(false);
       }
-    },
-    onError: (error: BrowserWorkerError) => {
-      setRelayConnected(false);
-    }
-  }), [sessionId, pluginMode]);
+    };
+  }, [sessionId, determineCapabilities]);
 
   const browserWorker = useBrowserWorker(browserWorkerConfig);
 
@@ -77,10 +103,18 @@ export const AppDualMode = () => {
       setInitializationError(null);
       // Only generate a session if not present
       if (!sessionId) {
-        const capabilities = pluginMode === "sagemodeler" ? ["CODAP", "SAGEMODELER"] : ["CODAP"];
+        // Determine capabilities based on manual mode selection and auto-detection
+        const capabilities = determineCapabilities();
+        
+        // Auto-set plugin mode based on detected capabilities (only if currently in CODAP mode)
+        if (capabilities.includes("SAGEMODELER") && pluginMode === "codap") {
+          setPluginMode("sagemodeler");
+          console.log("🎯 Auto-switching to SageModeler mode due to detected capabilities");
+        }
+        
         const session = await sessionService.createSession(capabilities);
         setSessionId(session.code);
-        console.log("Session auto-generated:", session.code);
+        console.log("Session auto-generated:", session.code, "with capabilities:", capabilities);
       }
       setIsInitializing(false);
     } catch (error) {
@@ -90,12 +124,17 @@ export const AppDualMode = () => {
     } finally {
       initializationRef.current = false;
     }
-  }, [sessionService, sessionId, pluginMode]);
+  }, [sessionService, sessionId, pluginMode, determineCapabilities]);
 
-  // Auto-initialize session on mount
+  // Auto-initialize session on mount with small delay to allow SageModeler to initialize
   useEffect(() => {
     if (!sessionId) {
-      initializeSession();
+      // Small delay to allow SageModeler to initialize if present
+      const timer = setTimeout(() => {
+        initializeSession();
+      }, 500); // 500ms delay
+      
+      return () => clearTimeout(timer);
     }
   }, [initializeSession, sessionId]);
 
@@ -158,7 +197,8 @@ export const AppDualMode = () => {
   const handleModeSwitch = (newMode: PluginMode) => {
     setPluginMode(newMode);
     setShowSageAccordion(false);
-    setSessionId(""); // Clear session to trigger new session creation
+    setSessionId(""); // Clear session to trigger new session creation with new capabilities
+    
     // Show SageModeler info message if switching to SageModeler
     if (newMode === "sagemodeler") {
       setShowSageInfo(true);
@@ -166,8 +206,11 @@ export const AppDualMode = () => {
     } else {
       setShowSageInfo(false);
     }
-    // Log the mode switch
-    const logEntry = `[${new Date().toISOString()}] Mode switched to: "${newMode}"`;
+    
+    // Log the mode switch with capability info
+    // Note: We need to determine capabilities after the mode switch, so we simulate the new mode
+    const capabilities = newMode === "sagemodeler" ? ["CODAP", "SAGEMODELER"] : ["CODAP"];
+    const logEntry = `[${new Date().toISOString()}] Mode switched to: "${newMode}" (capabilities: ${capabilities.join(", ")})`;
     setApiCallLogs(prev => [...prev, logEntry]);
   };
 

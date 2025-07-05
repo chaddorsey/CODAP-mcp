@@ -454,7 +454,7 @@ class MCPProtocolHandler {
             sampling: {}
           },
           serverInfo: {
-            name: "CODAP MCP Server",
+            name: "codap-mcp",
             version: "1.0.0",
             description: "Model Context Protocol server for CODAP data analysis platform"
           },
@@ -565,20 +565,38 @@ class MCPProtocolHandler {
       let sessionInfo = "no-session";
       
       if (sessionId) {
-        // Use unified session lookup for all sessions
-        const session = await getUnifiedSession(sessionId);
+        // CRITICAL FIX: Check for active pairing session first
+        let effectiveSessionId = sessionId;
+        let claudeSession = null;
         
-        console.log(`[MCP] Session lookup for ${sessionId}: ${session ? 'found' : 'not found'}, capabilities: ${session?.capabilities || 'none'}`);
+        // Check if this is a Claude session with an active pairing session
+        try {
+          claudeSession = await this.sessionManager.getSessionByMCP(sessionId);
+          if (claudeSession && claudeSession.activePairingSession) {
+            effectiveSessionId = claudeSession.activePairingSession;
+            console.log(`[MCP] Found active pairing session ${effectiveSessionId} for Claude session ${sessionId}`);
+          }
+        } catch (error) {
+          console.log(`[MCP] Could not check for pairing session: ${error.message}`);
+        }
+        
+        // Use unified session lookup for the effective session (pairing session if available, otherwise Claude session)
+        const session = await getUnifiedSession(effectiveSessionId);
+        
+        console.log(`[MCP] Session lookup for ${effectiveSessionId}: ${session ? 'found' : 'not found'}, capabilities: ${session?.capabilities || 'none'}`);
+        if (session) {
+          console.log(`[MCP] Full session data:`, JSON.stringify(session, null, 2));
+        }
         
         if (session) {
           if (Array.isArray(session.capabilities) && session.capabilities.length > 0) {
             capabilities = session.capabilities;
-            sessionInfo = `session ${sessionId} with capabilities: ${capabilities.join(", ")}`;
+            sessionInfo = `session ${effectiveSessionId} with capabilities: ${capabilities.join(", ")}`;
           } else {
-            sessionInfo = `session ${sessionId} (no capabilities, defaulting to CODAP)`;
+            sessionInfo = `session ${effectiveSessionId} (no capabilities, defaulting to CODAP)`;
           }
         } else {
-          sessionInfo = `session ${sessionId} (not found, defaulting to CODAP)`;
+          sessionInfo = `session ${effectiveSessionId} (not found, defaulting to CODAP)`;
         }
       }
       
@@ -785,11 +803,11 @@ class MCPProtocolHandler {
       let availableTools;
       let capabilities = ["CODAP"]; // Default to CODAP tools only
       
-      // Get session capabilities to determine available tools
-      if (sessionId) {
-        const session = await getUnifiedSession(sessionId);
-        if (session && Array.isArray(session.capabilities) && session.capabilities.length > 0) {
-          capabilities = session.capabilities;
+      // Get session capabilities to determine available tools (use target session, not Claude session)
+      if (effectiveSessionId) {
+        const targetSession = await getUnifiedSession(effectiveSessionId);
+        if (targetSession && Array.isArray(targetSession.capabilities) && targetSession.capabilities.length > 0) {
+          capabilities = targetSession.capabilities;
         }
       }
       
@@ -969,14 +987,29 @@ class MCPProtocolHandler {
         // Create a unique pairing session
         const pairingSessionId = generatePairingSessionId(sessionId, targetSessionId);
         
-        // Create the pairing session
-        console.log(`[MCP] Creating pairing session ${pairingSessionId}...`);
+        // CRITICAL FIX: Get target session capabilities BEFORE creating pairing session
+        let targetCapabilities = ["CODAP"]; // Default
+        try {
+          const targetUnifiedSession = await getUnifiedSession(targetSessionId);
+          if (targetUnifiedSession && Array.isArray(targetUnifiedSession.capabilities)) {
+            targetCapabilities = targetUnifiedSession.capabilities;
+            console.log(`[MCP] Target session ${targetSessionId} has capabilities for pairing:`, targetCapabilities);
+          } else {
+            console.log(`[MCP] Target session ${targetSessionId} has no explicit capabilities, defaulting to CODAP for pairing`);
+          }
+        } catch (error) {
+          console.log(`[MCP] Could not get target session capabilities for pairing:`, error.message);
+        }
+
+        // Create the pairing session WITH INHERITED CAPABILITIES
+        console.log(`[MCP] Creating pairing session ${pairingSessionId} with capabilities:`, targetCapabilities);
         const pairingSession = await this.sessionManager.createSession(pairingSessionId, {
           type: "pairing",
           claudeSession: sessionId,
           codapSession: targetSessionId,
           claudeSessionLegacyCode: null,
           codapSessionLegacyCode: targetSession.legacyCode,
+          capabilities: targetCapabilities, // ✅ INHERIT TARGET SESSION CAPABILITIES
           initialized: true,
           protocolVersion: "2024-11-05",
           createdAt: Date.now()
@@ -1010,8 +1043,26 @@ class MCPProtocolHandler {
         
         console.log(`[MCP] Successfully created and verified pairing session ${pairingSessionId} between Claude ${sessionId} and CODAP ${targetSessionId}`);
         
+        // CRITICAL FIX: Create unified session entry for pairing session with capabilities
+        try {
+          const { setSession } = require("./kv-utils.js");
+          const pairingUnifiedSession = {
+            sessionId: pairingSessionId,
+            capabilities: targetCapabilities,
+            type: "pairing-unified",
+            claudeSession: sessionId,
+            codapSession: targetSessionId,
+            createdAt: Date.now(),
+            expiresAt: Date.now() + (24 * 60 * 60 * 1000), // 24 hours
+            connectionTime: Date.now()
+          };
+          
+          await setSession(pairingSessionId, pairingUnifiedSession);
+          console.log(`[MCP] Created unified session entry for pairing session ${pairingSessionId} with capabilities:`, targetCapabilities);
+        } catch (error) {
+          console.error(`[MCP] CRITICAL: Failed to create unified session for pairing session:`, error);
+        }
 
-        
         // CAPABILITY TRANSFER: Inherit target session's capabilities
         try {
           const { setSession } = require("./kv-utils.js");
