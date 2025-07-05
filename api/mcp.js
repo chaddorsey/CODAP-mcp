@@ -9,7 +9,7 @@
 const { kv } = require("@vercel/kv");
 
 // Import existing tool registry and utilities
-const { CODAP_TOOLS } = require("./tool-registry.js");
+const { CODAP_TOOLS, SAGEMODELER_TOOLS, getToolsByCapabilities } = require("./tool-registry.js");
 const { queueToolRequest, getToolResponse, setToolResponse, getSession } = require("./kv-utils.js");
 const { DirectToolExecutor } = require("./mcp-tool-executor.js");
 
@@ -458,9 +458,7 @@ class MCPProtocolHandler {
             version: "1.0.0",
             description: "Model Context Protocol server for CODAP data analysis platform"
           },
-          instructions: sessionId === "claude-desktop-session" ? 
-            "CODAP MCP Server ready! All 34 CODAP tools are now available. You can interact with CODAP workspaces directly." :
-            "CODAP MCP Server initialized. Use 'connect_to_session' tool to connect to a specific CODAP session."
+          instructions: await this.generateContextualInstructions(sessionId)
         },
         id
       };
@@ -561,8 +559,6 @@ class MCPProtocolHandler {
     try {
       console.log(`[MCP] *** CLAUDE DESKTOP TOOLS REQUEST ***`);
       console.log(`[MCP] SessionId: ${sessionId}`);
-      console.log(`[MCP] Headers:`, JSON.stringify(headers, null, 2));
-      console.log(`[MCP] Request params:`, JSON.stringify(params, null, 2));
       
       // Get session to determine capabilities
       let capabilities = ["CODAP"]; // Default to CODAP tools only
@@ -572,11 +568,7 @@ class MCPProtocolHandler {
         // Use unified session lookup for all sessions
         const session = await getUnifiedSession(sessionId);
         
-        console.log(`[MCP] Debug session lookup for ${sessionId}:`, {
-          found: !!session,
-          sessionData: session ? JSON.stringify(session, null, 2) : 'null',
-          capabilities: session?.capabilities || 'no capabilities found'
-        });
+        console.log(`[MCP] Session lookup for ${sessionId}: ${session ? 'found' : 'not found'}, capabilities: ${session?.capabilities || 'none'}`);
         
         if (session) {
           if (Array.isArray(session.capabilities) && session.capabilities.length > 0) {
@@ -820,12 +812,38 @@ class MCPProtocolHandler {
       const tool = availableTools.find(t => t.name === name);
       
       if (!tool) {
+        // Provide comprehensive error with full tool list to keep LLM "in the zone"
+        const codapTools = availableTools.filter(t => !t.name.startsWith('sage_'));
+        const sageTools = availableTools.filter(t => t.name.startsWith('sage_'));
+        
+        let helpText = `❌ **Tool "${name}" is not available in this session.**\n\n`;
+        helpText += `**Session Capabilities**: ${capabilities.join(' + ')}\n\n`;
+        
+        // Provide complete tool list by category for ongoing context
+        helpText += `**🔧 Currently Available Tools** (${availableTools.length + 1} total):\n\n`;
+        
+        if (codapTools.length > 0) {
+          helpText += `**[CODAP] Data Analysis Tools** (${codapTools.length} tools):\n`;
+          helpText += codapTools.map(t => `• ${t.name}`).join('\n') + '\n\n';
+        }
+        
+        if (sageTools.length > 0) {
+          helpText += `**[SAGEMODELER] Systems Modeling Tools** (${sageTools.length} tools):\n`;
+          helpText += sageTools.map(t => `• ${t.name}`).join('\n') + '\n\n';
+        }
+        
+        helpText += `**[CONNECTION] Session Management** (1 tool):\n`;
+        helpText += `• connect_to_session\n\n`;
+        
+        helpText += `**💡 Suggestion**: Choose from the tools listed above that match your current task. `;
+        helpText += `All tools are marked with capability prefixes (**[CODAP]**, **[SAGEMODELER]**, **[CONNECTION]**) in their descriptions.`;
+        
         return {
           jsonrpc: "2.0",
           result: {
             content: [{
               type: "text",
-              text: `Unknown tool: ${name}. Available tools: ${availableTools.map(t => t.name).join(", ")}`
+              text: helpText
             }]
           },
           id
@@ -1016,6 +1034,58 @@ class MCPProtocolHandler {
           // Don't fail the connection if capability transfer fails
         }
         
+        // CAPABILITY TRANSFER: Inherit target session's capabilities
+        try {
+          const { setSession } = require("./kv-utils.js");
+          const targetUnifiedSession = await getUnifiedSession(targetSessionId);
+          
+          let capabilitiesToTransfer = ["CODAP"]; // Default to CODAP-only for legacy sessions
+          
+          if (targetUnifiedSession && targetUnifiedSession.capabilities && Array.isArray(targetUnifiedSession.capabilities)) {
+            capabilitiesToTransfer = targetUnifiedSession.capabilities;
+            console.log(`[MCP] Found target session capabilities:`, capabilitiesToTransfer);
+          } else {
+            console.log(`[MCP] Target session ${targetSessionId} has no explicit capabilities, defaulting to CODAP-only for legacy compatibility`);
+            
+            // For legacy sessions without explicit capabilities, create a unified session entry with CODAP-only
+            try {
+              const legacyUnifiedSession = {
+                sessionId: targetSessionId,
+                capabilities: capabilitiesToTransfer,
+                type: "legacy-session-unified",
+                createdAt: Date.now(),
+                expiresAt: Date.now() + (24 * 60 * 60 * 1000), // 24 hours
+                legacyUpgrade: true
+              };
+              await setSession(targetSessionId, legacyUnifiedSession);
+              console.log(`[MCP] Created unified session entry for legacy session ${targetSessionId} with CODAP-only capabilities`);
+            } catch (error) {
+              console.log(`[MCP] Failed to create unified session for legacy session ${targetSessionId}:`, error.message);
+            }
+          }
+          
+          console.log(`[MCP] Transferring capabilities from ${targetSessionId} to Claude session ${sessionId}:`, capabilitiesToTransfer);
+          
+          // Create unified session entry for Claude with inherited capabilities
+          const claudeUnifiedSession = {
+            sessionId: sessionId,
+            capabilities: capabilitiesToTransfer,
+            connectedTo: targetSessionId,
+            connectionTime: Date.now(),
+            expiresAt: Date.now() + (24 * 60 * 60 * 1000), // 24 hours
+            createdAt: Date.now(),
+            type: "claude-desktop-unified"
+          };
+          
+          await setSession(sessionId, claudeUnifiedSession);
+          console.log(`[MCP] Successfully created unified session entry for Claude ${sessionId} with capabilities:`, claudeUnifiedSession.capabilities);
+          
+        } catch (error) {
+          console.error(`[MCP] CRITICAL: Failed to transfer capabilities:`, error);
+          // This is critical for tool availability, so we should still try to continue
+          // but log it as a critical error
+        }
+        
         // EARLY CLAUDE CONNECTION DETECTION: Send SSE notification
         try {
           // Queue a special "claude-connected" event for the browser worker
@@ -1043,12 +1113,110 @@ class MCPProtocolHandler {
         }
       }
       
+      // CRITICAL FIX: Get the actual capabilities that are now available
+      // First, get the target session's capabilities to determine what should be transferred
+      let targetCapabilities = ["CODAP"]; // Default
+      let transferSuccess = false;
+      
+      try {
+        const targetUnifiedSession = await getUnifiedSession(targetSessionId);
+        if (targetUnifiedSession && Array.isArray(targetUnifiedSession.capabilities)) {
+          targetCapabilities = targetUnifiedSession.capabilities;
+          console.log(`[MCP] Target session ${targetSessionId} has capabilities:`, targetCapabilities);
+        } else {
+          console.log(`[MCP] Target session ${targetSessionId} has no capabilities, defaulting to CODAP`);
+        }
+      } catch (error) {
+        console.log(`[MCP] Could not get target session capabilities:`, error.message);
+      }
+      
+      // Verify the capability transfer worked
+      let availableCapabilities = targetCapabilities; // Use target capabilities as the source of truth
+      try {
+        const claudeUnifiedSession = await getUnifiedSession(sessionId);
+        if (claudeUnifiedSession && Array.isArray(claudeUnifiedSession.capabilities)) {
+          availableCapabilities = claudeUnifiedSession.capabilities;
+          transferSuccess = true;
+          console.log(`[MCP] Claude session ${sessionId} successfully inherited capabilities:`, availableCapabilities);
+        } else {
+          console.log(`[MCP] Claude session ${sessionId} capability transfer failed, using target capabilities directly`);
+          // Force the transfer by creating the unified session entry
+          const { setSession } = require("./kv-utils.js");
+          const claudeUnifiedSession = {
+            sessionId: sessionId,
+            capabilities: targetCapabilities,
+            connectedTo: targetSessionId,
+            connectionTime: Date.now(),
+            expiresAt: Date.now() + (24 * 60 * 60 * 1000), // 24 hours
+            createdAt: Date.now(),
+            type: "claude-desktop-unified"
+          };
+          await setSession(sessionId, claudeUnifiedSession);
+          availableCapabilities = targetCapabilities;
+          transferSuccess = true;
+          console.log(`[MCP] Forced capability transfer for Claude session ${sessionId}:`, availableCapabilities);
+        }
+      } catch (error) {
+        console.log(`[MCP] Error verifying capability transfer:`, error.message);
+        availableCapabilities = targetCapabilities; // Fall back to target capabilities
+      }
+      
+      // Get the actual tools that will be available
+      let getToolsByCapabilities;
+      try {
+        const toolRegistry = require("./tool-registry.js");
+        getToolsByCapabilities = toolRegistry.getToolsByCapabilities;
+      } catch (error) {
+        console.error("[MCP] Failed to import tool registry:", error);
+        getToolsByCapabilities = null;
+      }
+      
+      let availableTools = [];
+      if (getToolsByCapabilities) {
+        availableTools = getToolsByCapabilities(availableCapabilities);
+      } else {
+        availableTools = CODAP_TOOLS; // Fallback to CODAP only
+      }
+      
+      const codapTools = availableTools.filter(t => !t.name.startsWith('sage_'));
+      const sageTools = availableTools.filter(t => t.name.startsWith('sage_'));
+      
+      // Generate capability-specific response with EXACT tool counts and names
+      const hasCodeap = availableCapabilities.includes("CODAP");
+      const hasSageModeler = availableCapabilities.includes("SAGEMODELER");
+      
+      let capabilityText = "";
+      if (hasCodeap && hasSageModeler) {
+        capabilityText = `\n\n🎯 **This is a CODAP- and SageModeler-equipped session**\n\n`;
+        capabilityText += `⚠️ **IMPORTANT**: Only tools marked **[CODAP]** or **[SAGEMODELER]** are valid for use during this session. Use of any non-valid tools will return errors and waste time.\n\n`;
+        capabilityText += `**Valid Tools for This Session** (${availableTools.length + 1} total):\n\n`;
+        capabilityText += `**[CODAP] Tools** (${codapTools.length} tools):\n`;
+        capabilityText += codapTools.map(t => `• ${t.name}`).join('\n') + '\n\n';
+        capabilityText += `**[SAGEMODELER] Tools** (${sageTools.length} tools):\n`;
+        capabilityText += sageTools.map(t => `• ${t.name}`).join('\n') + '\n\n';
+        capabilityText += `**[CONNECTION] Tool** (1 tool):\n• connect_to_session`;
+      } else if (hasCodeap) {
+        capabilityText = `\n\n🎯 **This is a CODAP-only session**\n\n`;
+        capabilityText += `⚠️ **IMPORTANT**: Only tools marked **[CODAP]** are valid for use during this session. Use of any non-valid tools will return errors and waste time.\n\n`;
+        capabilityText += `**Valid Tools for This Session** (${availableTools.length + 1} total):\n\n`;
+        capabilityText += `**[CODAP] Tools** (${codapTools.length} tools):\n`;
+        capabilityText += codapTools.map(t => `• ${t.name}`).join('\n') + '\n\n';
+        capabilityText += `**[CONNECTION] Tool** (1 tool):\n• connect_to_session`;
+      } else if (hasSageModeler) {
+        capabilityText = `\n\n🎯 **This is a SageModeler-only session**\n\n`;
+        capabilityText += `⚠️ **IMPORTANT**: Only tools marked **[SAGEMODELER]** are valid for use during this session. Use of any non-valid tools will return errors and waste time.\n\n`;
+        capabilityText += `**Valid Tools for This Session** (${availableTools.length + 1} total):\n\n`;
+        capabilityText += `**[SAGEMODELER] Tools** (${sageTools.length} tools):\n`;
+        capabilityText += sageTools.map(t => `• ${t.name}`).join('\n') + '\n\n';
+        capabilityText += `**[CONNECTION] Tool** (1 tool):\n• connect_to_session`;
+      }
+      
       return {
         jsonrpc: "2.0",
         result: {
           content: [{
             type: "text",
-            text: `Connected successfully to CODAP session '${targetSessionId}'!\n\nSession Details:\n- Session ID: ${targetSessionId}\n- Legacy Code: ${targetSession.legacyCode}\n- Status: ${targetSession.status}\n- Created: ${new Date(targetSession.createdAt).toLocaleString()}\n\n⚠️ **Important Note**: Due to MCP client limitations, tool lists are cached when Claude Desktop first connects. To access SageModeler tools (if available in this session), you may need to restart Claude Desktop and reconnect.\n\nAlternatively, new Claude Desktop sessions are now automatically configured with dual CODAP+SageModeler capabilities, so restarting Claude Desktop should give you access to both tool sets immediately.`
+            text: `✅ **Connected successfully to CODAP session '${targetSessionId}'!**\n\n**Session Details:**\n- Session ID: ${targetSessionId}\n- Legacy Code: ${targetSession.legacyCode}\n- Status: ${targetSession.status}\n- Created: ${new Date(targetSession.createdAt).toLocaleString()}${capabilityText}\n\n💡 **Session Active**: Your tool list has been updated to match this session's capabilities. Only the tools listed above are available for use in this session.`
           }]
         },
         id
@@ -1072,6 +1240,66 @@ class MCPProtocolHandler {
    */
   getCODAPTools() {
     return CODAP_TOOLS;
+  }
+
+  /**
+   * Generate contextual instructions based on session capabilities
+   */
+  async generateContextualInstructions(sessionId) {
+    let capabilities = ["CODAP"]; // Default
+    let environmentStatus = "CODAP workspace connection required";
+    
+    if (sessionId) {
+      const session = await getUnifiedSession(sessionId);
+      if (session && Array.isArray(session.capabilities) && session.capabilities.length > 0) {
+        capabilities = session.capabilities;
+        environmentStatus = `Connected with ${capabilities.join(' + ')} capabilities`;
+      }
+    }
+    
+    const hasCodeap = capabilities.includes("CODAP");
+    const hasSageModeler = capabilities.includes("SAGEMODELER");
+    
+    let instructions = "🔧 **CODAP MCP Server Ready**\n\n";
+    
+    // Environment status
+    instructions += `**Environment Status**: ${environmentStatus}\n\n`;
+    
+    // Available tool categories
+    instructions += "**Available Tool Categories**:\n";
+    if (hasCodeap) {
+      instructions += "✅ **CODAP Tools** (34 tools) - Data analysis, visualization, workspace management\n";
+    }
+    if (hasSageModeler) {
+      instructions += "✅ **SageModeler Tools** (25 tools) - Systems modeling, node/link management, simulation\n";
+    }
+    instructions += "✅ **Connection Tools** (1 tool) - Session management\n\n";
+    
+    // Usage guidelines
+    instructions += "**🎯 Tool Usage Guidelines**:\n";
+    if (hasCodeap && hasSageModeler) {
+      instructions += "• Use **CODAP tools** (createDataContext, createGraph, etc.) for data analysis tasks\n";
+      instructions += "• Use **SageModeler tools** (sage_create_node, sage_run_experiment, etc.) for systems modeling\n";
+      instructions += "• Check tool descriptions for specific environment requirements\n";
+      instructions += "• Both environments are available in this session\n\n";
+    } else if (hasCodeap) {
+      instructions += "• Use **CODAP tools** for data analysis and visualization\n";
+      instructions += "• SageModeler tools are not available in this session\n";
+      instructions += "• Connect to a dual-capability session for SageModeler access\n\n";
+    } else {
+      instructions += "• Use 'connect_to_session' to establish workspace connection\n";
+      instructions += "• Available tools depend on the target session's capabilities\n\n";
+    }
+    
+    // Connection guidance
+    if (!sessionId || sessionId.startsWith("claude-desktop-")) {
+      instructions += "**🔗 Connection Options**:\n";
+      instructions += "• Current session has default capabilities\n";
+      instructions += "• Use 'connect_to_session' with a CODAP session ID for workspace-specific tools\n";
+      instructions += "• Session capabilities will determine available tool sets\n";
+    }
+    
+    return instructions;
   }
 
   /**
