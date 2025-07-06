@@ -488,7 +488,7 @@ class MCPProtocolHandler {
             sampling: {}
           },
           serverInfo: {
-            name: "",
+            name: "codap-mcp",
             version: "1.0.0", 
             description: "Model Context Protocol server for CODAP data analysis platform"
           },
@@ -558,7 +558,7 @@ class MCPProtocolHandler {
           logging: {}
         },
         serverInfo: {
-          name: "",
+          name: "codap-mcp",
           version: "1.0.0",
           sessionMode: sessionId ? "session-connected" : "session-agnostic"
         }
@@ -1910,7 +1910,7 @@ async function GET(req) {
   
   // Health check endpoint (default)
   return new Response(JSON.stringify({
-    service: "",
+    service: "codap-mcp",
     status: "operational",
     version: "1.0.0",
     protocol: "JSON-RPC 2.0",
