@@ -266,33 +266,8 @@ export const AppDualMode = () => {
   // Main dual-mode interface
   return (
     <div className="codap-mcp-plugin minimal">
-      <ClaudeConnectionPanel
-        sessionId={sessionId}
-        relayConnected={relayConnected}
-        relayConnecting={relayConnecting}
-        claudeConnected={claudeConnected}
-        onCopyConnectionPrompt={handleCopyConnectionPrompt}
-        onShowSetupGuide={handleShowSetupGuide}
-        isLoading={clipboard.state.isLoading}
-        promptCopyFeedback={promptCopyFeedback}
-        pluginMode={pluginMode}
-        showSageInfo={showSageInfo}
-        flashSessionId={flashSessionId}
-      />
-      
-      {/* SageModeler API Panel - only visible in SageModeler mode */}
-      {pluginMode === "sagemodeler" && (
-        <SageModelerAPIPanel
-          isVisible={showSageAccordion}
-          onToggle={() => setShowSageAccordion(!showSageAccordion)}
-          apiCallLogs={apiCallLogs}
-          onClearLogs={handleClearLogs}
-          browserWorker={browserWorker.service}
-        />
-      )}
-      
-      {/* Mode Switch Controls - positioned in lower-left corner */}
-      <div className="mode-switch-controls">
+      {/* Mode Switch Controls - now at the top */}
+      <div className="mode-switch-controls" style={{ marginBottom: 12 }}>
         <span className="mode-switch-label">Mode:</span>
         <button
           className={`mode-switch-btn ${pluginMode === "codap" ? "active" : ""}`}
@@ -308,7 +283,29 @@ export const AppDualMode = () => {
           SageModeler
         </button>
       </div>
-      
+      <ClaudeConnectionPanel
+        sessionId={sessionId}
+        relayConnected={relayConnected}
+        relayConnecting={relayConnecting}
+        claudeConnected={claudeConnected}
+        onCopyConnectionPrompt={handleCopyConnectionPrompt}
+        onShowSetupGuide={handleShowSetupGuide}
+        isLoading={clipboard.state.isLoading}
+        promptCopyFeedback={promptCopyFeedback}
+        pluginMode={pluginMode}
+        showSageInfo={showSageInfo}
+        flashSessionId={flashSessionId}
+      />
+      {/* SageModeler API Panel - only visible in SageModeler mode */}
+      {pluginMode === "sagemodeler" && (
+        <SageModelerAPIPanel
+          isVisible={showSageAccordion}
+          onToggle={() => setShowSageAccordion(!showSageAccordion)}
+          apiCallLogs={apiCallLogs}
+          onClearLogs={handleClearLogs}
+          browserWorker={browserWorker.service}
+        />
+      )}
       {showSetupModal && (
         <ClaudeSetupModal
           sessionId={sessionId}

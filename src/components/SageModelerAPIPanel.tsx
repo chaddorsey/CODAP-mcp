@@ -55,7 +55,7 @@ export const SageModelerAPIPanel: React.FC<SageModelerAPIPanelProps> = ({
         </button>
         {isVisible && (
           <div className="sage-accordion-content">
-            <SageAPIEmbeddedPanel />
+            <SageAPIEmbeddedPanel expanded={isVisible} />
           </div>
         )}
       </div>
@@ -64,13 +64,15 @@ export const SageModelerAPIPanel: React.FC<SageModelerAPIPanelProps> = ({
 };
 
 // New component for embedding the reference plugin
-const SageAPIEmbeddedPanel: React.FC = () => {
+const SageAPIEmbeddedPanel: React.FC<{ expanded: boolean }> = ({ expanded }) => {
+  const width = 420;
+  const height = expanded ? 600 : 325;
   return (
-    <div style={{ width: "100%", height: "600px", maxWidth: 900, margin: "0 auto" }}>
+    <div style={{ width, height, maxWidth: width, margin: "0 auto", transition: "height 0.3s" }}>
       <iframe
         src="/sage-api-reference.html"
         title="Sage API Reference Plugin"
-        style={{ width: "100%", height: "100%", border: "none", minHeight: 600 }}
+        style={{ width: "100%", height: "100%", border: "none", minHeight: 325, transition: "height 0.3s" }}
         sandbox="allow-scripts allow-same-origin"
         aria-label="SageModeler API Reference Plugin"
       />
