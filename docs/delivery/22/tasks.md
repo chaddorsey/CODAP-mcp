@@ -9,7 +9,7 @@ This document lists all tasks associated with PBI 22.
 | Task ID | Name | Status | Description |
 | :------ | :--- | :----- | :---------- |
 | 22-1 | [Analyze and Prepare Reference Plugin for Integration](./22-1.md) | Done | Analyze reference plugin structure, dependencies, and integration requirements |
-| 22-2 | [Create Iframe Container Component](./22-2.md) | Proposed | Develop SageAPIEmbeddedPanel component for iframe hosting and management |
+| 22-2 | [Create Iframe Container Component](./22-2.md) | Done | Develop SageAPIEmbeddedPanel component for iframe hosting and management |
 | 22-3 | [Implement Reference Plugin Asset Serving](./22-3.md) | Proposed | Copy reference plugin to public directory and configure serving |
 | 22-4 | [Integrate Accordion Section in SageModeler Panel](./22-4.md) | Proposed | Add accordion section to SageModelerAPIPanel with iframe container |
 | 22-5 | [Implement Responsive Design and Error Handling](./22-5.md) | Proposed | Add responsive iframe sizing, loading states, and error handling |
