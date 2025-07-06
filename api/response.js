@@ -1,9 +1,45 @@
 /**
  * Response endpoint for browser workers to post tool execution results
  * This endpoint stores tool responses in KV storage for the MCP server to retrieve
+ * Self-contained Redis Labs connection
  */
 
-const { setToolResponse } = require("../server/utils/kv-utils");
+const Redis = require("ioredis");
+
+// Initialize Redis client
+let redis = null;
+function getRedisClient() {
+  if (!redis) {
+    // Build Redis Labs URL
+    const host = "redis-19603.c57.us-east-1-4.ec2.redns.redis-cloud.com";
+    const port = 19603;
+    const password = "4mi2PHNUqQkeMxSbLFY0qY5ruQEdNxmo";
+    
+    redis = new Redis({
+      host,
+      port,
+      password,
+      username: "default",
+      // Explicitly disable TLS
+      tls: null,
+      retryDelayOnFailover: 100,
+      maxRetriesPerRequest: 3,
+      connectTimeout: 10000,
+      lazyConnect: true,
+    });
+  }
+  return redis;
+}
+
+/**
+ * Store tool response in Redis
+ */
+async function setToolResponse(requestId, responseData) {
+  const key = `response:${requestId}`;
+  const redis = getRedisClient();
+  // Store with 1 hour TTL
+  await redis.setex(key, 3600, JSON.stringify(responseData));
+}
 
 /**
  * Validates session code format
@@ -15,7 +51,7 @@ function isValidSessionCode(code) {
 /**
  * Main handler function for tool responses
  */
-export default async function handler(req, res) {
+async function handler(req, res) {
   // Set CORS headers
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -109,4 +145,6 @@ export default async function handler(req, res) {
       details: error.message
     });
   }
-} 
+}
+
+module.exports = handler;
