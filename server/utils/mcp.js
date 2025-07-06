@@ -6,7 +6,41 @@
  * instead of the full @modelcontextprotocol/sdk for better Vercel compatibility.
  */
 
-const { kv } = require("@vercel/kv");
+// Redis Labs connection (replacing @vercel/kv)
+const Redis = require("ioredis");
+
+// Initialize Redis client for Redis Labs
+const redis = new Redis({
+  host: "redis-19603.c57.us-east-1-4.ec2.redns.redis-cloud.com",
+  port: 19603,
+  password: "4mi2PHNUqQkeMxSbLFY0qY5ruQEdNxmo",
+  username: "default",
+  // Explicitly disable TLS
+  tls: null,
+  retryDelayOnFailover: 100,
+  maxRetriesPerRequest: 3,
+  connectTimeout: 10000,
+  lazyConnect: true,
+});
+
+// Create KV-compatible interface for Redis Labs
+const kv = {
+  async get(key) {
+    const data = await redis.get(key);
+    return data ? JSON.parse(data) : null;
+  },
+  async set(key, value, options = {}) {
+    const serialized = JSON.stringify(value);
+    if (options.ex) {
+      await redis.setex(key, options.ex, serialized);
+    } else {
+      await redis.set(key, serialized);
+    }
+  },
+  async del(key) {
+    return await redis.del(key);
+  }
+};
 
 // Import existing tool registry and utilities
 const { CODAP_TOOLS, SAGEMODELER_TOOLS, getToolsByCapabilities } = require("./tool-registry.js");
