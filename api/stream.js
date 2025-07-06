@@ -1,7 +1,65 @@
 // SSE stream endpoint using Node.js runtime
 // Provides server-sent events for tool request polling
+// Self-contained Redis Labs connection
 
-const { getSession, dequeueRequest, getQueueLength } = require("../server/utils/kv-utils");
+const Redis = require("ioredis");
+
+// Configuration
+const SESSION_TTL_SECONDS = 3600; // 1 hour
+
+// Initialize Redis client
+let redis = null;
+function getRedisClient() {
+  if (!redis) {
+    // Build Redis Labs URL
+    const host = "redis-19603.c57.us-east-1-4.ec2.redns.redis-cloud.com";
+    const port = 19603;
+    const password = "4mi2PHNUqQkeMxSbLFY0qY5ruQEdNxmo";
+    
+    redis = new Redis({
+      host,
+      port,
+      password,
+      username: "default",
+      // Explicitly disable TLS
+      tls: null,
+      retryDelayOnFailover: 100,
+      maxRetriesPerRequest: 3,
+      connectTimeout: 10000,
+      lazyConnect: true,
+    });
+  }
+  return redis;
+}
+
+/**
+ * Get session data from Redis
+ */
+async function getSession(code) {
+  const key = `session:${code}`;
+  const redis = getRedisClient();
+  const data = await redis.get(key);
+  return data ? JSON.parse(data) : null;
+}
+
+/**
+ * Dequeue a tool request from Redis
+ */
+async function dequeueRequest(code) {
+  const key = `queue:${code}`;
+  const redis = getRedisClient();
+  const data = await redis.lpop(key);
+  return data ? JSON.parse(data) : null;
+}
+
+/**
+ * Get queue length from Redis
+ */
+async function getQueueLength(code) {
+  const key = `queue:${code}`;
+  const redis = getRedisClient();
+  return await redis.llen(key);
+}
 
 /**
  * Validates session code format
