@@ -90,6 +90,7 @@
     "autoprefixer": "^10.4.21",
     "caniuse-lite": "^1.0.30001706",
     "clean-webpack-plugin": "^4.0.0",
+    "copy-webpack-plugin": "^13.0.0",
     "cross-env": "^7.0.3",
     "css-loader": "^7.1.2",
     "eslint": "^9.22.0",
