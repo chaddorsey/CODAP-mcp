@@ -1,10 +1,34 @@
 // Session creation endpoint using Node.js runtime
-// This avoids the Edge runtime compilation issues we were experiencing
-const { setSession, SESSION_TTL } = require("../server/utils/kv-utils");
+// Self-contained version to avoid import path issues
+const Redis = require("ioredis");
 
 // Configuration
-const SESSION_TTL_SECONDS = SESSION_TTL; // 10 minutes (600 seconds)
+const SESSION_TTL_SECONDS = 3600; // 1 hour
 const RATE_LIMIT_SESSION_PER_IP = 30;
+
+// Initialize Redis client
+let redis = null;
+function getRedisClient() {
+  if (!redis) {
+    const redisUrl = process.env.KV_REST_API_URL;
+    redis = new Redis(redisUrl, {
+      retryDelayOnFailover: 100,
+      maxRetriesPerRequest: 3,
+      connectTimeout: 10000,
+      lazyConnect: true,
+    });
+  }
+  return redis;
+}
+
+/**
+ * Store session data in Redis
+ */
+async function setSession(code, sessionData) {
+  const key = `session:${code}`;
+  const redis = getRedisClient();
+  await redis.setex(key, SESSION_TTL_SECONDS, JSON.stringify(sessionData));
+}
 
 /**
  * Generates a cryptographically secure 8-character Base32 session code
@@ -54,6 +78,8 @@ async function handler(req, res) {
 
   try {
     console.log('[sessions] Starting session creation...');
+    console.log('[sessions] Redis URL exists:', !!process.env.KV_REST_API_URL);
+    
     // Handle CORS preflight
     if (req.method === "OPTIONS") {
       res.status(200).end();
@@ -67,7 +93,6 @@ async function handler(req, res) {
     }
     
     // Basic rate limiting check (simplified for demo)
-    // In production, this would use Redis or a proper rate limiting service
     const ip = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || 
                req.headers["x-real-ip"] || 
                "unknown";
@@ -115,7 +140,7 @@ async function handler(req, res) {
       code,
       ttl: SESSION_TTL_SECONDS,
       expiresAt: expiresAt.toISOString(),
-      deploymentTest: "SESSIONS_CURRENT_DEPLOYMENT_DEC19"
+      deploymentTest: "REDIS_LABS_SELF_CONTAINED"
     };
     
     createSuccessResponse(res, response, 201);
@@ -124,7 +149,7 @@ async function handler(req, res) {
     console.error("[sessions] Session creation error:", error);
     console.error("[sessions] Error message:", error.message);
     console.error("[sessions] Error stack:", error.stack);
-    createErrorResponse(res, 500, "internal_server_error", "Failed to create session");
+    createErrorResponse(res, 500, "internal_server_error", `Failed to create session: ${error.message}`);
   }
 }
 

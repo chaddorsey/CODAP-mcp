@@ -3,12 +3,12 @@
  * Provides validation and routing for CODAP and SageModeler tools
  */
 
-// Import from the API tool registry
+// Import from the server tool registry
 import { 
   getAllToolsByCapability, 
   getToolsByCapabilities, 
   CAPABILITY_DEFINITIONS 
-} from "../../../../api/tool-registry.js";
+} from "../../../../server/utils/tool-registry.js";
 
 /**
  * Tool schema interface
