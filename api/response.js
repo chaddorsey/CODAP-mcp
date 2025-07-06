@@ -35,7 +35,7 @@ function getRedisClient() {
  * Store tool response in Redis
  */
 async function setToolResponse(requestId, responseData) {
-  const key = `response:${requestId}`;
+  const key = `toolres:${requestId}`;  // Fixed: Use "toolres:" prefix to match kv-utils.js
   const redis = getRedisClient();
   // Store with 1 hour TTL
   await redis.setex(key, 3600, JSON.stringify(responseData));
