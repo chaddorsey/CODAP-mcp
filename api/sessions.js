@@ -1,3 +1,4 @@
+require('dotenv').config();
 // Session creation endpoint using Node.js runtime
 // Self-contained version to avoid import path issues
 const Redis = require("ioredis");
@@ -10,12 +11,39 @@ const RATE_LIMIT_SESSION_PER_IP = 30;
 let redis = null;
 function getRedisClient() {
   if (!redis) {
-    const redisUrl = process.env.KV_REST_API_URL;
-    redis = new Redis(redisUrl, {
+    // Build Redis Labs URL from environment variables
+    const host = process.env.REDIS_HOST;
+    const port = process.env.REDIS_PORT;
+    const password = process.env.REDIS_PASSWORD;
+
+    
+    console.log('[sessions] Redis connection details:', { host, port, hasPassword: !!password });
+    
+    redis = new Redis({
+      host,
+      port,
+      password,
+      username: "default",
+      // Explicitly disable TLS
+      tls: null,
+      // Additional Redis Labs specific options
       retryDelayOnFailover: 100,
       maxRetriesPerRequest: 3,
       connectTimeout: 10000,
       lazyConnect: true,
+      // Add error handling
+      onError: (error) => {
+        console.error('[sessions] Redis connection error:', error.message);
+      }
+    });
+    
+    // Add connection event listeners
+    redis.on('connect', () => {
+      console.log('[sessions] Redis connected successfully');
+    });
+    
+    redis.on('error', (error) => {
+      console.error('[sessions] Redis error event:', error.message);
     });
   }
   return redis;
