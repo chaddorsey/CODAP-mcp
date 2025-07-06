@@ -1,9 +1,13 @@
 const Redis = require("ioredis");
 
-// Initialize Redis client using environment variables  
-// Redis Labs URL format: rediss://default:PASSWORD@HOST:PORT (rediss = TLS)
-const redisUrl = process.env.KV_REST_API_URL?.replace('redis://', 'rediss://');
-const redis = new Redis(redisUrl, {
+// Initialize Redis client for Redis Labs (plain TCP, no TLS)
+const redis = new Redis({
+  host: "redis-19603.c57.us-east-1-4.ec2.redns.redis-cloud.com",
+  port: 19603,
+  password: "4mi2PHNUqQkeMxSbLFY0qY5ruQEdNxmo",
+  username: "default",
+  // Explicitly disable TLS for Redis Labs plain TCP connection
+  tls: null,
   retryDelayOnFailover: 100,
   maxRetriesPerRequest: 3,
   connectTimeout: 10000,
