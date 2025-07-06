@@ -1,0 +1,2241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SageAPI Plugin Example (Full Range)</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f5f5f5;
+    }
+    .controls-panel {
+      width: 350px;
+      background: white;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      padding: 10px 10px 0 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      margin: 20px auto;
+      height: fit-content;
+    }
+    h1 {
+      font-size: 18px;
+      color: #333;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+    .tab-bar {
+      display: flex;
+      flex-wrap: wrap;
+      border-bottom: 1px solid #eee;
+      margin-bottom: 6px;
+      background: #f5f5f5;
+    }
+    .tab-btn {
+      flex: 1 1 33%;
+      border: none;
+      background: #f5f5f5;
+      color: #333;
+      font-size: 13px;
+      font-weight: bold;
+      padding: 6px 0 4px 0;
+      margin: 0;
+      cursor: pointer;
+      outline: none;
+      border-radius: 0;
+      border-bottom: 2px solid transparent;
+      transition: background 0.2s, color 0.2s;
+      min-width: 0;
+    }
+    .tab-btn.selected {
+      background: #007cba;
+      color: #fff;
+      border-bottom: 2px solid #007cba;
+    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .subtab-content { display: none; }
+    .subtab-content.active { display: block; }
+    .accordion {
+      border-bottom: 1px solid #eee;
+    }
+    .accordion-header {
+      background: #f9f9f9;
+      color: #007cba;
+      font-size: 13px;
+      font-weight: bold;
+      padding: 4px 8px;
+      cursor: pointer;
+      border: none;
+      outline: none;
+      width: 100%;
+      text-align: left;
+      min-height: 22px;
+      display: flex;
+      align-items: center;
+      border-radius: 3px 3px 0 0;
+      margin: 0;
+    }
+    .accordion-header .arrow {
+      font-size: 11px;
+      margin-right: 6px;
+      transition: transform 0.2s;
+    }
+    .accordion-header.collapsed .arrow {
+      transform: rotate(-90deg);
+    }
+    .accordion-content {
+      display: none;
+      padding: 6px 0 8px 0;
+    }
+    .accordion-content.active {
+      display: block;
+    }
+    button {
+      background: #007cba;
+      color: white;
+      border: none;
+      padding: 7px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 4px 4px 4px 0;
+      font-size: 13px;
+      transition: background-color 0.2s;
+    }
+    button:hover { background: #005a8b; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    .input-group { margin: 7px 0; }
+    .input-group label { display: block; margin-bottom: 3px; font-weight: bold; color: #555; font-size: 12px; }
+    .input-group input, .input-group select, .input-group textarea {
+      width: 100%;
+      padding: 6px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 13px;
+      box-sizing: border-box;
+    }
+    .input-row { display: flex; gap: 8px; }
+    .input-row .input-group { flex: 1; }
+    #log {
+      background: #1e1e1e;
+      color: #00ff00;
+      padding: 8px;
+      border-radius: 6px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      height: 100px;
+      overflow-y: auto;
+      margin-top: 10px;
+      border: 1px solid #333;
+    }
+    .status {
+      padding: 7px;
+      border-radius: 4px;
+      margin: 7px 0 10px 0;
+      font-weight: bold;
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+      text-align: center;
+      font-size: 13px;
+    }
+    .clear-btn {
+      background: #dc3545;
+      font-size: 12px;
+      padding: 3px 7px;
+      float: right;
+    }
+    .clear-btn:hover { background: #c82333; }
+  </style>
+  <script>
+    // --- BEGIN SD-JSON CONVERTER ---
+    function toSdJson(model) {
+        var variables = [];
+        var influences = [];
+        var keyToName = {};
+        for (var _i = 0, _a = model.nodes; _i < _a.length; _i++) {
+            var node = _a[_i];
+            var name_1 = node.data.title || node.key;
+            keyToName[node.key] = name_1;
+            var variable = { name: name_1, id: name_1 };
+            if (typeof node.data.initialValue === 'number') {
+                variable.equation = node.data.initialValue;
+            }
+            variables.push(variable);
+        }
+        for (var _b = 0, _c = model.links; _b < _c.length; _b++) {
+            var link = _c[_b];
+            var source = keyToName[link.sourceNode];
+            var target = keyToName[link.targetNode];
+            if (!source || !target)
+                continue;
+            var polarity = '+';
+            if (link.data && link.data.relation && link.data.relation.id === 'decrease') {
+                polarity = '-';
+            }
+            influences.push({ source: source, target: target, polarity: polarity });
+        }
+        for (var _d = 0, _e = model.nodes; _d < _e.length; _d++) {
+            var node = _e[_d];
+            if (node.data.isAccumulator || node.data.isFlowVariable) {
+                console.warn('[SD-JSON] Ignoring accumulator/flow node in export:', node.data.title);
+            }
+        }
+        return { variables: variables, influences: influences };
+    }
+    function fromSdJson(sdModel) {
+        var nodes = [];
+        var links = [];
+        var nameToKey = {};
+        var nodeCount = 1;
+        var linkCount = 1;
+        const NODE_SPACING = 120; // pixels
+        const NODES_PER_ROW = 6;  // adjust as needed for your UI
+
+        for (var _i = 0, _a = sdModel.variables || []; _i < _a.length; _i++) {
+            var variable = _a[_i];
+            var key = variable.name.replace(/\s+/g, '_');
+            if (nameToKey[key]) {
+                key = key + '_' + nodeCount;
+            }
+            nameToKey[variable.name] = key;
+            var nodeIndex = nodes.length;
+            var node = {
+                key: key,
+                data: {
+                    title: variable.name,
+                    x: NODE_SPACING * (nodeIndex % NODES_PER_ROW),
+                    y: NODE_SPACING * Math.floor(nodeIndex / NODES_PER_ROW)
+                },
+            };
+            if (typeof variable.equation === 'number') {
+                node.data.initialValue = variable.equation;
+            }
+            nodes.push(node);
+            nodeCount++;
+        }
+        var influences = Array.isArray(sdModel.influences) ? sdModel.influences :
+            Array.isArray(sdModel.relationships) ? sdModel.relationships.map(function (rel) { return ({
+                source: rel.from,
+                target: rel.to,
+                polarity: rel.polarity
+            }); }) : [];
+        if (!Array.isArray(influences)) {
+            console.warn('[SD-JSON] No influences or relationships array found in SD-JSON input.');
+        }
+        for (var _b = 0, influences_1 = influences; _b < influences_1.length; _b++) {
+            var influence = influences_1[_b];
+            var sourceKey = nameToKey[influence.source];
+            var targetKey = nameToKey[influence.target];
+            if (!sourceKey || !targetKey) {
+                console.warn('[SD-JSON] Influence/relationship references unknown variable:', influence);
+                continue;
+            }
+            var relationId = 'increase';
+            if (influence.polarity === '-')
+                relationId = 'decrease';
+            var link = {
+                key: 'link' + linkCount,
+                sourceNode: sourceKey,
+                targetNode: targetKey,
+                data: {
+                    relation: { id: relationId },
+                },
+            };
+            links.push(link);
+            linkCount++;
+        }
+        var settings = {
+            complexity: 1,
+            simulationType: 1,
+            relationshipSymbols: false,
+            guide: false,
+            simulation: {
+                duration: 10,
+                stepUnits: 'time',
+                capNodeValues: false
+            }
+        };
+        var version = '3.0.0';
+        return { version: version, nodes: nodes, links: links, settings: settings };
+    }
+    if (typeof window !== 'undefined') {
+        window.toSdJson = toSdJson;
+        window.fromSdJson = fromSdJson;
+    }
+    // --- END SD-JSON CONVERTER ---
+  </script>
+</head>
+<body>
+  <div class="controls-panel">
+    <h1>SageAPI Plugin</h1>
+    <div class="status" id="status">Ready to control SageModeler</div>
+    <div class="tab-bar">
+      <button class="tab-btn selected" id="tab-nodes" onclick="showTab('nodes')">Nodes/Links</button>
+      <button class="tab-btn" id="tab-experiment" onclick="showTab('experiment')">Experiment</button>
+      <button class="tab-btn" id="tab-recording" onclick="showTab('recording')">Recording</button>
+      <button class="tab-btn" id="tab-importexport" onclick="showTab('importexport')">Import/Export</button>
+      <button class="tab-btn" id="tab-settings" onclick="showTab('settings')">Settings</button>
+      <button class="tab-btn" id="tab-inspector" onclick="showTab('inspector')">Inspector</button>
+    </div>
+    <!-- Tab: Nodes/Links -->
+    <div class="tab-content active" id="tab-content-nodes">
+      <!-- Sub-tabs for Nodes and Links -->
+      <div class="tab-bar" style="margin-bottom: 6px;">
+        <button class="tab-btn selected" id="subtab-nodes" onclick="showSubTab('nodes')">Nodes</button>
+        <button class="tab-btn" id="subtab-links" onclick="showSubTab('links')">Links</button>
+      </div>
+      
+      <!-- Nodes Sub-tab -->
+      <div class="subtab-content active" id="subtab-content-nodes">
+        <!-- Row 1: Create Random Node -->
+        <div style="margin-bottom: 8px;">
+          <button onclick="createRandomNode()">Create Random Node</button>
+        </div>
+        
+        <!-- Row 2: Create New Node and Update Node -->
+        <div style="margin-bottom: 8px;">
+          <button onclick="createNewNode()">Create New Node</button>
+          <button id="updateNodeBtn" onclick="updateSelectedNode()" disabled>Update Node</button>
+        </div>
+        
+        <!-- Node Properties Section -->
+      <div class="accordion">
+          <button class="accordion-header" onclick="toggleAccordion(this)">
+            <span class="arrow">&#9660;</span>Node Properties
+          </button>
+        <div class="accordion-content active">
+            <!-- Basic Properties -->
+            <div class="input-row">
+              <div class="input-group">
+                <label for="nodeTitle">Title:</label>
+                <input id="nodeTitle" type="text" placeholder="Enter node title" value="Test Node" onchange="onNodePropertyChange()">
+        </div>
+              <div class="input-group">
+                <label for="nodeInitialValue">Initial Value:</label>
+                <input id="nodeInitialValue" type="number" placeholder="Enter initial value" onchange="onNodePropertyChange()">
+      </div>
+            </div>
+            <div class="input-row">
+              <div class="input-group">
+                <label for="nodeMin">Min:</label>
+                <input id="nodeMin" type="number" placeholder="Enter min value" onchange="onNodePropertyChange()">
+              </div>
+              <div class="input-group">
+                <label for="nodeMax">Max:</label>
+                <input id="nodeMax" type="number" placeholder="Enter max value" onchange="onNodePropertyChange()">
+              </div>
+            </div>
+            <div class="input-row">
+              <div class="input-group">
+                <label for="nodeIsAccumulator">Is Accumulator:</label>
+                <input id="nodeIsAccumulator" type="checkbox" onchange="onNodePropertyChange()">
+              </div>
+              <div class="input-group">
+                <label for="nodeIsFlowVariable">Is Flow Variable:</label>
+                <input id="nodeIsFlowVariable" type="checkbox" onchange="onNodePropertyChange()">
+              </div>
+            </div>
+            <div class="input-row">
+              <div class="input-group">
+                <label for="nodeAllowNegativeValues">Allow Negative Values:</label>
+                <input id="nodeAllowNegativeValues" type="checkbox" onchange="onNodePropertyChange()">
+              </div>
+              <div class="input-group">
+                <label for="nodeValueDefinedSemiQuantitatively">Value Defined Semi-Quantitatively:</label>
+                <input id="nodeValueDefinedSemiQuantitatively" type="checkbox" onchange="onNodePropertyChange()">
+              </div>
+            </div>
+            <div class="input-row">
+              <div class="input-group">
+                <label for="nodeX">X Position:</label>
+                <input id="nodeX" type="number" placeholder="Enter x position" onchange="onNodePropertyChange()">
+              </div>
+              <div class="input-group">
+                <label for="nodeY">Y Position:</label>
+                <input id="nodeY" type="number" placeholder="Enter y position" onchange="onNodePropertyChange()">
+              </div>
+            </div>
+            <div class="input-row">
+              <div class="input-group">
+                <label for="nodeColor">Color:</label>
+                <select id="nodeColor" onchange="onNodePropertyChange()">
+                  <option value="#f7be33">Yellow</option>
+                  <option value="#105262">Dark Blue</option>
+                  <option value="#72c0cc">Medium Blue</option>
+                </select>
+              </div>
+            </div>
+            
+            <!-- Advanced Properties (Collapsed by default) -->
+      <div class="accordion">
+              <button class="accordion-header collapsed" onclick="toggleAccordion(this)">
+                <span class="arrow">&#9660;</span>Advanced Properties
+              </button>
+        <div class="accordion-content">
+                <div class="input-row">
+                  <div class="input-group">
+                    <label for="nodeCombineMethod">Combine Method:</label>
+                    <input id="nodeCombineMethod" type="text" placeholder="Enter combine method" onchange="onNodePropertyChange()">
+                  </div>
+                </div>
+                <div class="input-row">
+                  <div class="input-group">
+                    <label for="nodeImage">Image:</label>
+                    <input id="nodeImage" type="text" placeholder="Enter image URL" onchange="onNodePropertyChange()">
+                  </div>
+                  <div class="input-group">
+                    <label for="nodeUsesDefaultImage">Uses Default Image:</label>
+                    <input id="nodeUsesDefaultImage" type="checkbox" onchange="onNodePropertyChange()">
+                  </div>
+                </div>
+                <div class="input-row">
+                  <div class="input-group">
+                    <label for="nodePaletteItem">Palette Item:</label>
+                    <input id="nodePaletteItem" type="text" placeholder="Enter palette item" onchange="onNodePropertyChange()">
+                  </div>
+                  <div class="input-group">
+                    <label for="nodeSourceApp">Source App:</label>
+                    <input id="nodeSourceApp" type="text" placeholder="Enter source app" onchange="onNodePropertyChange()">
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Delete Button -->
+            <div style="margin-top: 10px;">
+              <button id="deleteNodeBtn" onclick="deleteSelectedNode()" disabled style="background: #dc3545;">Delete Node</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Links Sub-tab -->
+      <div class="subtab-content" id="subtab-content-links">
+        <!-- Link Properties Section -->
+        <div class="accordion">
+          <button class="accordion-header" onclick="toggleAccordion(this)">
+            <span class="arrow">&#9660;</span>Link Properties
+          </button>
+          <div class="accordion-content active">
+            <!-- Create/Update Buttons -->
+            <div style="margin-bottom: 8px;">
+              <button id="createLinkBtn" onclick="createSelectedLink()" disabled>Create Link</button>
+              <button id="updateLinkBtn" onclick="updateSelectedLink()" disabled>Update Link</button>
+            </div>
+            
+            <!-- Direction Control -->
+            <div class="input-row">
+              <div class="input-group">
+                <label>Direction:</label>
+                <div style="display: flex; align-items: center; gap: 5px;">
+                  <span id="linkSourceNode">Node 1</span>
+                  <select id="linkDirection" onchange="onLinkPropertyChange()">
+                    <option value="forward">→</option>
+                    <option value="backward">←</option>
+                  </select>
+                  <span id="linkTargetNode">Node 2</span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Basic Link Properties -->
+          <div class="input-row">
+            <div class="input-group">
+              <label for="linkRelationVector">Relation Vector:</label>
+                <select id="linkRelationVector" onchange="onRelationVectorChange(); onLinkPropertyChange();">
+                <option value="increase">Increase</option>
+                <option value="decrease">Decrease</option>
+                <option value="vary">Vary (Custom)</option>
+              </select>
+            </div>
+            <div class="input-group" id="scalarGroup">
+              <label for="linkRelationScalar">Relation Scalar:</label>
+                <select id="linkRelationScalar" onchange="onLinkPropertyChange()">
+                <option value="aboutTheSame">About the Same</option>
+                <option value="aLittle">A Little</option>
+                <option value="aLot">A Lot</option>
+                <option value="moreAndMore">More and More</option>
+                <option value="lessAndLess">Less and Less</option>
+              </select>
+            </div>
+            <div class="input-group" id="customDataGroup" style="display:none;">
+              <label for="linkCustomData">Custom Data (JSON):</label>
+                <input id="linkCustomData" type="text" placeholder='e.g. [[0,0],[1,1],[2,2]]' onchange="onLinkPropertyChange()" />
+            </div>
+          </div>
+          <div class="input-group" id="labelGroup">
+            <label for="linkLabel">Label (optional):</label>
+              <input id="linkLabel" type="text" placeholder="e.g. Relationship label" onchange="onLinkPropertyChange()" />
+          </div>
+            
+            <!-- Advanced Properties (Collapsed by default) -->
+            <div class="accordion">
+              <button class="accordion-header collapsed" onclick="toggleAccordion(this)">
+                <span class="arrow">&#9660;</span>Advanced Properties
+              </button>
+              <div class="accordion-content">
+                <div class="input-row">
+                  <div class="input-group">
+                    <label for="linkColor">Color:</label>
+                    <input id="linkColor" type="text" placeholder="Enter color code" onchange="onLinkPropertyChange()">
+                  </div>
+                </div>
+                <div class="input-row">
+                  <div class="input-group">
+                    <label for="linkSourceApp">Source App:</label>
+                    <input id="linkSourceApp" type="text" placeholder="Enter source app" onchange="onLinkPropertyChange()">
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Delete Button -->
+            <div style="margin-top: 10px;">
+              <button id="deleteLinkBtn" onclick="deleteSelectedLink()" disabled style="background: #dc3545;">Delete Link</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Tab: Experiment Run -->
+    <div class="tab-content" id="tab-content-experiment">
+      <div class="accordion">
+        <button class="accordion-header" onclick="toggleAccordion(this)"><span class="arrow">&#9660;</span>Experiment Run (Static/Dynamic Mode)</button>
+        <div class="accordion-content active">
+          <button onclick="reloadExperimentNodes()">Reload Nodes</button>
+          <div id="experimentNodesContainer"></div>
+          <div id="experimentModeControls"></div>
+          <div style="margin: 8px 0;">
+            <label><strong>Request Preview:</strong></label>
+            <pre id="experimentRequestPreview" style="background: #222; color: #b5e853; padding: 7px; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 12px; max-height: 100px; overflow-y: auto;"></pre>
+          </div>
+          <button id="runExperimentBtn" onclick="runExperiment()">Run Experiment</button>
+          <div id="experimentResultContainer" style="margin-top: 10px;"></div>
+        </div>
+      </div>
+    </div>
+    <!-- Tab: Recording Controls -->
+    <div class="tab-content" id="tab-content-recording">
+      <div class="accordion">
+        <button class="accordion-header" onclick="toggleAccordion(this)"><span class="arrow">&#9660;</span>Recording Controls</button>
+        <div class="accordion-content active">
+          <button id="recordStreamBtn" style="display: none;">Record Continuously</button>
+          <button id="stopRecordingBtn" style="display: none;">Stop Recording</button>
+          <div class="input-row" style="margin-top: 8px;">
+            <div class="input-group">
+              <label for="recordDuration">Duration (optional):</label>
+              <input type="number" id="recordDuration" min="1" max="50000" placeholder="e.g. 100">
+            </div>
+            <div class="input-group">
+              <label for="recordUnits">Units (optional):</label>
+              <input type="text" id="recordUnits" placeholder="e.g. steps, minutes">
+            </div>
+            <div class="input-group" style="align-self: flex-end;">
+              <button onclick="setRecordingOptions()" style="width: 100%;">Set Recording Options</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Tab: Import/Export -->
+    <div class="tab-content" id="tab-content-importexport">
+      <div class="accordion">
+        <button class="accordion-header" onclick="toggleAccordion(this)"><span class="arrow">&#9660;</span>Model Import/Export</button>
+        <div class="accordion-content active">
+          <div class="input-group">
+            <label for="modelJsonInput">Model JSON (Paste, Edit, or Export):</label>
+            <textarea id="modelJsonInput" rows="5" placeholder="Paste or export model JSON here..."></textarea>
+          </div>
+          <button onclick="loadModelFromInput()">Load Model</button>
+          <button onclick="getModel()">Export Model</button>
+          <!-- [13-4] Add SD-JSON import/export buttons -->
+          <button onclick="importSdJson()">Import SD-JSON</button>
+          <button onclick="exportSdJson()">Export SD-JSON</button>
+        </div>
+      </div>
+    </div>
+    <!-- Tab: Model Complexity & UI Settings -->
+    <div class="tab-content" id="tab-content-settings">
+      <div class="accordion">
+        <button class="accordion-header" onclick="toggleAccordion(this)"><span class="arrow">&#9660;</span>Model Complexity & UI Settings</button>
+        <div class="accordion-content active">
+          <div class="input-row">
+            <div class="input-group">
+              <label>Relationship Complexity:</label>
+              <label><input type="radio" name="modelComplexity" value="0"> Basic</label>
+              <label><input type="radio" name="modelComplexity" value="1" checked> Expanded</label>
+            </div>
+          </div>
+          <button onclick="updateModelComplexity()">Update Relationship Complexity</button>
+          <div class="input-row" style="margin-top: 8px;">
+            <div class="input-group"><label><input type="checkbox" id="uiRelationshipSymbols" checked> Show Relationship Symbols</label></div>
+            <div class="input-group"><label><input type="checkbox" id="uiGuide" checked> Show Guide</label></div>
+          </div>
+          <div class="input-row">
+            <div class="input-group"><label><input type="checkbox" id="uiLockdown"> Lockdown Mode</label></div>
+            <div class="input-group"><label><input type="checkbox" id="uiTouchDevice"> Touch Device</label></div>
+          </div>
+          <div class="input-row">
+            <div class="input-group"><label><input type="checkbox" id="uiGlobalNav" checked> Global Nav</label></div>
+            <div class="input-group"><label><input type="checkbox" id="uiActionBar" checked> Action Bar</label></div>
+          </div>
+          <div class="input-row">
+            <div class="input-group"><label><input type="checkbox" id="uiInspectorPanel" checked> Inspector Panel</label></div>
+            <div class="input-group"><label><input type="checkbox" id="uiNodePalette" checked> Node Palette</label></div>
+          </div>
+          <div class="input-row">
+            <div class="input-group"><label><input type="checkbox" id="uiFullscreenButton" checked> Fullscreen Button</label></div>
+            <div class="input-group"><label><input type="checkbox" id="uiScaling" checked> Scaling</label></div>
+          </div>
+          <div class="input-group">
+            <label for="uiGuideItems">Guide Items (JSON array):</label>
+            <textarea id="uiGuideItems" rows="2" style="width:100%; font-family:monospace;"></textarea>
+          </div>
+          <button onclick="restoreAllUi()" type="button">Restore All UI</button>
+          <button onclick="updateUiSettings()">Update UI Settings</button>
+        </div>
+      </div>
+    </div>
+    <!-- Tab: Inspector -->
+    <div class="tab-content" id="tab-content-inspector">
+      <div class="accordion">
+        <button class="accordion-header" onclick="toggleAccordion(this)">
+          <span class="arrow">&#9660;</span>Node/Link Inspector
+        </button>
+        <div class="accordion-content active">
+          <div class="input-row">
+            <button onclick="getAllNodes()">GET All Nodes</button>
+            <button onclick="getAllLinks()">GET All Links</button>
+          </div>
+          <div class="input-row">
+            <div class="input-group">
+              <label for="nodeIdInput">Node ID:</label>
+              <input id="nodeIdInput" type="text" placeholder="Enter node ID" style="width:120px;">
+              <button onclick="getNodeById()">GET Node by ID</button>
+            </div>
+            <div class="input-group">
+              <label for="linkIdInput">Link ID:</label>
+              <input id="linkIdInput" type="text" placeholder="Enter link ID" style="width:120px;">
+              <button onclick="getLinkById()">GET Link by ID</button>
+            </div>
+          </div>
+          <div class="input-row">
+            <div class="input-group" style="flex:1;">
+              <label>Nodes List:</label>
+              <select id="nodesList" size="4" style="width:100%;" onchange="onNodeSelect()"></select>
+            </div>
+            <div class="input-group" style="flex:1;">
+              <label>Links List:</label>
+              <select id="linksList" size="4" style="width:100%;" onchange="onLinkSelect()"></select>
+            </div>
+          </div>
+          <div class="input-group">
+            <label>Inspector Result:</label>
+            <pre id="inspectorResult" style="background:#222;color:#b5e853;padding:7px;border-radius:6px;font-family:'Courier New',monospace;font-size:12px;max-height:120px;overflow-y:auto;"></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Activity Log -->
+    <h3 style="margin-top:12px;">Activity Log <button class="clear-btn" onclick="clearLog()">Clear</button></h3>
+    <div id="log"></div>
+  </div>
+  <script>
+    // --- CODAP Plugin Registration ---
+    log('[DEBUG] window.parent === window: ' + (window.parent === window));
+    (function registerWithCODAP() {
+      const registrationMsg = {
+        action: "update",
+        resource: "interactiveFrame",
+        values: {
+          title: "SageAPI Plugin"
+        }
+      };
+      window.parent.postMessage(registrationMsg, "*");
+      // Optionally, request the interactiveFrame to confirm registration
+      window.parent.postMessage({
+        action: "get",
+        resource: "interactiveFrame"
+      }, "*");
+    })();
+
+    // Listen for acknowledgment from CODAP
+    window.addEventListener('message', function(event) {
+      // Debug: log all incoming messages
+      log('[DEBUG] Received message: ' + JSON.stringify(event.data));
+      if (event.data && event.data.resource === 'interactiveFrame') {
+        log('✅ Registered with CODAP: interactiveFrame acknowledged.');
+        updateStatus('Registered with CODAP.');
+      }
+      if (event.data && event.data.test === "self-message") {
+        log("[DEBUG] Self-message handler works!");
+      }
+      // --- Track node/link IDs from API responses (OpenAPI/REST-compliant) ---
+      if (event.data && event.data.type === 'response' && event.data.success) {
+        // Node creation: if response includes a new node id
+        if (event.data.data && event.data.data.id && event.data.data.title) {
+          lastCreatedNodeId = event.data.data.id;
+          lastCreatedNodeIds.push(event.data.data.id);
+          log('🆔 Stored lastCreatedNodeId: ' + lastCreatedNodeId);
+        }
+        // Link creation: if response includes a new link id
+        if (event.data.data && event.data.data.id && event.data.data.source && event.data.data.target) {
+          lastCreatedLinkId = event.data.data.id;
+          log('🆔 Stored lastCreatedLinkId: ' + lastCreatedLinkId);
+        }
+      }
+    });
+
+    // --- Tab Switching Logic ---
+    function showTab(tab) {
+      const tabs = ['nodes', 'experiment', 'recording', 'importexport', 'settings', 'inspector'];
+      tabs.forEach(t => {
+        document.getElementById('tab-content-' + t).classList.remove('active');
+        document.getElementById('tab-' + t).classList.remove('selected');
+      });
+      document.getElementById('tab-content-' + tab).classList.add('active');
+      document.getElementById('tab-' + tab).classList.add('selected');
+    }
+
+    // --- Sub-tab Switching Logic ---
+    function showSubTab(subtab) {
+      const subtabs = ['nodes', 'links'];
+      subtabs.forEach(t => {
+        const contentEl = document.getElementById('subtab-content-' + t);
+        const btnEl = document.getElementById('subtab-' + t);
+        if (contentEl) contentEl.classList.remove('active');
+        if (btnEl) btnEl.classList.remove('selected');
+      });
+      const contentEl = document.getElementById('subtab-content-' + subtab);
+      const btnEl = document.getElementById('subtab-' + subtab);
+      if (contentEl) contentEl.classList.add('active');
+      if (btnEl) btnEl.classList.add('selected');
+    }
+
+    // --- Selection and State Management ---
+    let selectedNodeId = null;
+    let selectedLinkId = null;
+    let selectedNodes = []; // For multi-selection
+    let modelType = 1; // 1 = static, 2 = dynamic
+    let nodePropertiesChanged = false;
+    let linkPropertiesChanged = false;
+    let originalNodeProperties = {};
+    let originalLinkProperties = {};
+    // --- Link direction tracking ---
+    let selectedLinkSourceId = null;
+    let selectedLinkTargetId = null;
+
+    // --- Property Change Handlers ---
+    function onNodePropertyChange() {
+      nodePropertiesChanged = true;
+      updateNodeButtons();
+    }
+
+    function onLinkPropertyChange() {
+      linkPropertiesChanged = true;
+      updateLinkButtons();
+    }
+
+    // --- Button State Management ---
+    function updateNodeButtons() {
+      const updateBtn = document.getElementById('updateNodeBtn');
+      const deleteBtn = document.getElementById('deleteNodeBtn');
+      
+      if (updateBtn) {
+        updateBtn.disabled = !selectedNodeId || !nodePropertiesChanged;
+      }
+      if (deleteBtn) {
+        deleteBtn.disabled = !selectedNodeId;
+      }
+    }
+
+    function updateLinkButtons() {
+      const createBtn = document.getElementById('createLinkBtn');
+      const updateBtn = document.getElementById('updateLinkBtn');
+      const deleteBtn = document.getElementById('deleteLinkBtn');
+      
+      if (createBtn) {
+        // Enable if exactly 2 nodes selected and no link between them
+        createBtn.disabled = !(selectedNodes.length === 2 && !hasLinkBetweenNodes(selectedNodes[0], selectedNodes[1]));
+      }
+      if (updateBtn) {
+        updateBtn.disabled = !selectedLinkId || !linkPropertiesChanged;
+      }
+      if (deleteBtn) {
+        deleteBtn.disabled = !selectedLinkId && !(selectedNodes.length === 2 && hasLinkBetweenNodes(selectedNodes[0], selectedNodes[1]));
+      }
+    }
+
+    // --- Model Type Detection and Property Enable/Disable ---
+    function updatePropertyStates() {
+      // Get current model settings to determine type
+      sendApiRequestWithHandlers('get', 'model', {},
+        (data) => {
+          if (data.settings && typeof data.settings.simulationType !== 'undefined') {
+            modelType = data.settings.simulationType;
+          }
+          applyPropertyStates();
+        },
+        (err) => {
+          log('⚠️ Could not determine model type: ' + err);
+        }
+      );
+    }
+
+    function applyPropertyStates() {
+      const isDynamic = modelType === 2;
+      const isStatic = modelType === 1;
+      // Enable/disable based on model type
+      const dynamicOnlyFields = ['nodeIsAccumulator', 'nodeIsFlowVariable', 'nodeAllowNegativeValues'];
+      // Only nodeValueDefinedSemiQuantitatively is disabled for static
+      const staticDisabledFields = ['nodeValueDefinedSemiQuantitatively'];
+      dynamicOnlyFields.forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (field) field.disabled = !isDynamic;
+      });
+      // Always enable min/max/initial value fields
+      ['nodeInitialValue', 'nodeMin', 'nodeMax'].forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (field) field.disabled = false;
+      });
+      if (isStatic) {
+        staticDisabledFields.forEach(fieldId => {
+          const field = document.getElementById(fieldId);
+          if (field) field.disabled = true;
+        });
+      }
+    }
+
+    // --- Node Operations ---
+    function createNewNode() {
+      const nodeData = getNodeDataFromForm();
+      sendApiRequest('create', 'nodes', nodeData, 'Creating new node');
+    }
+
+    function createRandomNode() {
+      const x = Math.floor(Math.random() * 600) + 50;
+      const y = Math.floor(Math.random() * 400) + 50;
+      const value = Math.floor(Math.random() * 100);
+      sendApiRequest('create', 'nodes', {
+        title: `Random Node ${requestCounter + 1}`,
+        initialValue: value,
+        x: x,
+        y: y,
+        isAccumulator: Math.random() > 0.7
+      }, 'Creating random node');
+    }
+
+    function updateSelectedNode() {
+      if (!selectedNodeId) return;
+      const nodeData = getNodeDataFromForm();
+      sendApiRequest('update', getNodeResource(selectedNodeId), nodeData, 'Updating selected node');
+      nodePropertiesChanged = false;
+      updateNodeButtons();
+    }
+
+    function deleteSelectedNode() {
+      if (!selectedNodeId) return;
+      sendApiRequest('delete', getNodeResource(selectedNodeId), undefined, 'Deleting selected node');
+      clearNodeSelection();
+    }
+
+    // --- Link Operations ---
+    function createSelectedLink() {
+      if (selectedNodes.length !== 2) return;
+      const linkData = getLinkDataFromForm();
+      linkData.source = selectedNodes[0];
+      linkData.target = selectedNodes[1];
+      sendApiRequest('create', 'links', linkData, 'Creating link between selected nodes');
+    }
+
+    function updateSelectedLink() {
+      if (!selectedLinkId) return;
+      const linkData = getLinkDataFromForm();
+      sendApiRequest('update', getLinkResource(selectedLinkId), linkData, 'Updating selected link');
+      linkPropertiesChanged = false;
+      updateLinkButtons();
+    }
+
+    function deleteSelectedLink() {
+      if (selectedLinkId) {
+        sendApiRequest('delete', getLinkResource(selectedLinkId), undefined, 'Deleting selected link');
+        clearLinkSelection();
+      } else if (selectedNodes.length === 2) {
+        const linkId = getLinkBetweenNodes(selectedNodes[0], selectedNodes[1]);
+        if (linkId) {
+          sendApiRequest('delete', getLinkResource(linkId), undefined, 'Deleting link between selected nodes');
+        }
+      }
+    }
+
+    // --- Data Collection Functions ---
+    function getNodeDataFromForm() {
+      const data = {};
+      const title = document.getElementById('nodeTitle').value;
+      if (title) data.title = title;
+      
+      const initialValue = document.getElementById('nodeInitialValue').value;
+      if (initialValue !== '') data.initialValue = Number(initialValue);
+      
+      const min = document.getElementById('nodeMin').value;
+      if (min !== '') data.min = Number(min);
+      
+      const max = document.getElementById('nodeMax').value;
+      if (max !== '') data.max = Number(max);
+      
+      const x = document.getElementById('nodeX').value;
+      if (x !== '') data.x = Number(x);
+      
+      const y = document.getElementById('nodeY').value;
+      if (y !== '') data.y = Number(y);
+      
+      data.isAccumulator = document.getElementById('nodeIsAccumulator').checked;
+      data.isFlowVariable = document.getElementById('nodeIsFlowVariable').checked;
+      data.allowNegativeValues = document.getElementById('nodeAllowNegativeValues').checked;
+      data.valueDefinedSemiQuantitatively = document.getElementById('nodeValueDefinedSemiQuantitatively').checked;
+      data.usesDefaultImage = document.getElementById('nodeUsesDefaultImage').checked;
+      
+      const combineMethod = document.getElementById('nodeCombineMethod').value;
+      if (combineMethod) data.combineMethod = combineMethod;
+      
+      const image = document.getElementById('nodeImage').value;
+      if (image) data.image = image;
+      
+      const color = document.getElementById('nodeColor').value;
+      if (color) data.color = color;
+      
+      const paletteItem = document.getElementById('nodePaletteItem').value;
+      if (paletteItem) data.paletteItem = paletteItem;
+      
+      const sourceApp = document.getElementById('nodeSourceApp').value;
+      if (sourceApp) data.sourceApp = sourceApp;
+      
+      return data;
+    }
+
+    function getLinkDataFromForm() {
+      const data = {};
+      const vector = document.getElementById('linkRelationVector').value;
+      const scalar = document.getElementById('linkRelationScalar').value;
+      const customData = document.getElementById('linkCustomData').value;
+      const label = document.getElementById('linkLabel').value;
+      const color = document.getElementById('linkColor').value;
+      const sourceApp = document.getElementById('linkSourceApp').value;
+      // Use the correct API format for relations
+      data.relationVector = vector;
+      if (vector === 'vary' && customData) {
+        try {
+          data.customData = JSON.parse(customData);
+        } catch (e) {
+          log('❌ Invalid custom data JSON: ' + e.message);
+        }
+      } else {
+        data.relationScalar = scalar;
+      }
+      if (label) data.label = label;
+      if (color) data.color = color;
+      if (sourceApp) data.sourceApp = sourceApp;
+      // Handle direction
+      const dirEl = document.getElementById('linkDirection');
+      let source = selectedLinkSourceId;
+      let target = selectedLinkTargetId;
+      if (dirEl && dirEl.value === 'backward') {
+        // Swap source and target
+        [source, target] = [target, source];
+      }
+      data.source = source;
+      data.target = target;
+      return data;
+    }
+
+    // --- Form Population Functions ---
+    function populateNodeForm(node) {
+      document.getElementById('nodeTitle').value = node.title || '';
+      document.getElementById('nodeInitialValue').value = node.initialValue || '';
+      document.getElementById('nodeMin').value = node.min || '';
+      document.getElementById('nodeMax').value = node.max || '';
+      document.getElementById('nodeX').value = node.x || '';
+      document.getElementById('nodeY').value = node.y || '';
+      document.getElementById('nodeIsAccumulator').checked = node.isAccumulator || false;
+      document.getElementById('nodeIsFlowVariable').checked = node.isFlowVariable || false;
+      document.getElementById('nodeAllowNegativeValues').checked = node.allowNegativeValues || false;
+      document.getElementById('nodeValueDefinedSemiQuantitatively').checked = node.valueDefinedSemiQuantitatively || false;
+      document.getElementById('nodeUsesDefaultImage').checked = node.usesDefaultImage || false;
+      document.getElementById('nodeCombineMethod').value = node.combineMethod || '';
+      document.getElementById('nodeImage').value = node.image || '';
+      document.getElementById('nodeColor').value = node.color || '#f7be33';
+      document.getElementById('nodePaletteItem').value = node.paletteItem || '';
+      document.getElementById('nodeSourceApp').value = node.sourceApp || '';
+      
+      // Reset change tracking
+      nodePropertiesChanged = false;
+      updateNodeButtons();
+    }
+
+    function populateLinkForm(linkData) {
+      log(`📝 Populating link form with data for link: ${linkData.label || linkData.id}`);
+      log(`📝 Link data received: ${JSON.stringify(linkData, null, 2)}`);
+
+      // Label, color, sourceApp
+      document.getElementById('linkLabel').value = linkData.label || '';
+      document.getElementById('linkColor').value = linkData.color || '';
+      document.getElementById('linkSourceApp').value = linkData.sourceApp || '';
+
+      // Track source/target for direction
+      selectedLinkSourceId = linkData.source;
+      selectedLinkTargetId = linkData.target;
+
+      // Set direction dropdown to 'forward' by default
+      const dirEl = document.getElementById('linkDirection');
+      if (dirEl && selectedLinkSourceId && selectedLinkTargetId) {
+        dirEl.value = 'forward';
+      }
+
+      // Handle both API response formats for relation vector/scalar
+      let vector = 'increase';
+      let scalar = 'aboutTheSame';
+      if (linkData.relationVector) {
+        vector = linkData.relationVector;
+      } else if (linkData.relation && linkData.relation.vector) {
+        vector = linkData.relation.vector;
+      } else if (linkData.relation) {
+        // For legacy: sometimes relation is a string
+        vector = linkData.relation;
+      }
+      if (linkData.relationScalar) {
+        scalar = linkData.relationScalar;
+      } else if (linkData.relation && linkData.relation.scalar) {
+        scalar = linkData.relation.scalar;
+      } else if (linkData.relationDetail) {
+        scalar = linkData.relationDetail;
+      }
+
+      // Set relation vector and scalar
+      const relVecEl = document.getElementById('linkRelationVector');
+      if (relVecEl) {
+        relVecEl.value = vector;
+        log(`📝 linkRelationVector set to: ${relVecEl.value}`);
+      } else {
+        log('❌ linkRelationVector element not found');
+      }
+      const relScalarEl = document.getElementById('linkRelationScalar');
+      if (relScalarEl) {
+        relScalarEl.value = scalar;
+        log(`📝 linkRelationScalar set to: ${relScalarEl.value}`);
+      } else {
+        log('❌ linkRelationScalar element not found');
+      }
+
+      // Custom data (for 'vary' vector)
+      const customData = linkData.customData || (linkData.relation && linkData.relation.customData);
+      const customDataEl = document.getElementById('linkCustomData');
+      if (customDataEl) {
+        if (vector === 'vary' && customData) {
+          customDataEl.value = JSON.stringify(customData, null, 2);
+          log(`📝 linkCustomData set to: ${customDataEl.value}`);
+        } else {
+          customDataEl.value = '';
+          log(`📝 linkCustomData cleared`);
+        }
+      } else {
+        log('❌ linkCustomData element not found');
+      }
+
+      // Update direction display (if source/target available)
+      if (linkData.source && linkData.target) {
+        document.getElementById('linkSourceNode').textContent = linkData.source;
+        document.getElementById('linkTargetNode').textContent = linkData.target;
+      }
+
+      // Show/hide scalar/customData fields
+      onRelationVectorChange();
+
+      // Reset change tracking and update buttons
+      linkPropertiesChanged = false;
+      updateLinkButtons();
+
+      log(`✅ Link form populated successfully`);
+
+      // --- Dynamic link property UI logic ---
+      updateLinkFormControls(linkData);
+    }
+
+    // --- Selection Management ---
+    function selectNode(nodeId) {
+      selectedNodeId = nodeId;
+      nodePropertiesChanged = false;
+      updateNodeButtons();
+    }
+
+    function selectLink(linkId) {
+      selectedLinkId = linkId;
+      linkPropertiesChanged = false;
+      updateLinkButtons();
+    }
+
+    function clearNodeSelection() {
+      selectedNodeId = null;
+      nodePropertiesChanged = false;
+      // Clear the form
+      document.getElementById('nodeTitle').value = 'Test Node';
+      document.getElementById('nodeInitialValue').value = '';
+      document.getElementById('nodeMin').value = '';
+      document.getElementById('nodeMax').value = '';
+      document.getElementById('nodeX').value = '';
+      document.getElementById('nodeY').value = '';
+      document.getElementById('nodeIsAccumulator').checked = false;
+      document.getElementById('nodeIsFlowVariable').checked = false;
+      document.getElementById('nodeAllowNegativeValues').checked = true;
+      document.getElementById('nodeValueDefinedSemiQuantitatively').checked = false;
+      document.getElementById('nodeUsesDefaultImage').checked = true;
+      document.getElementById('nodeCombineMethod').value = '';
+      document.getElementById('nodeImage').value = '';
+      document.getElementById('nodeColor').value = '';
+      document.getElementById('nodePaletteItem').value = '';
+      document.getElementById('nodeSourceApp').value = '';
+      updateNodeButtons();
+    }
+
+    function clearLinkSelection() {
+      selectedLinkId = null;
+      linkPropertiesChanged = false;
+      // Clear the form
+      document.getElementById('linkRelationVector').value = 'increase';
+      document.getElementById('linkRelationScalar').value = 'proportionally';
+      document.getElementById('linkCustomData').value = '';
+      document.getElementById('linkLabel').value = '';
+      document.getElementById('linkColor').value = '';
+      document.getElementById('linkSourceApp').value = '';
+             onRelationVectorChange();
+      updateLinkButtons();
+    }
+
+    // --- Helper Functions ---
+    function hasLinkBetweenNodes(nodeId1, nodeId2) {
+      // TODO: Check if link exists between nodes
+      return false;
+    }
+
+    function getLinkBetweenNodes(nodeId1, nodeId2) {
+      // TODO: Get link ID between nodes
+      return null;
+    }
+
+    // Initialize property states on load
+    window.addEventListener('load', function() {
+      updatePropertyStates();
+      updateNodeButtons();
+      updateLinkButtons();
+    });
+
+    // --- Accordion Logic ---
+    function toggleAccordion(header) {
+      const content = header.nextElementSibling;
+      const isCollapsed = header.classList.contains('collapsed');
+      if (isCollapsed) {
+        header.classList.remove('collapsed');
+        content.classList.add('active');
+      } else {
+        header.classList.add('collapsed');
+        content.classList.remove('active');
+      }
+    }
+
+    // --- Utility Functions ---
+    let requestCounter = 0;
+    let lastCreatedNodeId = null;
+    let lastCreatedNodeIds = [];
+    let lastCreatedLinkId = null;
+    function log(msg) {
+      const logEl = document.getElementById('log');
+      if (logEl) {
+        logEl.textContent += (logEl.textContent ? '\n' : '') + msg;
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+      if (window.console) console.log(msg);
+    }
+    function clearLog() {
+      document.getElementById('log').innerHTML = '';
+      log('📝 Log cleared');
+    }
+    function updateStatus(message) {
+      const statusDiv = document.getElementById('status');
+      statusDiv.textContent = message;
+    }
+
+    // --- API Communication ---
+    function sendApiRequest(action, resource, values, description = 'API request') {
+      const requestId = `plugin-${++requestCounter}`;
+      const request = {
+        sageApi: true,
+        action: action,
+        resource: resource,
+        values: values,
+        requestId: requestId
+      };
+      log(`📤 ${description}: ${JSON.stringify(values)}`);
+      updateStatus('Sending request...');
+      window.parent.postMessage(request, '*');
+      return requestId;
+    }
+
+    window.addEventListener('message', function(event) {
+      if (event.data && event.data.sageApi) {
+        if (event.data.type === 'response') {
+          const response = event.data;
+          if (response.success && response.data && response.data.nodes && response.data.links) {
+            document.getElementById('modelJsonInput').value = JSON.stringify(response.data, null, 2);
+            log('✅ Model export complete.');
+            updateStatus('Model export complete.');
+          } else if (response.success) {
+            log('✅ Success: ' + (response.data && response.data.message ? response.data.message : 'Operation completed'));
+            updateStatus('Operation completed successfully.');
+          } else {
+            log('❌ Error: ' + response.error);
+            updateStatus('Request failed - see log for details.');
+          }
+        } else if (event.data.type === 'event') {
+          const ev = event.data;
+          log(`📢 Event: ${ev.event} \n${JSON.stringify(ev.data, null, 2)}`);
+        }
+      }
+    });
+
+    // --- Experiment Run Logic (ported from api-test.html) ---
+    let experimentNodes = [];
+    let experimentParams = {};
+    let experimentMode = 'static'; // 'static' or 'dynamic'
+    let experimentDuration = 20;
+    let experimentStepUnit = 'STEP';
+    let experimentDelivery = 'batch'; // 'batch' or 'stream'
+    const allowedStepUnits = [
+      'STEP', 'SECOND', 'MINUTE', 'HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR'
+    ];
+    const allowedDeliveryModes = [
+      { value: 'batch', label: 'Batch (all at end)' },
+      { value: 'stream', label: 'Stream (live rows)' }
+    ];
+    let experimentEstimatedRows = 0;
+
+    function sendApiRequestWithHandlers(action, resource, values, onSuccess, onError) {
+      const requestId = sendApiRequest(action, resource, values, 'Experiment API');
+      function handler(event) {
+        if (event.data && event.data.sageApi && event.data.type === 'response' && event.data.requestId === requestId) {
+          window.removeEventListener('message', handler);
+          if (event.data.success) {
+            onSuccess && onSuccess(event.data.data);
+          } else {
+            onError && onError(event.data.error || 'Unknown error');
+          }
+        }
+      }
+      window.addEventListener('message', handler);
+    }
+
+    function reloadExperimentNodes() {
+      document.getElementById('experimentNodesContainer').innerHTML = '<em>Loading nodes...</em>';
+      experimentNodes = [];
+      experimentParams = {};
+      // Fetch the model to determine simulation mode
+      sendApiRequestWithHandlers('get', 'model', {},
+        (data) => {
+          // Detect simulation mode from model settings
+          let simType = 1;
+          if (data.settings && typeof data.settings.simulationType !== 'undefined') {
+            simType = data.settings.simulationType;
+          }
+          experimentMode = (simType === 2) ? 'dynamic' : 'static';
+          // Set default duration and stepUnit if present in model
+          if (data.settings && typeof data.settings.duration === 'number') {
+            experimentDuration = data.settings.duration;
+          } else {
+            experimentDuration = 20;
+          }
+          if (data.settings && typeof data.settings.stepUnits === 'string') {
+            experimentStepUnit = data.settings.stepUnits;
+          } else {
+            experimentStepUnit = 'STEP';
+          }
+          // Use SageModeler logic for user-vary-able and dependent nodes
+          const links = data.links || [];
+          const nodes = (data.nodes || []);
+          const userVaryableNodes = nodes.filter(n => {
+            const key = n.key;
+            const isAccumulator = n.data && n.data.isAccumulator;
+            const hasIncoming = links.some(l => l.targetNode === key && l.relation && l.relation.type);
+            return isAccumulator || !hasIncoming;
+          });
+          const dependentNodes = nodes.filter(n => {
+            const key = n.key;
+            return links.some(l => l.targetNode === key && l.relation && l.relation.type);
+          });
+          experimentNodes = userVaryableNodes;
+          experimentParams = {};
+          userVaryableNodes.forEach(n => {
+            experimentParams[n.key] = { type: 'fixed', value: n.data.initialValue };
+          });
+          // Enable run only if both conditions are met (regardless of overlap)
+          const runBtn = document.getElementById('runExperimentBtn');
+          let warningMsg = '';
+          if (userVaryableNodes.length === 0 || dependentNodes.length === 0) {
+            if (runBtn) runBtn.disabled = true;
+            warningMsg = '<strong>Cannot run experiment:</strong> Model must have at least one independent (user-vary-able) and one dependent node.';
+          } else {
+            if (runBtn) runBtn.disabled = false;
+          }
+          // Debug output for troubleshooting
+          let debugInfo = `<div style='color:#888;font-size:11px;'>User-vary-able: [${userVaryableNodes.map(n=>n.key).join(', ')}] | Dependent: [${dependentNodes.map(n=>n.key).join(', ')}]</div>`;
+          let experimentWarning = document.getElementById('experimentNoRelationWarning');
+          if (warningMsg) {
+            if (experimentWarning) {
+              experimentWarning.innerHTML = warningMsg + debugInfo;
+              experimentWarning.style.display = '';
+            } else {
+              const warningDiv = document.createElement('div');
+              warningDiv.id = 'experimentNoRelationWarning';
+              warningDiv.style.color = 'red';
+              warningDiv.style.margin = '8px 0';
+              warningDiv.innerHTML = warningMsg + debugInfo;
+              runBtn.parentElement.insertBefore(warningDiv, runBtn);
+            }
+          } else if (experimentWarning) {
+            experimentWarning.innerHTML = debugInfo;
+            experimentWarning.style.display = '';
+          }
+          renderExperimentNodeControls();
+          renderExperimentModeControls();
+          updateExperimentRequestPreview();
+        },
+        (err) => {
+          document.getElementById('experimentNodesContainer').innerHTML = '<span style="color:red;">Failed to load nodes: ' + err + '</span>';
+        }
+      );
+    }
+
+    function renderExperimentNodeControls() {
+      const container = document.getElementById('experimentNodesContainer');
+      if (!experimentNodes.length) {
+        container.innerHTML = '<em>No user-vary-able nodes found in current model.</em>';
+        return;
+      }
+      let html = '';
+      const isDynamic = experimentMode === 'dynamic';
+      experimentNodes.forEach(node => {
+        let param = experimentParams[node.key] || { type: 'fixed', value: node.data.initialValue };
+        if (isDynamic) {
+          param = { type: 'fixed', value: param.value ?? node.data.initialValue };
+          experimentParams[node.key] = param;
+          html += `<div class="input-row" style="margin-bottom:8px; align-items: flex-end;">
+            <div class="input-group" style="min-width:120px;">
+              <label>${node.data.title}</label>
+            </div>
+            <div class="input-group"><label>Initial Value</label><input type="number" value="${param.value ?? node.data.initialValue}" onchange="onExperimentParamValueChange('${node.key}', 'value', this.value)"></div>
+          </div>`;
+        } else {
+          html += `<div class="input-row" style="margin-bottom:8px; align-items: flex-end;">
+            <div class="input-group" style="min-width:120px;">
+              <label>${node.data.title}</label>
+              <select onchange="onExperimentParamTypeChange('${node.key}', this.value)">
+                <option value="fixed"${param.type==='fixed'?' selected':''}>fixed</option>
+                <option value="sweep"${param.type==='sweep'?' selected':''}>sweep</option>
+                <option value="step"${param.type==='step'?' selected':''}>step</option>
+              </select>
+            </div>`;
+            if (param.type === 'fixed') {
+              html += `<div class="input-group"><label>Value</label><input type="number" value="${param.value ?? node.data.initialValue}" onchange="onExperimentParamValueChange('${node.key}', 'value', this.value)"></div>`;
+            } else if (param.type === 'sweep') {
+              const min = param.min ?? node.data.min;
+              const max = param.max ?? node.data.max;
+              const step = Math.min(1, (max - min) / 100);
+              html += `<div class="input-group"><label>Min</label><input type="number" value="${min}" onchange="onExperimentParamValueChange('${node.key}', 'min', this.value)"></div>`;
+              html += `<div class="input-group"><label>Max</label><input type="number" value="${max}" onchange="onExperimentParamValueChange('${node.key}', 'max', this.value)"></div>`;
+              html += `<div class="input-group"><label>Step</label><input type="number" value="${step}" disabled style="background:#eee;"></div>`;
+            } else if (param.type === 'step') {
+              const min = param.min ?? node.data.min;
+              const max = param.max ?? node.data.max;
+              const numSteps = param.numSteps ?? 3;
+              const includeBounds = param.includeBounds !== false;
+              html += `<div class="input-group"><label>Min</label><input type="number" value="${min}" onchange="onExperimentParamValueChange('${node.key}', 'min', this.value)"></div>`;
+              html += `<div class="input-group"><label>Max</label><input type="number" value="${max}" onchange="onExperimentParamValueChange('${node.key}', 'max', this.value)"></div>`;
+              html += `<div class="input-group"><label># Steps</label><input type="number" value="${numSteps}" min="1" onchange="onExperimentParamValueChange('${node.key}', 'numSteps', this.value)"></div>`;
+              html += `<div class="input-group"><label>Include Bounds</label><input type="checkbox" ${includeBounds?'checked':''} onchange="onExperimentParamValueChange('${node.key}', 'includeBounds', this.checked)"></div>`;
+            }
+            html += '</div>';
+        }
+      });
+      container.innerHTML = html;
+    }
+
+    function onExperimentParamTypeChange(nodeKey, type) {
+      experimentParams[nodeKey] = { type };
+      renderExperimentNodeControls();
+      updateExperimentRequestPreview();
+    }
+    function onExperimentParamValueChange(nodeKey, field, value) {
+      if (!experimentParams[nodeKey]) experimentParams[nodeKey] = { type: 'fixed' };
+      if (field === 'includeBounds') {
+        experimentParams[nodeKey][field] = value === true || value === 'true' || value === 'on';
+      } else if (field === 'numSteps') {
+        experimentParams[nodeKey][field] = Math.max(1, parseInt(value, 10) || 1);
+      } else {
+        experimentParams[nodeKey][field] = Number(value);
+      }
+      updateExperimentRequestPreview();
+    }
+    function renderExperimentModeControls() {
+      // Use a dedicated container to prevent duplicate controls
+      const controlsDiv = document.getElementById('experimentModeControls');
+      let html = '';
+      html += `<div style="margin: 10px 0;">
+        <label><strong>Experiment Mode:</strong> 
+          <select id="experimentModeSelect" onchange="onExperimentModeChange(this.value)">
+            <option value="static"${experimentMode==='static'?' selected':''}>static</option>
+            <option value="dynamic"${experimentMode==='dynamic'?' selected':''}>dynamic</option>
+          </select>
+        </label>
+      </div>`;
+      html += `<div style="margin: 10px 0;">
+        <label><strong>Delivery Mode:</strong> 
+          <select id="experimentDeliverySelect" onchange="onExperimentDeliveryChange(this.value)">
+            ${allowedDeliveryModes.map(m => `<option value="${m.value}"${experimentDelivery===m.value?' selected':''}>${m.label}</option>`).join('')}
+          </select>
+        </label>
+      </div>`;
+      if (experimentMode === 'dynamic') {
+        html += `<div style="margin: 10px 0;">
+          <label><strong>Duration (steps):</strong> 
+            <input type="number" id="experimentDurationInput" min="1" max="5000" value="${experimentDuration}" onchange="onExperimentDurationChange(this.value)">
+          </label>
+        </div>`;
+        html += `<div style="margin: 10px 0;">
+          <label><strong>Step Unit:</strong> 
+            <select id="experimentStepUnitSelect" onchange="onExperimentStepUnitChange(this.value)">
+              ${allowedStepUnits.map(u => `<option value="${u}"${experimentStepUnit===u?' selected':''}>${u}</option>`).join('')}
+            </select>
+          </label>
+        </div>`;
+      }
+      if (controlsDiv) controlsDiv.innerHTML = html;
+    }
+    window.onExperimentModeChange = function(mode) {
+      experimentMode = mode;
+      renderExperimentModeControls();
+      updateExperimentRequestPreview();
+    };
+    window.onExperimentDurationChange = function(val) {
+      experimentDuration = Math.max(1, Math.min(5000, parseInt(val, 10) || 1));
+      updateExperimentRequestPreview();
+    };
+    window.onExperimentStepUnitChange = function(val) {
+      experimentStepUnit = val;
+      updateExperimentRequestPreview();
+    };
+    window.onExperimentDeliveryChange = function(val) {
+      experimentDelivery = val;
+      renderExperimentModeControls();
+      updateExperimentRequestPreview();
+    };
+    function updateExperimentRequestPreview() {
+      const experiment = {
+        mode: experimentMode,
+        parameters: {}
+      };
+      if (experimentMode === 'dynamic') {
+        experiment.duration = experimentDuration;
+        experiment.stepUnit = experimentStepUnit;
+      }
+      experimentNodes.forEach(node => {
+        const param = { ...experimentParams[node.key] };
+        // Always include required fields for sweep/step
+        if (param.type === 'sweep') {
+          param.min = param.min !== undefined ? param.min : node.data.min;
+          param.max = param.max !== undefined ? param.max : node.data.max;
+        } else if (param.type === 'step') {
+          param.min = param.min !== undefined ? param.min : node.data.min;
+          param.max = param.max !== undefined ? param.max : node.data.max;
+          param.numSteps = param.numSteps !== undefined ? param.numSteps : 3;
+          param.includeBounds = param.includeBounds !== undefined ? param.includeBounds : true;
+        }
+        experiment.parameters[node.key] = param;
+      });
+      // Estimate rows
+      let totalRuns = 1;
+      experimentEstimatedRows = 1;
+      const paramValueArrays = experimentNodes.map(node => {
+        const param = experimentParams[node.key] || { type: 'fixed', value: node.data.initialValue };
+        if (param.type === 'fixed') {
+          return [param.value];
+        } else if (param.type === 'sweep') {
+          const min = param.min !== undefined ? param.min : node.data.min;
+          const max = param.max !== undefined ? param.max : node.data.max;
+          const step = Math.min(1, (max - min) / 100);
+          const arr = [];
+          for (let v = min; v <= max; v += step) arr.push(Number(v.toFixed(8)));
+          if (arr[arr.length - 1] < max) arr.push(max);
+          return arr;
+        } else if (param.type === 'step') {
+          const min = param.min !== undefined ? param.min : node.data.min;
+          const max = param.max !== undefined ? param.max : node.data.max;
+          const numSteps = param.numSteps !== undefined ? param.numSteps : 3;
+          const includeBounds = param.includeBounds !== false;
+          const arr = [];
+          if (numSteps === 1) {
+            arr.push(includeBounds ? min : (min + max) / 2);
+          } else {
+            for (let i = 0; i < numSteps; i++) {
+              let v;
+              if (includeBounds) {
+                v = min + (i * (max - min) / (numSteps - 1));
+              } else {
+                v = min + ((i + 0.5) * (max - min) / numSteps);
+              }
+              arr.push(Number(v.toFixed(8)));
+            }
+          }
+          return arr;
+        } else {
+          return [param.value];
+        }
+      });
+      totalRuns = paramValueArrays.reduce((acc, arr) => acc * arr.length, 1);
+      experimentEstimatedRows = experimentMode === 'dynamic' ? totalRuns * (experimentDuration + 1) : totalRuns;
+      // Show estimate and warning
+      let estimateMsg = `<div style='margin:6px 0;'><strong>Estimated Rows:</strong> ${experimentEstimatedRows}`;
+      if (experimentEstimatedRows > 50000) {
+        estimateMsg += ` <span style='color:red;'>(Exceeds 50,000 row limit!)</span>`;
+      } else if (experimentEstimatedRows > 40000) {
+        estimateMsg += ` <span style='color:orange;'>(Warning: close to 50,000 row limit)</span>`;
+      }
+      estimateMsg += '</div>';
+      document.getElementById('experimentRequestPreview').innerHTML = estimateMsg +
+        `<pre style='background:#222;color:#b5e853;padding:10px;border-radius:6px;font-family:Courier New,monospace;font-size:12px;max-height:200px;overflow-y:auto;'>` +
+        JSON.stringify({
+          sageApi: true,
+          action: 'call',
+          resource: 'simulation/experimentRun',
+          values: { experiment, delivery: experimentDelivery },
+          requestId: 'exp-' + Date.now()
+        }, null, 2) + '</pre>';
+      // Disable run button if over limit
+      const runBtn = document.getElementById('runExperimentBtn');
+      if (runBtn) runBtn.disabled = experimentEstimatedRows > 50000;
+    }
+    // On tab load, auto-load nodes for experiment builder
+    if (document.getElementById('tab-content-experiment')) {
+      reloadExperimentNodes();
+    }
+    function runExperiment() {
+      document.getElementById('experimentResultContainer').innerHTML = '<em>Running experiment...</em>';
+      let streamResults = [];
+      let streamCompleted = false;
+      window.removeEventListener('message', handleExperimentStreamEvent);
+      window.removeEventListener('message', handleExperimentStreamComplete);
+      function handleExperimentStreamEvent(event) {
+        if (event.data && event.data.event === 'experimentRunStream' && event.data.data && event.data.data.row) {
+          streamResults.push(event.data.data.row);
+          const container = document.getElementById('experimentResultContainer');
+          if (container) {
+            if (streamResults.length === 1) {
+              container.innerHTML = '<strong>Streaming Results:</strong><br><pre id="streamResultsPre" style="background:#222;color:#b5e853;padding:10px;border-radius:6px;font-family:Courier New,monospace;font-size:12px;max-height:200px;overflow-y:auto;"></pre>';
+            }
+            const pre = document.getElementById('streamResultsPre');
+            if (pre) {
+              pre.textContent += JSON.stringify(event.data.data.row) + '\n';
+            }
+          }
+        }
+      }
+      function handleExperimentStreamComplete(event) {
+        if (event.data && event.data.event === 'experimentRunCompleted') {
+          streamCompleted = true;
+          const container = document.getElementById('experimentResultContainer');
+          if (container) {
+            container.innerHTML += '<div style="margin-top:10px;color:#28a745;"><strong>Streaming complete.</strong></div>';
+          }
+          window.removeEventListener('message', handleExperimentStreamEvent);
+          window.removeEventListener('message', handleExperimentStreamComplete);
+        }
+      }
+      if (experimentDelivery === 'stream') {
+        window.addEventListener('message', handleExperimentStreamEvent);
+        window.addEventListener('message', handleExperimentStreamComplete);
+      }
+      const experiment = {
+        mode: experimentMode,
+        parameters: {}
+      };
+      if (experimentMode === 'dynamic') {
+        experiment.duration = experimentDuration;
+        experiment.stepUnit = experimentStepUnit;
+      }
+      experimentNodes.forEach(node => {
+        const param = { ...experimentParams[node.key] };
+        if (param.type === 'sweep') {
+          param.min = param.min !== undefined ? param.min : node.data.min;
+          param.max = param.max !== undefined ? param.max : node.data.max;
+        } else if (param.type === 'step') {
+          param.min = param.min !== undefined ? param.min : node.data.min;
+          param.max = param.max !== undefined ? param.max : node.data.max;
+          param.numSteps = param.numSteps !== undefined ? param.numSteps : 3;
+          param.includeBounds = param.includeBounds !== undefined ? param.includeBounds : true;
+        }
+        experiment.parameters[node.key] = param;
+      });
+      sendApiRequestWithHandlers('call', 'simulation/experimentRun', { experiment, delivery: experimentDelivery },
+        (data) => {
+          if (experimentDelivery === 'batch') {
+            document.getElementById('experimentResultContainer').innerHTML =
+              '<strong>Estimated Rows:</strong> ' + data.estimatedRows +
+              '<br><strong>Results:</strong><br>' +
+              '<pre style="background:#222;color:#b5e853;padding:10px;border-radius:6px;font-family:Courier New,monospace;font-size:12px;max-height:200px;overflow-y:auto;">' +
+              JSON.stringify(data.results, null, 2) + '</pre>';
+          }
+        },
+        (err) => {
+          document.getElementById('experimentResultContainer').innerHTML = '<span style="color:red;">' + err + '</span>';
+        }
+      );
+    }
+
+    // --- Recording State Management (13-4, observed events) ---
+    let isRecording = false;
+    let isSimRunning = false;
+    // On load, query simulation/state to set initial state
+    document.addEventListener('DOMContentLoaded', function() {
+      // ... existing code ...
+      // Query simulation/state endpoint
+      const requestId = 'plugin-init-' + Date.now();
+      window.parent.postMessage({ sageApi: true, action: 'get', resource: 'simulation/state', requestId }, '*');
+      function handleInitState(event) {
+        if (event.data && event.data.sageApi && event.data.type === 'response' && event.data.requestId === requestId) {
+          if (event.data.success && event.data.data) {
+            isSimRunning = !!event.data.data.modelIsRunning;
+            isRecording = !!event.data.data.isRecording;
+            updateRecordingControls();
+          }
+          window.removeEventListener('message', handleInitState);
+        }
+      }
+      window.addEventListener('message', handleInitState);
+      // Attach event listeners for recording buttons
+      const recordBtn = document.getElementById('recordStreamBtn');
+      if (recordBtn) {
+        recordBtn.addEventListener('click', recordStreamBtnHandler);
+      }
+      const stopBtn = document.getElementById('stopRecordingBtn');
+      if (stopBtn) {
+        stopBtn.addEventListener('click', stopRecordingBtnHandler);
+      }
+    });
+    // Listen for observed simulation/recording events
+    window.addEventListener('message', function(event) {
+      if (event.data && event.data.sageApi && event.data.type === 'event' && event.data.data && event.data.data.observed) {
+        if (event.data.event === 'simulationStarted') {
+          isSimRunning = true;
+          updateRecordingControls();
+        } else if (event.data.event === 'simulationStopped' || event.data.event === 'simulationCompleted') {
+          isSimRunning = false;
+          updateRecordingControls();
+        } else if (event.data.event === 'recordingStarted') {
+          isRecording = true;
+          updateRecordingControls();
+          updateStatus('Recording in progress...');
+        } else if (event.data.event === 'recordingStopped') {
+          isRecording = false;
+          updateRecordingControls();
+          updateStatus('Recording stopped.');
+        }
+      }
+    });
+    // --- Update controls to use isRecording/isSimRunning ---
+    function updateRecordingControls() {
+      const isDynamic = modelType === 2;
+      const recordBtn = document.getElementById('recordStreamBtn');
+      const stopBtn = document.getElementById('stopRecordingBtn');
+      const durationField = document.getElementById('recordDuration');
+      const unitsField = document.getElementById('recordUnits');
+      if (isDynamic) {
+        if (recordBtn) {
+          recordBtn.textContent = 'Record';
+          recordBtn.style.display = '';
+          recordBtn.disabled = isRecording || isSimRunning;
+        }
+        if (stopBtn) stopBtn.style.display = 'none';
+        if (durationField) { durationField.disabled = isRecording || isSimRunning; durationField.style.opacity = 1; }
+        if (unitsField) { unitsField.disabled = isRecording || isSimRunning; unitsField.style.opacity = 1; }
+      } else {
+        if (recordBtn) {
+          recordBtn.textContent = 'Record Continuously';
+          recordBtn.style.display = '';
+          recordBtn.disabled = isRecording || isSimRunning;
+        }
+        if (stopBtn) {
+          stopBtn.style.display = '';
+          stopBtn.disabled = !isRecording && !isSimRunning;
+        }
+        if (durationField) { durationField.disabled = true; durationField.style.opacity = 0.5; }
+        if (unitsField) { unitsField.disabled = true; unitsField.style.opacity = 0.5; }
+      }
+    }
+
+    // --- Import/Export ---
+    function loadModelFromInput() {
+      const jsonStr = document.getElementById('modelJsonInput').value;
+      let modelObj = null;
+      try {
+        modelObj = JSON.parse(jsonStr);
+      } catch (e) {
+        log('❌ Invalid JSON: ' + e.message);
+        updateStatus('Invalid JSON input.');
+        return;
+      }
+      sendApiRequest('update', 'model', { model: modelObj }, 'Loading model from input');
+    }
+    function getModel() {
+      sendApiRequest('get', 'model', {}, 'Exporting model');
+    }
+
+    // --- Model Complexity & UI Settings ---
+    function updateModelComplexity() {
+      const complexity = document.querySelector('input[name="modelComplexity"]:checked').value;
+      sendApiRequest('update', 'model/complexity', { complexity: Number(complexity) }, 'Update Model Complexity');
+    }
+    function updateUiSettings() {
+      const uiSettings = {
+        relationshipSymbols: document.getElementById('uiRelationshipSymbols').checked,
+        guide: document.getElementById('uiGuide').checked,
+        lockdown: document.getElementById('uiLockdown').checked,
+        touchDevice: document.getElementById('uiTouchDevice').checked,
+        uiElements: {
+          globalNav: document.getElementById('uiGlobalNav').checked,
+          actionBar: document.getElementById('uiActionBar').checked,
+          inspectorPanel: document.getElementById('uiInspectorPanel').checked,
+          nodePalette: document.getElementById('uiNodePalette').checked,
+          fullscreenButton: document.getElementById('uiFullscreenButton').checked,
+          scaling: document.getElementById('uiScaling').checked
+        },
+        guideItems: []
+      };
+      try {
+        const guideItemsVal = document.getElementById('uiGuideItems').value;
+        if (guideItemsVal) {
+          uiSettings.guideItems = JSON.parse(guideItemsVal);
+        }
+      } catch (e) {
+        log('❌ Invalid Guide Items JSON: ' + e.message);
+      }
+      sendApiRequest('update', 'ui/settings', uiSettings, 'Update UI Settings');
+    }
+    function restoreAllUi() {
+      [
+        'uiGlobalNav', 'uiActionBar', 'uiInspectorPanel', 'uiNodePalette',
+        'uiFullscreenButton', 'uiScaling', 'uiRelationshipSymbols', 'uiGuide'
+      ].forEach(id => document.getElementById(id).checked = true);
+    }
+
+    // Test: send a message to self to confirm handler works
+    window.postMessage({ test: "self-message" }, "*");
+
+    // Helper to build resource string for node/link actions
+    function getNodeResource(id) {
+      return id ? `nodes/${id}` : 'nodes';
+    }
+    function getLinkResource(id) {
+      return id ? `links/${id}` : 'links';
+    }
+
+    // --- Inspector Panel Logic ---
+    function getAllNodes() {
+      sendApiRequest('get', 'nodes', undefined, 'Getting all nodes');
+    }
+    function getAllLinks() {
+      sendApiRequest('get', 'links', undefined, 'Getting all links');
+    }
+    function getNodeById() {
+      const nodeId = document.getElementById('nodeIdInput').value;
+      if (!nodeId) {
+        log('⚠️ Enter a node ID to get.');
+        return;
+      }
+      sendApiRequest('get', getNodeResource(nodeId), undefined, 'Getting node by ID');
+    }
+    function getLinkById() {
+      const linkId = document.getElementById('linkIdInput').value;
+      if (!linkId) {
+        log('⚠️ Enter a link ID to get.');
+        return;
+      }
+      sendApiRequest('get', getLinkResource(linkId), undefined, 'Getting link by ID');
+    }
+    function onNodeSelect() {
+      const sel = document.getElementById('nodesList');
+      if (sel.selectedIndex >= 0) {
+        const nodeId = sel.value;
+        selectNode(nodeId);
+        document.getElementById('nodeIdInput').value = nodeId;
+        // Get the node data to populate form
+        sendApiRequestWithHandlers('get', getNodeResource(nodeId), {},
+          (data) => {
+            if (data.node) {
+              populateNodeForm(data.node);
+            }
+          },
+          (err) => {
+            log('❌ Error getting node: ' + err);
+          }
+        );
+      }
+    }
+    function onLinkSelect() {
+      const sel = document.getElementById('linksList');
+      if (sel.selectedIndex >= 0) {
+        const linkId = sel.value;
+        selectLink(linkId);
+        document.getElementById('linkIdInput').value = linkId;
+        // Get the link data to populate form
+        sendApiRequestWithHandlers('get', getLinkResource(linkId), {},
+          (data) => {
+            if (data.link) {
+              populateLinkForm(data.link);
+            }
+          },
+          (err) => {
+            log('❌ Error getting link: ' + err);
+          }
+        );
+      }
+    }
+
+    // --- Link Relation Vector Change Handler ---
+    function onRelationVectorChange() {
+      const vector = document.getElementById('linkRelationVector').value;
+      document.getElementById('scalarGroup').style.display = (vector === 'vary') ? 'none' : '';
+      document.getElementById('customDataGroup').style.display = (vector === 'vary') ? '' : 'none';
+    }
+
+    // --- Update lists after API responses ---
+    window.addEventListener('message', function(event) {
+      if (event.data && event.data.sageApi && event.data.type === 'response' && event.data.success) {
+        if (event.data.data && event.data.data.nodes) {
+          const nodes = event.data.data.nodes;
+          const sel = document.getElementById('nodesList');
+          sel.innerHTML = '';
+          nodes.forEach(n => {
+            const opt = document.createElement('option');
+            opt.value = n.id;
+            opt.textContent = `${n.id} (${n.title})`;
+            sel.appendChild(opt);
+          });
+        }
+        if (event.data.data && event.data.data.links) {
+          const links = event.data.data.links;
+          const sel = document.getElementById('linksList');
+          sel.innerHTML = '';
+          links.forEach(l => {
+            const opt = document.createElement('option');
+            opt.value = l.id;
+            opt.textContent = `${l.id} (${l.label || l.relation})`;
+            sel.appendChild(opt);
+          });
+        }
+        // Show result in inspector
+        if (event.data.data && (event.data.data.node || event.data.data.link || event.data.data.nodes || event.data.data.links)) {
+          document.getElementById('inspectorResult').textContent = JSON.stringify(event.data.data, null, 2);
+        }
+      }
+      
+      // --- Handle selection events from SageModeler ---
+      if (event.data && event.data.sageApi && event.data.type === 'event') {
+        const eventName = event.data.event;
+        const eventData = event.data.data;
+        
+        switch (eventName) {
+          case 'nodesSelected':
+            handleNodesSelected(eventData);
+            break;
+          case 'nodesDeselected':
+            handleNodesDeselected(eventData);
+            break;
+          case 'linksSelected':
+            handleLinksSelected(eventData);
+            break;
+          case 'linksDeselected':
+            handleLinksDeselected(eventData);
+            break;
+        }
+      }
+    });
+
+         // --- Selection Event Handlers ---
+     function handleNodesSelected(eventData) {
+       log(`📍 Nodes selected in SageModeler: ${eventData.count} node(s)`);
+       
+       if (eventData.nodes && eventData.nodes.length > 0) {
+         // Switch to Nodes/Links tab if not already there
+         const nodesLinksTab = document.querySelector('[data-tab="nodes-links"]');
+         if (nodesLinksTab && !nodesLinksTab.classList.contains('active')) {
+           // Switch to the main tab
+           document.querySelectorAll('.tab-button').forEach(tab => tab.classList.remove('active'));
+           document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+           nodesLinksTab.classList.add('active');
+           document.getElementById('nodes-links').classList.add('active');
+         }
+         
+         // Switch to Nodes sub-tab
+         const nodesSubTab = document.querySelector('[data-subtab="nodes"]');
+         if (nodesSubTab && !nodesSubTab.classList.contains('active')) {
+           document.querySelectorAll('.subtab-button').forEach(tab => tab.classList.remove('active'));
+           document.querySelectorAll('.subtab-content').forEach(content => content.classList.remove('active'));
+           nodesSubTab.classList.add('active');
+           document.getElementById('nodes-subtab').classList.add('active');
+         }
+         
+         // For single selection, populate the form with the first/primary node
+         const primaryNode = eventData.nodes[0];
+         selectedNodeId = primaryNode.id;
+         selectedNodes = eventData.nodes.map(n => n.id);
+         
+         // Populate the node form
+         populateNodeForm(primaryNode);
+         
+         // Update the Inspector node list selection
+         const nodesList = document.getElementById('nodesList');
+         if (nodesList) {
+           nodesList.value = primaryNode.id;
+         }
+         
+         // Update button states
+         updateNodeButtons();
+         updateLinkButtons(); // May affect link creation if 2 nodes selected
+         
+         log(`📍 Plugin synchronized with selected node: ${primaryNode.title} (${primaryNode.id})`);
+       }
+     }
+
+    function handleNodesDeselected(eventData) {
+      log('📍 Nodes deselected in SageModeler');
+      
+      // Clear node selection
+      selectedNodeId = null;
+      selectedNodes = [];
+      
+      // Clear the Inspector node list selection
+      const nodesList = document.getElementById('nodesList');
+      if (nodesList) {
+        nodesList.selectedIndex = -1;
+      }
+      
+      // Update button states
+      updateNodeButtons();
+      updateLinkButtons();
+      
+      log('📍 Plugin node selection cleared');
+    }
+
+         function handleLinksSelected(eventData) {
+       log(`📍 Links selected in SageModeler: ${eventData.count} link(s)`);
+       
+       if (eventData.links && eventData.links.length > 0) {
+         // Switch to Nodes/Links tab if not already there
+         const nodesLinksTab = document.querySelector('[data-tab="nodes-links"]');
+         if (nodesLinksTab && !nodesLinksTab.classList.contains('active')) {
+           // Switch to the main tab
+           document.querySelectorAll('.tab-button').forEach(tab => tab.classList.remove('active'));
+           document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+           nodesLinksTab.classList.add('active');
+           document.getElementById('nodes-links').classList.add('active');
+         }
+         
+         // Switch to Links sub-tab
+         const linksSubTab = document.querySelector('[data-subtab="links"]');
+         if (linksSubTab && !linksSubTab.classList.contains('active')) {
+           document.querySelectorAll('.subtab-button').forEach(tab => tab.classList.remove('active'));
+           document.querySelectorAll('.subtab-content').forEach(content => content.classList.remove('active'));
+           linksSubTab.classList.add('active');
+           document.getElementById('links-subtab').classList.add('active');
+         }
+         
+         // For single selection, populate the form with the first/primary link
+         const primaryLink = eventData.links[0];
+         selectedLinkId = primaryLink.id;
+         
+         // Populate the link form
+         populateLinkForm(primaryLink);
+         
+         // Update the Inspector link list selection
+         const linksList = document.getElementById('linksList');
+         if (linksList) {
+           linksList.value = primaryLink.id;
+         }
+         
+         // Update button states
+         updateLinkButtons();
+         
+         log(`📍 Plugin synchronized with selected link: ${primaryLink.label || primaryLink.id}`);
+       }
+     }
+
+    function handleLinksDeselected(eventData) {
+      log('📍 Links deselected in SageModeler');
+      
+      // Clear link selection
+      selectedLinkId = null;
+      
+      // Clear the Inspector link list selection
+      const linksList = document.getElementById('linksList');
+      if (linksList) {
+        linksList.selectedIndex = -1;
+      }
+      
+      // Update button states
+      updateLinkButtons();
+      
+      log('📍 Plugin link selection cleared');
+    }
+
+    // --- Listen for simulationSettingsUpdated events from the API ---
+    window.addEventListener('message', function(event) {
+      if (event.data && event.data.sageApi && event.data.type === 'event' && event.data.event === 'simulationSettingsUpdated') {
+        if (event.data.data && typeof event.data.data.simulationType !== 'undefined') {
+          modelType = event.data.data.simulationType;
+          applyPropertyStates();
+        }
+      }
+    });
+
+    // --- Dynamic link property UI logic ---
+    function updateLinkFormControls(linkData) {
+      // Hide all link property controls by default
+      const allLinkFields = [
+        'linkRelationVector', 'linkRelationScalar', 'linkCustomData',
+        'linkLabel', 'linkColor', 'linkDirection'
+      ];
+      allLinkFields.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.parentElement.style.display = 'none';
+          el.disabled = true;
+        }
+      });
+      // Show and enable only editable properties
+      if (linkData && linkData.editableProperties) {
+        linkData.editableProperties.forEach(prop => {
+          let id = null;
+          if (prop === 'relationVector' || prop === 'relation') id = 'linkRelationVector';
+          if (prop === 'relationScalar') id = 'linkRelationScalar';
+          if (prop === 'customData') id = 'linkCustomData';
+          if (prop === 'label') id = 'linkLabel';
+          if (prop === 'color') id = 'linkColor';
+          if (id) {
+            const el = document.getElementById(id);
+            if (el) {
+              el.parentElement.style.display = '';
+              el.disabled = false;
+            }
+          }
+        });
+      }
+      // Always show direction control if present
+      const dirEl = document.getElementById('linkDirection');
+      if (dirEl) dirEl.parentElement.style.display = '';
+      // Update relation pulldown options with user-facing labels
+      if (linkData && linkData.validRelations) {
+        const relPulldown = document.getElementById('linkRelationVector');
+        if (relPulldown) {
+          // Forcibly clear all options
+          while (relPulldown.options.length > 0) {
+            relPulldown.remove(0);
+          }
+          linkData.validRelations.forEach(rel => {
+            const opt = document.createElement('option');
+            opt.value = rel.id;
+            opt.textContent = rel.uiText;
+            relPulldown.appendChild(opt);
+          });
+          // Always set value to current relation if possible
+          let currentRelation = linkData.relation || linkData.relationVector || linkData.relationDetail;
+          // Try to match by id, formula, or text
+          let found = false;
+          if (currentRelation && linkData.validRelations.some(r => r.id === currentRelation)) {
+            relPulldown.value = currentRelation;
+            found = true;
+          } else if (currentRelation === '+in' && linkData.validRelations.some(r => r.id === 'added')) {
+            relPulldown.value = 'added';
+            found = true;
+          } else if (currentRelation === '-in' && linkData.validRelations.some(r => r.id === 'subtracted')) {
+            relPulldown.value = 'subtracted';
+            found = true;
+          } else if (
+            (currentRelation === 'setInitialValue' || currentRelation === 'initial-value') &&
+            linkData.validRelations.some(r => r.id === 'setInitialValue')
+          ) {
+            relPulldown.value = 'setInitialValue';
+            found = true;
+          } else if (
+            (currentRelation === 'added' || currentRelation === '+in') &&
+            linkData.validRelations.some(r => r.id === 'added')
+          ) {
+            relPulldown.value = 'added';
+            found = true;
+          } else if (
+            (currentRelation === 'subtracted' || currentRelation === '-in' || currentRelation === 'accumulator') &&
+            linkData.validRelations.some(r => r.id === 'subtracted')
+          ) {
+            relPulldown.value = 'subtracted';
+            found = true;
+          }
+          // Debug logging
+          console.debug('[PLUGIN] currentRelation:', currentRelation, 'dropdown set to:', relPulldown.value);
+          if (!found) {
+            relPulldown.selectedIndex = 0;
+          }
+        }
+      }
+      // Hide scalar/customData if not in editableProperties
+      const scalarGroup = document.getElementById('scalarGroup');
+      if (scalarGroup) {
+        scalarGroup.style.display = linkData && linkData.editableProperties && linkData.editableProperties.includes('relationScalar') ? '' : 'none';
+      }
+      const customDataGroup = document.getElementById('customDataGroup');
+      if (customDataGroup) {
+        customDataGroup.style.display = linkData && linkData.editableProperties && linkData.editableProperties.includes('customData') ? '' : 'none';
+      }
+    }
+
+    // --- When direction is changed, re-evaluate link context ---
+    document.getElementById('linkDirection').addEventListener('change', function() {
+      // Get current source/target IDs and direction
+      const dir = this.value;
+      let src = selectedLinkSourceId;
+      let tgt = selectedLinkTargetId;
+      if (dir === 'backward') [src, tgt] = [tgt, src];
+      // Request context from API
+      sendApiRequest('call', 'links/context', { source: src, target: tgt }, 'Get link context');
+    });
+
+    // --- When a link is selected, request context and update dropdown ---
+    function handleLinksSelected(eventData) {
+      log(`📍 Links selected in SageModeler: ${eventData.count} link(s)`);
+      if (eventData.links && eventData.links.length > 0) {
+        const primaryLink = eventData.links[0];
+        selectedLinkId = primaryLink.id;
+        // Populate the link form
+        populateLinkForm(primaryLink);
+        // Request context from API for this link
+        sendApiRequestWithHandlers('call', 'links/context', { source: primaryLink.source, target: primaryLink.target },
+          function(context) {
+            updateLinkFormControls({ ...primaryLink, ...context });
+          },
+          function(err) {
+            log('❌ Error getting link context: ' + err);
+          }
+        );
+        // Update the Inspector link list selection
+        const linksList = document.getElementById('linksList');
+        if (linksList) {
+          linksList.value = primaryLink.id;
+        }
+        updateLinkButtons();
+        log(`📍 Plugin synchronized with selected link: ${primaryLink.label || primaryLink.id}`);
+      }
+    }
+
+    // --- Recording State Management (13-4) ---
+    // --- Recording button handlers (13-4) ---
+    function recordStreamBtnHandler() {
+      if (modelType === 2) {
+        // Dynamic: use duration/units
+        const duration = document.getElementById('recordDuration').value;
+        const units = document.getElementById('recordUnits').value;
+        sendApiRequest('call', 'simulation/recordStream', {
+          duration: duration ? Number(duration) : undefined,
+          units: units || undefined
+        }, 'Record (dynamic)');
+      } else {
+        // Static: no duration/units
+        sendApiRequest('call', 'simulation/recordStream', {}, 'Record Continuously (static)');
+      }
+    }
+
+    function stopRecordingBtnHandler() {
+      sendApiRequest('call', 'simulation/stopRecording', {}, 'Stop Recording');
+    }
+
+    // [13-4] Add SD-JSON import/export logic
+    // Load sd-json.js if not already present
+    function importSdJson() {
+      const jsonStr = document.getElementById('modelJsonInput').value;
+      let sdModel = null;
+      try {
+        sdModel = JSON.parse(jsonStr);
+      } catch (e) {
+        log('❌ Invalid SD-JSON: ' + e.message);
+        updateStatus('Invalid SD-JSON input.');
+        return;
+      }
+      // [13-4] Patch: Accept both influences and relationships arrays
+      if (!sdModel.influences && Array.isArray(sdModel.relationships)) {
+        // Convert relationships to influences
+        sdModel.influences = sdModel.relationships.map(rel => ({
+          source: rel.from,
+          target: rel.to,
+          polarity: rel.polarity
+        }));
+        log('ℹ️ Converted relationships array to influences for SD-JSON import.');
+      }
+      if (!Array.isArray(sdModel.influences)) {
+        log('❌ SD-JSON must have an influences or relationships array.');
+        updateStatus('SD-JSON must have an influences or relationships array.');
+        return;
+      }
+      if (typeof window.fromSdJson !== 'function') {
+        log('❌ SD-JSON converter not loaded.');
+        updateStatus('SD-JSON converter not loaded.');
+        return;
+      }
+      let sageModel = null;
+      try {
+        sageModel = window.fromSdJson(sdModel);
+      } catch (e) {
+        log('❌ Error converting SD-JSON: ' + e.message);
+        updateStatus('Error converting SD-JSON.');
+        return;
+      }
+      sendApiRequest('update', 'model', { model: sageModel }, 'Loading model from SD-JSON');
+    }
+    function exportSdJson() {
+      // Get the current SageModeler model first
+      sendApiRequestWithHandlers('get', 'model', {}, function(data) {
+        if (!data || !data.nodes || !data.links) {
+          log('❌ No model data to export.');
+          updateStatus('No model data to export.');
+          return;
+        }
+        if (typeof window.toSdJson !== 'function') {
+          log('❌ SD-JSON converter not loaded.');
+          updateStatus('SD-JSON converter not loaded.');
+          return;
+        }
+        let sdJson = null;
+        try {
+          sdJson = window.toSdJson(data);
+        } catch (e) {
+          log('❌ Error converting to SD-JSON: ' + e.message);
+          updateStatus('Error converting to SD-JSON.');
+          return;
+        }
+        document.getElementById('modelJsonInput').value = JSON.stringify(sdJson, null, 2);
+        log('✅ SD-JSON export complete.');
+        updateStatus('SD-JSON export complete.');
+      }, function(err) {
+        log('❌ Error getting model: ' + err);
+        updateStatus('Error getting model.');
+      });
+    }
+  </script>
+</body>
+</html> 
