@@ -46,87 +46,51 @@ function runCommand(command, description) {
   }
 }
 
-function main() {
-  log("🚀 Starting alias update process...");
-  
-  // Get list of deployments
-  const deploymentList = runCommand("vercel ls", "Fetching recent deployments");
-  
-  // The Vercel CLI in this context returns just the URLs, ordered by newest first
-  const lines = deploymentList.split("\n").filter(line => line.trim());
-  let latestDeployment = null;
-  
-  // Take the first URL (which is the most recent deployment)
-  for (const line of lines) {
-    if (line.startsWith("https://") && line.includes("vercel.app")) {
-      latestDeployment = line.trim();
-      break;
+async function updateAlias() {
+  try {
+    log("🔍 Getting latest deployment...");
+    
+    // Get the latest deployment URL
+    const vercelOutput = execSync('vercel ls', { encoding: 'utf8' });
+    
+    // Find the first Ready deployment URL
+    const lines = vercelOutput.split('\n');
+    let latestUrl = null;
+    
+    for (const line of lines) {
+      // Look for lines that are complete URLs (they're ordered newest first)
+      const trimmedLine = line.trim();
+      if (trimmedLine.startsWith('https://codap-') && trimmedLine.endsWith('.vercel.app')) {
+        latestUrl = trimmedLine;
+        break;
+      }
     }
-  }
-  
-  if (!latestDeployment) {
-    error("No deployment found. Please deploy first with: npm run deploy");
-    error("Available deployments:");
-    console.error(deploymentList);
+    
+    if (!latestUrl) {
+      error('❌ Could not find a Ready deployment URL');
+      process.exit(1);
+    }
+    
+    log(`✅ Latest deployment: ${latestUrl}`);
+    
+    // Update the alias
+    log('🔄 Updating alias...');
+    const aliasCommand = `vercel alias set ${latestUrl} codap-mcp-stable.vercel.app`;
+    
+    const result = execSync(aliasCommand, { encoding: 'utf8' });
+    log(result);
+    
+    log('🎉 Alias updated successfully!');
+    log('🌐 Stable URL: https://codap-mcp-stable.vercel.app');
+    
+  } catch (error) {
+    error('❌ Error updating alias:', error.message);
     process.exit(1);
   }
-  
-  log(`📍 Latest deployment found: ${latestDeployment}`);
-  
-  // Check if alias already points to this deployment
-  try {
-    const aliasListResult = runCommand("vercel alias ls", "Checking for existing aliases");
-    const aliasLines = aliasListResult.split("\n");
-    let currentAliasTarget = null;
-    
-    // Find the line that contains our stable alias
-    for (const line of aliasLines) {
-      if (line.includes(STABLE_ALIAS)) {
-        // Extract the source URL (first column)
-        const parts = line.trim().split(/\s+/);
-        if (parts.length > 0 && parts[0].includes("vercel.app")) {
-          currentAliasTarget = parts[0];
-          break;
-        }
-      }
-    }
-    
-    if (currentAliasTarget) {
-      // Normalize URLs for comparison (alias list might not include https://)
-      const normalizedCurrent = currentAliasTarget.startsWith("https://") ? 
-        currentAliasTarget : `https://${currentAliasTarget}`;
-      const normalizedLatest = latestDeployment;
-      
-      if (normalizedCurrent === normalizedLatest) {
-        log(`✅ Alias already points to the latest deployment!`);
-        log(`   ${STABLE_ALIAS} -> ${normalizedLatest}`);
-        return;
-      } else {
-        log(`Current alias points to different deployment: ${normalizedCurrent}`);
-        log(`Latest deployment is: ${normalizedLatest}`);
-        log(`Updating alias...`);
-      }
-    } else {
-      log("No existing alias found, creating new one...");
-    }
-  } catch (err) {
-    // Failed to get alias list, which is fine - just create the alias
-    log("Unable to check existing aliases, creating new one...");
-  }
-  
-  // Update the alias
-  const aliasCommand = `vercel alias set ${latestDeployment} ${STABLE_ALIAS}`;
-  runCommand(aliasCommand, `Setting alias ${STABLE_ALIAS} to point to ${latestDeployment}`);
-  
-  log("✅ Alias updated successfully!");
-  log(`   ${STABLE_ALIAS} -> ${latestDeployment}`);
-  log("");
-  log("🎉 Your Claude Desktop MCP configuration will now use the latest deployment!");
-  log("   You can verify with: npm run alias:current");
 }
 
 if (require.main === module) {
-  main();
+  updateAlias();
 }
 
-module.exports = { main }; 
+module.exports = { updateAlias }; 

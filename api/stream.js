@@ -60,7 +60,7 @@ async function getNextToolRequest(code) {
 /**
  * Main handler function for SSE streaming
  */
-export default async function handler(req, res) {
+async function handler(req, res) {
   // Set CORS headers
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
@@ -246,4 +246,6 @@ export default async function handler(req, res) {
       message: "Failed to establish SSE stream"
     });
   }
-} 
+}
+
+module.exports = handler; 

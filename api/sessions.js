@@ -44,13 +44,16 @@ function createSuccessResponse(res, data, status = 200) {
 /**
  * Main handler function
  */
-export default async function handler(req, res) {
+async function handler(req, res) {
+  console.log('[sessions] Handler called, method:', req.method);
+  
   // Set CORS headers
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, x-sso-bypass");
 
   try {
+    console.log('[sessions] Starting session creation...');
     // Handle CORS preflight
     if (req.method === "OPTIONS") {
       res.status(200).end();
@@ -86,9 +89,12 @@ export default async function handler(req, res) {
     }
     
     // Generate session code
+    console.log('[sessions] Generating session code...');
     const code = generateSessionCode();
     const now = new Date();
     const expiresAt = new Date(now.getTime() + SESSION_TTL_SECONDS * 1000);
+    
+    console.log('[sessions] Generated code:', code);
     
     // Store session in Redis with TTL
     const sessionData = {
@@ -100,7 +106,9 @@ export default async function handler(req, res) {
       capabilities
     };
     
+    console.log('[sessions] About to call setSession...');
     await setSession(code, sessionData);
+    console.log('[sessions] setSession completed successfully');
     
     // Return session details
     const response = {
@@ -113,7 +121,11 @@ export default async function handler(req, res) {
     createSuccessResponse(res, response, 201);
     
   } catch (error) {
-    console.error("Session creation error:", error);
+    console.error("[sessions] Session creation error:", error);
+    console.error("[sessions] Error message:", error.message);
+    console.error("[sessions] Error stack:", error.stack);
     createErrorResponse(res, 500, "internal_server_error", "Failed to create session");
   }
-} 
+}
+
+module.exports = handler; 

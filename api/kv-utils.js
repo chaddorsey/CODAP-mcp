@@ -1,9 +1,13 @@
-const { Redis } = require("@upstash/redis");
+const Redis = require("ioredis");
 
-// Initialize Redis client using environment variables
-const redis = new Redis({
-  url: process.env.KV_REST_API_URL,
-  token: process.env.KV_REST_API_TOKEN,
+// Initialize Redis client using environment variables  
+// Redis Labs URL format: rediss://default:PASSWORD@HOST:PORT (rediss = TLS)
+const redisUrl = process.env.KV_REST_API_URL?.replace('redis://', 'rediss://');
+const redis = new Redis(redisUrl, {
+  retryDelayOnFailover: 100,
+  maxRetriesPerRequest: 3,
+  connectTimeout: 10000,
+  lazyConnect: true,
 });
 
 // Session TTL in seconds (1 hour)
@@ -30,7 +34,7 @@ function safeParseRedisData(data) {
 }
 
 /**
- * Store session data in Redis with TTL
+ * Store session data in Redis with TTL or fallback to memory
  * @param {string} code - Session code
  * @param {Object} sessionData - Session data to store
  */
@@ -40,7 +44,7 @@ async function setSession(code, sessionData) {
 }
 
 /**
- * Retrieve session data from Redis
+ * Retrieve session data from Redis or fallback to memory
  * @param {string} code - Session code
  * @returns {Object|null} Session data or null if not found
  */
@@ -82,8 +86,15 @@ async function enqueueRequest(code, requestData) {
  */
 async function dequeueRequest(code) {
   const queueKey = `queue:${code}`;
-  const data = await redis.rpop(queueKey);
-  return safeParseRedisData(data);
+  try {
+    const data = await redis.rpop(queueKey);
+    return safeParseRedisData(data);
+  } catch (err) {
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[kv-utils] Redis dequeueRequest error:", err);
+    }
+    throw err;
+  }
 }
 
 /**
@@ -106,7 +117,14 @@ async function peekQueue(code) {
  */
 async function getQueueLength(code) {
   const queueKey = `queue:${code}`;
-  return await redis.llen(queueKey);
+  try {
+    return await redis.llen(queueKey);
+  } catch (err) {
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[kv-utils] Redis getQueueLength error:", err);
+    }
+    return 0;
+  }
 }
 
 // Legacy functions for backward compatibility
@@ -195,6 +213,8 @@ async function deleteSession(code) {
     redis.del(`res:${code}`)
   ]);
 }
+
+// Note: TTL is handled automatically by both Redis and Vercel KV // Cleanup every minute
 
 module.exports = {
   setSession,

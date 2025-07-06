@@ -51,7 +51,7 @@
     "lint:build": "eslint . --config eslint.build.config.mjs",
     "type-check": "tsc --noEmit",
     "deploy": "vercel --prod",
-    "alias:update": "vercel alias set $(vercel ls --scope=cdorsey-concordorgs-projects | grep codap-mcp | head -1 | awk '{print $3}') codap-mcp-stable.vercel.app",
+    "alias:update": "node scripts/update-alias.js",
     "deploy:gh-pages": "npm run build && npx gh-pages -d dist",
     "prepare": "npm run build"
   },
@@ -141,6 +141,7 @@
     "eventsource": "^4.0.0",
     "express": "^4.18.2",
     "iframe-phone": "^1.3.1",
+    "ioredis": "^5.6.1",
     "node-fetch": "^2.7.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
