@@ -1,7 +1,7 @@
 // SSE stream endpoint using Node.js runtime
 // Provides server-sent events for tool request polling
 
-const { getSession, dequeueRequest, getQueueLength } = require("./kv-utils");
+const { getSession, dequeueRequest, getQueueLength } = require("../server/utils/kv-utils");
 
 /**
  * Validates session code format

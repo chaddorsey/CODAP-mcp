@@ -5,7 +5,7 @@ const { withSessionValidation, createErrorResponse } = require("./_middleware/se
 // Import comprehensive CODAP tools
 let allCODAPTools, TOTAL_TOOL_COUNT;
 try {
-  const toolsModule = require("./codap-tools.js");
+  const toolsModule = require("../server/utils/codap-tools.js");
   allCODAPTools = toolsModule.allCODAPTools;
   TOTAL_TOOL_COUNT = toolsModule.TOTAL_TOOL_COUNT;
   console.log(`✅ Comprehensive CODAP tools loaded: ${TOTAL_TOOL_COUNT} tools available`);
@@ -19,7 +19,7 @@ try {
 // Import multi-app tool registry for capability-based filtering
 let getToolsByCapabilities;
 try {
-  const toolRegistry = require("./tool-registry.js");
+  const toolRegistry = require("../server/utils/tool-registry.js");
   getToolsByCapabilities = toolRegistry.getToolsByCapabilities;
 } catch (error) {
   console.error("❌ Failed to load tool registry for capability filtering:", error.message);

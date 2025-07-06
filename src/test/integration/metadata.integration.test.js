@@ -23,7 +23,7 @@ describe("Metadata API Integration Tests", () => {
   beforeAll(() => {
     // Import handler after mocks are set up
     handler = require("../../../api/metadata");
-    mockGetSession = require("../../../api/kv-utils").getSession;
+    mockGetSession = require("../../../server/utils/kv-utils").getSession;
     
     // Spy on console.error to suppress expected error messages during tests
     consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});

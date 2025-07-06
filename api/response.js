@@ -3,7 +3,7 @@
  * This endpoint stores tool responses in KV storage for the MCP server to retrieve
  */
 
-const { setToolResponse } = require("./kv-utils");
+const { setToolResponse } = require("../server/utils/kv-utils");
 
 /**
  * Validates session code format

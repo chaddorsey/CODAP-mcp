@@ -1,6 +1,6 @@
 // Session creation endpoint using Node.js runtime
 // This avoids the Edge runtime compilation issues we were experiencing
-const { setSession, SESSION_TTL } = require("./kv-utils");
+const { setSession, SESSION_TTL } = require("../server/utils/kv-utils");
 
 // Configuration
 const SESSION_TTL_SECONDS = SESSION_TTL; // 10 minutes (600 seconds)

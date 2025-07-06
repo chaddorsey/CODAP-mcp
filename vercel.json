@@ -11,10 +11,13 @@
     "api/metadata.js": {
       "maxDuration": 10
     },
-    "api/mcp.js": {
-      "maxDuration": 30
-    },
     "api/response.js": {
+      "maxDuration": 10
+    },
+    "api/debug.js": {
+      "maxDuration": 10
+    },
+    "api/env-test.js": {
       "maxDuration": 10
     }
   },

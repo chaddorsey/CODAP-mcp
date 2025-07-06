@@ -5,7 +5,7 @@ jest.mock("../../../api/kv-utils", () => ({
   getSession: jest.fn()
 }));
 
-const { getSession } = require("../../../api/kv-utils");
+const { getSession } = require("../../../server/utils/kv-utils");
 
 describe("Session Validation Middleware", () => {
   let mockReq, mockRes, mockNext;
