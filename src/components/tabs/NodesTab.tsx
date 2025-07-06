@@ -165,7 +165,7 @@ export const NodesTab: React.FC<NodesTabProps> = ({
           }
         }));
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error refreshing nodes:", error);
     }
   }, [onExecuteTool]);
@@ -372,12 +372,18 @@ export const NodesTab: React.FC<NodesTabProps> = ({
       // Call handleRefreshNodes directly without including it in dependencies
       const refreshNodes = async () => {
         try {
+          console.log("🔍 Calling sage_get_all_nodes...");
           const result = await onExecuteTool("sage_get_all_nodes", {});
+          console.log("🔍 sage_get_all_nodes result:", result);
+          
           if (result?.nodes) {
+            console.log("🔍 Found nodes:", result.nodes);
             const availableNodes = result.nodes.map((node: any) => ({
               id: node.id || node.key,
               title: node.title || node.data?.title || `Node ${node.id || node.key}`
             }));
+            
+            console.log("🔍 Transformed nodes:", availableNodes);
             
             setNodeManagement(prev => ({
               ...prev,
@@ -386,9 +392,19 @@ export const NodesTab: React.FC<NodesTabProps> = ({
                 availableNodes
               }
             }));
+          } else {
+            console.log("❌ No nodes found in result:", result);
+            setNodeManagement(prev => ({
+              ...prev,
+              lastOperation: "ℹ️ No nodes found in SageModeler"
+            }));
           }
-        } catch (error) {
-          console.error("Error refreshing nodes:", error);
+        } catch (error: any) {
+          console.error("❌ Error refreshing nodes:", error);
+          setNodeManagement(prev => ({
+            ...prev,
+            lastOperation: `❌ Failed to get nodes: ${error?.message || "Unknown error"}`
+          }));
         }
       };
       
