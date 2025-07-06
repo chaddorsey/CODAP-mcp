@@ -39,40 +39,19 @@ interface LinkData {
   customData?: string;
 }
 
-export const SageModelerAPIPanel: React.FC<SageModelerAPIPanelProps> = ({
-  isVisible,
-  onToggle
-}) => {
-  return (
-    <div className="sage-api-panel">
-      <div className="sage-accordion">
-        <button 
-          className={`sage-accordion-header ${isVisible ? "" : "collapsed"}`}
-          onClick={onToggle}
-        >
-          <span className="arrow">&#9660;</span>
-          Direct SageModeler API Testing
-        </button>
-        {isVisible && (
-          <div className="sage-accordion-content">
-            <SageAPIEmbeddedPanel expanded={isVisible} />
-          </div>
-        )}
-      </div>
-    </div>
-  );
+export const SageModelerAPIPanel: React.FC = () => {
+  return <SageAPIEmbeddedPanel expanded={true} />;
 };
 
-// New component for embedding the reference plugin
 const SageAPIEmbeddedPanel: React.FC<{ expanded: boolean }> = ({ expanded }) => {
-  const width = 420;
+  const width = 375;
   const height = expanded ? 600 : 325;
   return (
-    <div style={{ width, height, maxWidth: width, margin: "0 auto", transition: "height 0.3s" }}>
+    <div style={{ width, height, background: 'white', paddingTop: 0, margin: 0 }}>
       <iframe
         src="/sage-api-reference.html"
         title="Sage API Reference Plugin"
-        style={{ width: "100%", height: "100%", border: "none", minHeight: 325, transition: "height 0.3s" }}
+        style={{ width: '100%', height: '100%', border: 'none', minHeight: 325, background: 'none' }}
         sandbox="allow-scripts allow-same-origin"
         aria-label="SageModeler API Reference Plugin"
       />

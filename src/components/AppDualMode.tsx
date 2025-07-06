@@ -35,6 +35,10 @@ export const AppDualMode = () => {
   const [showSageInfo, setShowSageInfo] = useState(false);
   const [flashSessionId, setFlashSessionId] = useState(false);
 
+  // Add state for Sage API Tester
+  const [showSageApiTester, setShowSageApiTester] = useState(false);
+  const [containerHeight, setContainerHeight] = useState(270);
+
   // Prevent multiple initializations
   const initializationRef = useRef(false);
 
@@ -197,6 +201,7 @@ export const AppDualMode = () => {
   const handleModeSwitch = (newMode: PluginMode) => {
     setPluginMode(newMode);
     setShowSageAccordion(false);
+    setShowSageApiTester(false);
     setSessionId(""); // Clear session to trigger new session creation with new capabilities
     
     // Show SageModeler info message if switching to SageModeler
@@ -226,6 +231,19 @@ export const AppDualMode = () => {
       return () => clearTimeout(timeout);
     }
   }, [sessionId]);
+
+  // Animate height on panel toggle
+  useEffect(() => {
+    setContainerHeight(showSageApiTester ? 700 : 270);
+  }, [showSageApiTester]);
+
+  // Ensure width is always 385px on mount and mode switch
+  useEffect(() => {
+    const appDiv = document.querySelector('.codap-mcp-plugin.minimal') as HTMLElement | null;
+    if (appDiv) {
+      appDiv.style.width = '385px';
+    }
+  }, [pluginMode]);
 
   // Loading state
   if (isInitializing) {
@@ -265,45 +283,72 @@ export const AppDualMode = () => {
 
   // Main dual-mode interface
   return (
-    <div className="codap-mcp-plugin minimal">
-      {/* Mode Switch Controls - now at the top */}
-      <div className="mode-switch-controls" style={{ marginBottom: 12 }}>
-        <span className="mode-switch-label">Mode:</span>
-        <button
-          className={`mode-switch-btn ${pluginMode === "codap" ? "active" : ""}`}
-          onClick={() => handleModeSwitch("codap")}
+    <div
+      className="codap-mcp-plugin minimal"
+      style={{
+        width: 385,
+        padding: '5px 5px 0 5px',
+        margin: '0 auto',
+        position: 'relative',
+        height: containerHeight,
+        transition: 'height 0.4s cubic-bezier(0.4, 0.2, 0.2, 1)'
+      }}
+    >
+      {/* Header Row: Mode Switch (left) and Sage API Tester Button (right) */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        {/* Mode Switch Pulldown */}
+        <select
+          value={pluginMode}
+          onChange={e => {
+            setPluginMode(e.target.value as PluginMode);
+            setShowSageAccordion(false);
+            setShowSageApiTester(false);
+            setSessionId("");
+          }}
+          style={{ fontSize: 14, color: '#007cba', background: 'white', border: '1px solid #ccc', borderRadius: 4, padding: '4px 8px', outline: 'none', minWidth: 120 }}
         >
-          CODAP
-        </button>
-        <span className="mode-switch-separator">|</span>
-        <button
-          className={`mode-switch-btn ${pluginMode === "sagemodeler" ? "active" : ""}`}
-          onClick={() => handleModeSwitch("sagemodeler")}
-        >
-          SageModeler
-        </button>
+          <option value="codap">CODAP</option>
+          <option value="sagemodeler">SageModeler</option>
+        </select>
+        {/* Sage API Tester Button (SageModeler mode only) */}
+        {pluginMode === "sagemodeler" && (
+          <button
+            onClick={() => setShowSageApiTester(v => !v)}
+            style={{
+              color: '#007cba',
+              background: 'white',
+              border: '2px solid #007cba',
+              borderRadius: 4,
+              padding: '4px 14px',
+              fontWeight: 600,
+              fontSize: 14,
+              cursor: 'pointer',
+              transition: 'background 0.2s, color 0.2s, border 0.2s',
+              marginLeft: 8
+            }}
+          >
+            {showSageApiTester ? 'Claude connector' : 'Sage API Tester'}
+          </button>
+        )}
       </div>
-      <ClaudeConnectionPanel
-        sessionId={sessionId}
-        relayConnected={relayConnected}
-        relayConnecting={relayConnecting}
-        claudeConnected={claudeConnected}
-        onCopyConnectionPrompt={handleCopyConnectionPrompt}
-        onShowSetupGuide={handleShowSetupGuide}
-        isLoading={clipboard.state.isLoading}
-        promptCopyFeedback={promptCopyFeedback}
-        pluginMode={pluginMode}
-        showSageInfo={showSageInfo}
-        flashSessionId={flashSessionId}
-      />
-      {/* SageModeler API Panel - only visible in SageModeler mode */}
-      {pluginMode === "sagemodeler" && (
-        <SageModelerAPIPanel
-          isVisible={showSageAccordion}
-          onToggle={() => setShowSageAccordion(!showSageAccordion)}
-          apiCallLogs={apiCallLogs}
-          onClearLogs={handleClearLogs}
-          browserWorker={browserWorker.service}
+      {/* Main Panel Swap Logic */}
+      {pluginMode === "sagemodeler" && showSageApiTester ? (
+        <div style={{ width: 375, margin: '0 auto' }}>
+          <SageModelerAPIPanel />
+        </div>
+      ) : (
+        <ClaudeConnectionPanel
+          sessionId={sessionId}
+          relayConnected={relayConnected}
+          relayConnecting={relayConnecting}
+          claudeConnected={claudeConnected}
+          onCopyConnectionPrompt={handleCopyConnectionPrompt}
+          onShowSetupGuide={handleShowSetupGuide}
+          isLoading={clipboard.state.isLoading}
+          promptCopyFeedback={promptCopyFeedback}
+          pluginMode={pluginMode}
+          showSageInfo={showSageInfo}
+          flashSessionId={flashSessionId}
         />
       )}
       {showSetupModal && (

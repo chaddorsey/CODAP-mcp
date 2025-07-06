@@ -18,13 +18,16 @@
       border-radius: 8px;
       padding: 10px 10px 0 10px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-      margin: 20px auto;
+      margin: 0px !important;
       height: fit-content;
     }
     h1 {
-      font-size: 18px;
-      color: #333;
-      margin-bottom: 10px;
+      font-size: 11pt;
+      font-weight: bold;
+      height: 14px;
+      padding: 5px 0;
+      margin: 0;
+      line-height: 14px;
       text-align: center;
     }
     .tab-bar {
@@ -107,15 +110,30 @@
     }
     button:hover { background: #005a8b; }
     button:disabled { background: #ccc; cursor: not-allowed; }
-    .input-group { margin: 7px 0; }
-    .input-group label { display: block; margin-bottom: 3px; font-weight: bold; color: #555; font-size: 12px; }
-    .input-group input, .input-group select, .input-group textarea {
+    .input-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .input-group label {
+      display: inline;
+      margin-bottom: 0;
+      font-weight: bold;
+      color: #555;
+      font-size: 11px;
+      margin-right: 4px;
+      min-width: 17px;
+    }
+    .input-group input,
+    .input-group select {
       width: 100%;
-      padding: 6px;
+      padding: 4px 6px;
       border: 1px solid #ddd;
-      border-radius: 4px;
-      font-size: 13px;
+      border-radius: 3px;
+      font-size: 12px;
       box-sizing: border-box;
+      flex: 1;
     }
     .input-row { display: flex; gap: 8px; }
     .input-row .input-group { flex: 1; }
@@ -131,17 +149,6 @@
       margin-top: 10px;
       border: 1px solid #333;
     }
-    .status {
-      padding: 7px;
-      border-radius: 4px;
-      margin: 7px 0 10px 0;
-      font-weight: bold;
-      background: #d4edda;
-      color: #155724;
-      border: 1px solid #c3e6cb;
-      text-align: center;
-      font-size: 13px;
-    }
     .clear-btn {
       background: #dc3545;
       font-size: 12px;
@@ -149,6 +156,50 @@
       float: right;
     }
     .clear-btn:hover { background: #c82333; }
+    .section-label {
+      font-weight: bold;
+      font-size: 12px;
+      margin: 8px 0 4px 0;
+      color: #007cba;
+    }
+    .advanced-properties-panel {
+      margin-bottom: 12px;
+    }
+    .advanced-accordion {
+      border-bottom: 1px solid #eee;
+    }
+    .advanced-accordion .accordion-header {
+      background: #f9f9f9;
+      color: #007cba;
+      font-size: 13px;
+      font-weight: bold;
+      padding: 4px 8px;
+      cursor: pointer;
+      border: none;
+      outline: none;
+      width: 100%;
+      text-align: left;
+      min-height: 22px;
+      display: flex;
+      align-items: center;
+      border-radius: 3px 3px 0 0;
+      margin: 0;
+    }
+    .advanced-accordion .accordion-header .arrow {
+      font-size: 11px;
+      margin-right: 6px;
+      transition: transform 0.2s;
+    }
+    .advanced-accordion .accordion-header.collapsed .arrow {
+      transform: rotate(-90deg);
+    }
+    .advanced-accordion .accordion-content {
+      display: none;
+      padding: 6px 0 8px 0;
+    }
+    .advanced-accordion .accordion-content.active {
+      display: block;
+    }
   </style>
   <script>
     // --- BEGIN SD-JSON CONVERTER ---
@@ -272,7 +323,6 @@
 <body>
   <div class="controls-panel">
     <h1>SageAPI Plugin</h1>
-    <div class="status" id="status">Ready to control SageModeler</div>
     <div class="tab-bar">
       <button class="tab-btn selected" id="tab-nodes" onclick="showTab('nodes')">Nodes/Links</button>
       <button class="tab-btn" id="tab-experiment" onclick="showTab('experiment')">Experiment</button>
@@ -289,25 +339,12 @@
         <button class="tab-btn" id="subtab-links" onclick="showSubTab('links')">Links</button>
       </div>
       
-      <!-- Nodes Sub-tab -->
-      <div class="subtab-content active" id="subtab-content-nodes">
-        <!-- Row 1: Create Random Node -->
-        <div style="margin-bottom: 8px;">
-          <button onclick="createRandomNode()">Create Random Node</button>
-        </div>
-        
-        <!-- Row 2: Create New Node and Update Node -->
-        <div style="margin-bottom: 8px;">
-          <button onclick="createNewNode()">Create New Node</button>
-          <button id="updateNodeBtn" onclick="updateSelectedNode()" disabled>Update Node</button>
-        </div>
+
         
         <!-- Node Properties Section -->
-      <div class="accordion">
-          <button class="accordion-header" onclick="toggleAccordion(this)">
-            <span class="arrow">&#9660;</span>Node Properties
-          </button>
-        <div class="accordion-content active">
+      <div id="node-properties-panel">
+        <div class="accordion">
+          <div class="accordion-content active">
             <!-- Basic Properties -->
             <div class="input-row">
               <div class="input-group">
@@ -331,26 +368,6 @@
             </div>
             <div class="input-row">
               <div class="input-group">
-                <label for="nodeIsAccumulator">Is Accumulator:</label>
-                <input id="nodeIsAccumulator" type="checkbox" onchange="onNodePropertyChange()">
-              </div>
-              <div class="input-group">
-                <label for="nodeIsFlowVariable">Is Flow Variable:</label>
-                <input id="nodeIsFlowVariable" type="checkbox" onchange="onNodePropertyChange()">
-              </div>
-            </div>
-            <div class="input-row">
-              <div class="input-group">
-                <label for="nodeAllowNegativeValues">Allow Negative Values:</label>
-                <input id="nodeAllowNegativeValues" type="checkbox" onchange="onNodePropertyChange()">
-              </div>
-              <div class="input-group">
-                <label for="nodeValueDefinedSemiQuantitatively">Value Defined Semi-Quantitatively:</label>
-                <input id="nodeValueDefinedSemiQuantitatively" type="checkbox" onchange="onNodePropertyChange()">
-              </div>
-            </div>
-            <div class="input-row">
-              <div class="input-group">
                 <label for="nodeX">X Position:</label>
                 <input id="nodeX" type="number" placeholder="Enter x position" onchange="onNodePropertyChange()">
               </div>
@@ -369,13 +386,32 @@
                 </select>
               </div>
             </div>
-            
-            <!-- Advanced Properties (Collapsed by default) -->
-      <div class="accordion">
-              <button class="accordion-header collapsed" onclick="toggleAccordion(this)">
+            <!-- Node Properties: Collapsible Advanced Properties accordion, collapsed by default -->
+            <div class="accordion advanced-accordion">
+              <div class="accordion-header collapsed" onclick="toggleAdvancedAccordion(this)">
                 <span class="arrow">&#9660;</span>Advanced Properties
-              </button>
-        <div class="accordion-content">
+              </div>
+              <div class="accordion-content advanced-properties-panel" style="display:none;">
+                <div class="input-row">
+                  <div class="input-group">
+                    <label for="nodeIsAccumulator">Is Accumulator:</label>
+                    <input id="nodeIsAccumulator" type="checkbox" onchange="onNodePropertyChange()">
+                  </div>
+                  <div class="input-group">
+                    <label for="nodeIsFlowVariable">Is Flow Variable:</label>
+                    <input id="nodeIsFlowVariable" type="checkbox" onchange="onNodePropertyChange()">
+                  </div>
+                </div>
+                <div class="input-row">
+                  <div class="input-group">
+                    <label for="nodeAllowNegativeValues">Allow Negative Values:</label>
+                    <input id="nodeAllowNegativeValues" type="checkbox" onchange="onNodePropertyChange()">
+                  </div>
+                  <div class="input-group">
+                    <label for="nodeValueDefinedSemiQuantitatively">Value Defined Semi-Quantitatively:</label>
+                    <input id="nodeValueDefinedSemiQuantitatively" type="checkbox" onchange="onNodePropertyChange()">
+                  </div>
+                </div>
                 <div class="input-row">
                   <div class="input-group">
                     <label for="nodeCombineMethod">Combine Method:</label>
@@ -404,11 +440,6 @@
                 </div>
               </div>
             </div>
-            
-            <!-- Delete Button -->
-            <div style="margin-top: 10px;">
-              <button id="deleteNodeBtn" onclick="deleteSelectedNode()" disabled style="background: #dc3545;">Delete Node</button>
-            </div>
           </div>
         </div>
       </div>
@@ -416,86 +447,85 @@
       <!-- Links Sub-tab -->
       <div class="subtab-content" id="subtab-content-links">
         <!-- Link Properties Section -->
-        <div class="accordion">
-          <button class="accordion-header" onclick="toggleAccordion(this)">
-            <span class="arrow">&#9660;</span>Link Properties
-          </button>
-          <div class="accordion-content active">
-            <!-- Create/Update Buttons -->
-            <div style="margin-bottom: 8px;">
-              <button id="createLinkBtn" onclick="createSelectedLink()" disabled>Create Link</button>
-              <button id="updateLinkBtn" onclick="updateSelectedLink()" disabled>Update Link</button>
-            </div>
-            
-            <!-- Direction Control -->
+        <div id="link-properties-panel" style="display:none;">
+          <div class="accordion">
+            <div class="accordion-content active">
+              <!-- Create/Update Buttons -->
+              <!-- Remove the original Create/Update Buttons row -->
+              <!--
+              <div style="margin-bottom: 8px;">
+                <button id="createLinkBtn" onclick="createSelectedLink()" disabled>Create Link</button>
+                <button id="updateLinkBtn" onclick="updateSelectedLink()" disabled>Update Link</button>
+              </div>
+              -->
+              <!-- Add all three buttons in a single row at the bottom -->
+              
+              <!-- Direction Control -->
+              <div class="input-row">
+                <div class="input-group">
+                  <label>Direction:</label>
+                  <div style="display: flex; align-items: center; gap: 5px;">
+                    <span id="linkSourceNode">Node 1</span>
+                    <select id="linkDirection" onchange="onLinkPropertyChange()">
+                      <option value="forward">→</option>
+                      <option value="backward">←</option>
+                    </select>
+                    <span id="linkTargetNode">Node 2</span>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Basic Link Properties -->
             <div class="input-row">
               <div class="input-group">
-                <label>Direction:</label>
-                <div style="display: flex; align-items: center; gap: 5px;">
-                  <span id="linkSourceNode">Node 1</span>
-                  <select id="linkDirection" onchange="onLinkPropertyChange()">
-                    <option value="forward">→</option>
-                    <option value="backward">←</option>
-                  </select>
-                  <span id="linkTargetNode">Node 2</span>
-                </div>
+                <label for="linkRelationVector">Relation Vector:</label>
+                  <select id="linkRelationVector" onchange="onRelationVectorChange(); onLinkPropertyChange();">
+                  <option value="increase">Increase</option>
+                  <option value="decrease">Decrease</option>
+                  <option value="vary">Vary (Custom)</option>
+                </select>
+              </div>
+              <div class="input-group" id="scalarGroup">
+                <label for="linkRelationScalar">Relation Scalar:</label>
+                  <select id="linkRelationScalar" onchange="onLinkPropertyChange()">
+                  <option value="aboutTheSame">About the Same</option>
+                  <option value="aLittle">A Little</option>
+                  <option value="aLot">A Lot</option>
+                  <option value="moreAndMore">More and More</option>
+                  <option value="lessAndLess">Less and Less</option>
+                </select>
+              </div>
+              <div class="input-group" id="customDataGroup" style="display:none;">
+                <label for="linkCustomData">Custom Data (JSON):</label>
+                  <input id="linkCustomData" type="text" placeholder='e.g. [[0,0],[1,1],[2,2]]' onchange="onLinkPropertyChange()" />
               </div>
             </div>
-            
-            <!-- Basic Link Properties -->
-          <div class="input-row">
-            <div class="input-group">
-              <label for="linkRelationVector">Relation Vector:</label>
-                <select id="linkRelationVector" onchange="onRelationVectorChange(); onLinkPropertyChange();">
-                <option value="increase">Increase</option>
-                <option value="decrease">Decrease</option>
-                <option value="vary">Vary (Custom)</option>
-              </select>
+            <div class="input-group" id="labelGroup">
+              <label for="linkLabel">Label (optional):</label>
+                <input id="linkLabel" type="text" placeholder="e.g. Relationship label" onchange="onLinkPropertyChange()" />
             </div>
-            <div class="input-group" id="scalarGroup">
-              <label for="linkRelationScalar">Relation Scalar:</label>
-                <select id="linkRelationScalar" onchange="onLinkPropertyChange()">
-                <option value="aboutTheSame">About the Same</option>
-                <option value="aLittle">A Little</option>
-                <option value="aLot">A Lot</option>
-                <option value="moreAndMore">More and More</option>
-                <option value="lessAndLess">Less and Less</option>
-              </select>
-            </div>
-            <div class="input-group" id="customDataGroup" style="display:none;">
-              <label for="linkCustomData">Custom Data (JSON):</label>
-                <input id="linkCustomData" type="text" placeholder='e.g. [[0,0],[1,1],[2,2]]' onchange="onLinkPropertyChange()" />
-            </div>
-          </div>
-          <div class="input-group" id="labelGroup">
-            <label for="linkLabel">Label (optional):</label>
-              <input id="linkLabel" type="text" placeholder="e.g. Relationship label" onchange="onLinkPropertyChange()" />
-          </div>
-            
-            <!-- Advanced Properties (Collapsed by default) -->
-            <div class="accordion">
-              <button class="accordion-header collapsed" onclick="toggleAccordion(this)">
-                <span class="arrow">&#9660;</span>Advanced Properties
-              </button>
-              <div class="accordion-content">
-                <div class="input-row">
-                  <div class="input-group">
-                    <label for="linkColor">Color:</label>
-                    <input id="linkColor" type="text" placeholder="Enter color code" onchange="onLinkPropertyChange()">
-                  </div>
+              
+              <!-- Link Properties: Collapsible Advanced Properties accordion, collapsed by default -->
+              <div class="accordion advanced-accordion">
+                <div class="accordion-header collapsed" onclick="toggleAdvancedAccordion(this)">
+                  <span class="arrow">&#9660;</span>Advanced Properties
                 </div>
-                <div class="input-row">
-                  <div class="input-group">
-                    <label for="linkSourceApp">Source App:</label>
-                    <input id="linkSourceApp" type="text" placeholder="Enter source app" onchange="onLinkPropertyChange()">
+                <div class="accordion-content advanced-properties-panel" style="display:none;">
+                  <div class="input-row">
+                    <div class="input-group">
+                      <label for="linkColor">Color:</label>
+                      <input id="linkColor" type="text" placeholder="Enter color code" onchange="onLinkPropertyChange()">
+                    </div>
+                  </div>
+                  <div class="input-row">
+                    <div class="input-group">
+                      <label for="linkSourceApp">Source App:</label>
+                      <input id="linkSourceApp" type="text" placeholder="Enter source app" onchange="onLinkPropertyChange()">
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-            
-            <!-- Delete Button -->
-            <div style="margin-top: 10px;">
-              <button id="deleteLinkBtn" onclick="deleteSelectedLink()" disabled style="background: #dc3545;">Delete Link</button>
+ 
             </div>
           </div>
         </div>
@@ -504,7 +534,6 @@
     <!-- Tab: Experiment Run -->
     <div class="tab-content" id="tab-content-experiment">
       <div class="accordion">
-        <button class="accordion-header" onclick="toggleAccordion(this)"><span class="arrow">&#9660;</span>Experiment Run (Static/Dynamic Mode)</button>
         <div class="accordion-content active">
           <button onclick="reloadExperimentNodes()">Reload Nodes</button>
           <div id="experimentNodesContainer"></div>
@@ -521,7 +550,6 @@
     <!-- Tab: Recording Controls -->
     <div class="tab-content" id="tab-content-recording">
       <div class="accordion">
-        <button class="accordion-header" onclick="toggleAccordion(this)"><span class="arrow">&#9660;</span>Recording Controls</button>
         <div class="accordion-content active">
           <button id="recordStreamBtn" style="display: none;">Record Continuously</button>
           <button id="stopRecordingBtn" style="display: none;">Stop Recording</button>
@@ -544,7 +572,6 @@
     <!-- Tab: Import/Export -->
     <div class="tab-content" id="tab-content-importexport">
       <div class="accordion">
-        <button class="accordion-header" onclick="toggleAccordion(this)"><span class="arrow">&#9660;</span>Model Import/Export</button>
         <div class="accordion-content active">
           <div class="input-group">
             <label for="modelJsonInput">Model JSON (Paste, Edit, or Export):</label>
@@ -561,7 +588,6 @@
     <!-- Tab: Model Complexity & UI Settings -->
     <div class="tab-content" id="tab-content-settings">
       <div class="accordion">
-        <button class="accordion-header" onclick="toggleAccordion(this)"><span class="arrow">&#9660;</span>Model Complexity & UI Settings</button>
         <div class="accordion-content active">
           <div class="input-row">
             <div class="input-group">
@@ -603,9 +629,6 @@
     <!-- Tab: Inspector -->
     <div class="tab-content" id="tab-content-inspector">
       <div class="accordion">
-        <button class="accordion-header" onclick="toggleAccordion(this)">
-          <span class="arrow">&#9660;</span>Node/Link Inspector
-        </button>
         <div class="accordion-content active">
           <div class="input-row">
             <button onclick="getAllNodes()">GET All Nodes</button>
@@ -714,6 +737,13 @@
       const btnEl = document.getElementById('subtab-' + subtab);
       if (contentEl) contentEl.classList.add('active');
       if (btnEl) btnEl.classList.add('selected');
+      if (subtab === 'nodes') {
+        document.getElementById('node-properties-panel').style.display = '';
+        document.getElementById('link-properties-panel').style.display = 'none';
+      } else if (subtab === 'links') {
+        document.getElementById('node-properties-panel').style.display = 'none';
+        document.getElementById('link-properties-panel').style.display = '';
+      }
     }
 
     // --- Selection and State Management ---
@@ -2235,6 +2265,21 @@
         log('❌ Error getting model: ' + err);
         updateStatus('Error getting model.');
       });
+    }
+
+    // Add JS for toggling advanced accordions
+    function toggleAdvancedAccordion(header) {
+      const content = header.nextElementSibling;
+      const arrow = header.querySelector('.arrow');
+      if (content.style.display === 'none' || content.style.display === '') {
+        content.style.display = 'block';
+        header.classList.remove('collapsed');
+        if (arrow) arrow.style.transform = 'rotate(0deg)';
+      } else {
+        content.style.display = 'none';
+        header.classList.add('collapsed');
+        if (arrow) arrow.style.transform = 'rotate(-90deg)';
+      }
     }
   </script>
 </body>

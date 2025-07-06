@@ -234,14 +234,12 @@
 
 /* Mode switch controls */
 .mode-switch-controls {
-  position: absolute;
-  bottom: 8px;
-  left: 8px;
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: 11px;
   color: #666;
+  margin-bottom: 12px;
 }
 
 .mode-switch-label {
