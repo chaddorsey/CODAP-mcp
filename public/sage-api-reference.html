@@ -323,6 +323,7 @@
 <body>
   <div class="controls-panel">
     <h1>SageAPI Plugin</h1>
+    <div id="status" style="margin-bottom: 8px; color: #007cba; font-weight: bold;"></div>
     <div class="tab-bar">
       <button class="tab-btn selected" id="tab-nodes" onclick="showTab('nodes')">Nodes/Links</button>
       <button class="tab-btn" id="tab-experiment" onclick="showTab('experiment')">Experiment</button>
@@ -704,8 +705,73 @@
 
     // Listen for acknowledgment from CODAP
     window.addEventListener('message', function(event) {
+      console.log('[Tester] Received message:', event.data);
       // Debug: log all incoming messages
       log('[DEBUG] Received message: ' + JSON.stringify(event.data));
+      // --- Robust response handler ---
+      if (event.data && event.data.type === 'response') {
+        // Try to extract nodes from all plausible locations
+        let nodes = [];
+        if (event.data.data && Array.isArray(event.data.data.nodes)) {
+          nodes = event.data.data.nodes;
+        } else if (event.data.values && Array.isArray(event.data.values.nodes)) {
+          nodes = event.data.values.nodes;
+        } else if (Array.isArray(event.data.nodes)) {
+          nodes = event.data.nodes;
+        } else if (event.data.data && event.data.data.node) {
+          nodes = [event.data.data.node];
+        }
+        console.log('[Tester] Extracted nodes:', nodes);
+        // Update the UI node list if nodes found
+        if (nodes.length > 0) {
+          const sel = document.getElementById('nodesList');
+          if (sel) {
+            sel.innerHTML = '';
+            nodes.forEach(n => {
+              const opt = document.createElement('option');
+              opt.value = n.id || n.key || '';
+              opt.textContent = `${n.id || n.key || ''} (${n.title || n.data?.title || ''})`;
+              sel.appendChild(opt);
+            });
+          }
+        }
+        // Also update inspector result if present
+        if (event.data.data && (event.data.data.node || event.data.data.link || event.data.data.nodes || event.data.data.links)) {
+          document.getElementById('inspectorResult').textContent = JSON.stringify(event.data.data, null, 2);
+        }
+      }
+      // --- Robust event handler ---
+      if (event.data && event.data.type === 'event') {
+        const eventName = event.data.event;
+        const eventData = event.data.data;
+        log(`[DEBUG] Handling event: ${eventName}`);
+        if (eventName === 'nodesSelected' && eventData && Array.isArray(eventData.nodes) && eventData.nodes.length > 0) {
+          // Populate the node form with the first selected node
+          const primaryNode = eventData.nodes[0];
+          if (primaryNode) {
+            populateNodeForm(primaryNode);
+            // Update node selection in the list
+            const sel = document.getElementById('nodesList');
+            if (sel && primaryNode.id) {
+              sel.value = primaryNode.id;
+            }
+          }
+        } else if (eventName === 'nodesDeselected') {
+          clearNodeSelection();
+        } else if (eventName === 'linksSelected' && eventData && Array.isArray(eventData.links) && eventData.links.length > 0) {
+          const primaryLink = eventData.links[0];
+          if (primaryLink) {
+            populateLinkForm(primaryLink);
+            // Update link selection in the list
+            const sel = document.getElementById('linksList');
+            if (sel && primaryLink.id) {
+              sel.value = primaryLink.id;
+            }
+          }
+        } else if (eventName === 'linksDeselected') {
+          clearLinkSelection();
+        }
+      }
       if (event.data && event.data.resource === 'interactiveFrame') {
         log('✅ Registered with CODAP: interactiveFrame acknowledged.');
         updateStatus('Registered with CODAP.');
@@ -726,6 +792,23 @@
           lastCreatedLinkId = event.data.data.id;
           log('🆔 Stored lastCreatedLinkId: ' + lastCreatedLinkId);
         }
+      }
+      // Handle node creation response
+      if (event.data && event.data.sageApi && event.data.action === 'create' && event.data.resource === 'nodes') {
+        updateStatus('Node created successfully!');
+        if (typeof getAllNodes === 'function') getAllNodes();
+      }
+      // Handle get all nodes response
+      if (event.data && event.data.sageApi && event.data.action === 'get' && event.data.resource === 'nodes') {
+        updateStatus('Fetched all nodes!');
+        // Log the full response for debugging
+        console.log('[Tester] getAllNodes response:', event.data);
+        // Try to extract nodes from possible locations
+        const nodes = (event.data.values && event.data.values.nodes) ||
+                      (event.data.data && event.data.data.nodes) ||
+                      event.data.nodes || [];
+        console.log('[Tester] Extracted nodes:', nodes);
+        // TODO: Update the UI with nodes (e.g., updateNodeList(nodes));
       }
     });
 
@@ -1226,6 +1309,7 @@
       log(`📤 ${description}: ${JSON.stringify(values)}`);
       updateStatus('Sending request...');
       window.parent.postMessage(request, '*');
+      window.postMessage(request, '*'); // PATCH: Also send to own window for plugin relay
       return requestId;
     }
 

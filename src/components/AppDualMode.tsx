@@ -44,6 +44,11 @@ export const AppDualMode = () => {
 
   // Ref for the SageAPI tester iframe
   const sageApiIframeRef = useRef<HTMLIFrameElement>(null);
+  // Ref for the SageModeler plugin iframe (assume it's rendered in SageModelerAPIPanel)
+  const sageModelerIframeRef = useRef<HTMLIFrameElement>(null);
+
+  // Track outstanding SageAPI requests by requestId
+  const pendingSageApiRequests = useRef<Set<string>>(new Set());
 
   // Determine capabilities based on manual mode selection and auto-detection
   const determineCapabilities = useCallback((): string[] => {
@@ -177,40 +182,56 @@ export const AppDualMode = () => {
     };
   }, []);
 
-  // Centralized message relay logic
-  useEffect(() => {
-    function handleMessage(event: MessageEvent) {
-      if (
-        sageApiIframeRef.current &&
-        event.source === sageApiIframeRef.current.contentWindow
-      ) {
-        const message = event.data;
-        if (message && message.action && message.resource) {
-          // Type guard for window.CODAP
-          const win = window as any;
-          if (typeof win.CODAP !== "undefined" && typeof win.CODAP.sendRequest === "function") {
-            win.CODAP.sendRequest(message, (response: any) => {
-              sageApiIframeRef.current?.contentWindow?.postMessage(
-                { type: "response", requestId: message.requestId, ...response },
-                "*"
-              );
-            });
-          } else if (typeof win.codapPluginApi !== "undefined" && typeof win.codapPluginApi.sendRequest === "function") {
-            win.codapPluginApi.sendRequest(message).then((response: any) => {
-              sageApiIframeRef.current?.contentWindow?.postMessage(
-                { type: "response", requestId: message.requestId, ...response },
-                "*"
-              );
-            });
-          } else {
-            // TODO: Implement actual CODAP API relay or log for development
-            console.warn("No CODAP API relay available for message:", message);
-          }
+  // Centralized message relay logic for SageAPI tester <-> SageModeler via CODAP
+  /**
+   * Relay channel between SageAPI tester and SageModeler (via CODAP Plugin API).
+   * - Forwards all API requests from tester iframe to CODAP using codapPluginApi.sendRequest
+   * - Forwards all responses from CODAP back to the tester iframe
+   * - Preserves requestId and message structure (no wrapping or transformation)
+   * - DRY: all relay logic is centralized here
+   * - Security: Uses '*' for postMessage for now; TODO: restrict to known origins in production
+   */
+  function handleMessage(event: MessageEvent) {
+    console.log('[Relay] handleMessage called:', event);
+    // Process any message with sageApi: true, regardless of source
+    if (event.data && event.data.sageApi) {
+      // If the message is from the tester (child iframe), relay to CODAP via window.parent.postMessage
+      if (event.source !== window.parent) {
+        const request = event.data;
+        console.info('[Relay] Forwarding SageAPI request to CODAP via postMessage:', request);
+        // Track the requestId so we can match the response
+        if (request.requestId) {
+          pendingSageApiRequests.current.add(request.requestId);
         }
+        window.parent.postMessage(request, '*');
       }
     }
-    window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
+    // Forward responses to pending requests
+    else if (event.data && event.data.type === 'response' && event.data.requestId && pendingSageApiRequests.current.has(event.data.requestId)) {
+      // This is a response from CODAP for a previously relayed SageAPI request
+      console.info('[Relay] Received response from CODAP, forwarding to tester:', event.data);
+      // Forward the response to the tester iframe
+      sageApiIframeRef.current?.contentWindow?.postMessage(event.data, '*');
+      // Remove the requestId from the pending set
+      pendingSageApiRequests.current.delete(event.data.requestId);
+    }
+    // Forward all other relevant events or unsolicited messages from CODAP/SageModeler to the tester
+    else if (
+      event.source === window.parent &&
+      event.data && (
+        event.data.type === 'event' ||
+        (event.data.sageApi && !event.data.requestId) // unsolicited sageApi event
+      )
+    ) {
+      console.info('[Relay] Forwarding unsolicited event or message from CODAP to tester:', event.data);
+      sageApiIframeRef.current?.contentWindow?.postMessage(event.data, '*');
+    }
+  }
+
+  // Add relay event listener on mount
+  useEffect(() => {
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
   }, []);
 
   const handleCopyConnectionPrompt = async () => {
@@ -373,7 +394,7 @@ export const AppDualMode = () => {
       {/* Main Panel Swap Logic */}
       {pluginMode === "sagemodeler" && showSageApiTester ? (
         <div style={{ width: 375, margin: "0 auto" }}>
-          <SageModelerAPIPanel iframeRef={sageApiIframeRef as React.RefObject<HTMLIFrameElement>} />
+          <SageModelerAPIPanel iframeRef={sageModelerIframeRef as React.RefObject<HTMLIFrameElement>} />
         </div>
       ) : (
         <ClaudeConnectionPanel
@@ -401,3 +422,4 @@ export const AppDualMode = () => {
     </div>
   );
 }; 
+
