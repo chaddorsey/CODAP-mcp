@@ -239,9 +239,9 @@ export const AppDualMode = () => {
 
   // Ensure width is always 385px on mount and mode switch
   useEffect(() => {
-    const appDiv = document.querySelector('.codap-mcp-plugin.minimal') as HTMLElement | null;
+    const appDiv = document.querySelector(".codap-mcp-plugin.minimal") as HTMLElement | null;
     if (appDiv) {
-      appDiv.style.width = '385px';
+      appDiv.style.width = "385px";
     }
   }, [pluginMode]);
 
@@ -287,15 +287,15 @@ export const AppDualMode = () => {
       className="codap-mcp-plugin minimal"
       style={{
         width: 385,
-        padding: '5px 5px 0 5px',
-        margin: '0 auto',
-        position: 'relative',
+        padding: "5px 5px 0 5px",
+        margin: "0 auto",
+        position: "relative",
         height: containerHeight,
-        transition: 'height 0.4s cubic-bezier(0.4, 0.2, 0.2, 1)'
+        transition: "height 0.4s cubic-bezier(0.4, 0.2, 0.2, 1)"
       }}
     >
       {/* Header Row: Mode Switch (left) and Sage API Tester Button (right) */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
         {/* Mode Switch Pulldown */}
         <select
           value={pluginMode}
@@ -305,7 +305,7 @@ export const AppDualMode = () => {
             setShowSageApiTester(false);
             setSessionId("");
           }}
-          style={{ fontSize: 14, color: '#007cba', background: 'white', border: '1px solid #ccc', borderRadius: 4, padding: '4px 8px', outline: 'none', minWidth: 120 }}
+          style={{ fontSize: 14, color: "#007cba", background: "white", border: "1px solid #ccc", borderRadius: 4, padding: "4px 8px", outline: "none", minWidth: 120 }}
         >
           <option value="codap">CODAP</option>
           <option value="sagemodeler">SageModeler</option>
@@ -315,25 +315,25 @@ export const AppDualMode = () => {
           <button
             onClick={() => setShowSageApiTester(v => !v)}
             style={{
-              color: '#007cba',
-              background: 'white',
-              border: '2px solid #007cba',
+              color: "#007cba",
+              background: "white",
+              border: "2px solid #007cba",
               borderRadius: 4,
-              padding: '4px 14px',
+              padding: "4px 14px",
               fontWeight: 600,
               fontSize: 14,
-              cursor: 'pointer',
-              transition: 'background 0.2s, color 0.2s, border 0.2s',
+              cursor: "pointer",
+              transition: "background 0.2s, color 0.2s, border 0.2s",
               marginLeft: 8
             }}
           >
-            {showSageApiTester ? 'Claude connector' : 'Sage API Tester'}
+            {showSageApiTester ? "Claude connector" : "Sage API Tester"}
           </button>
         )}
       </div>
       {/* Main Panel Swap Logic */}
       {pluginMode === "sagemodeler" && showSageApiTester ? (
-        <div style={{ width: 375, margin: '0 auto' }}>
+        <div style={{ width: 375, margin: "0 auto" }}>
           <SageModelerAPIPanel />
         </div>
       ) : (

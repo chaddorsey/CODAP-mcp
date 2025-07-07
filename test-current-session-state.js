@@ -20,7 +20,7 @@ async function testSessionState() {
       const data = await response.json();
       
       if (response.ok) {
-        console.log(`✅ Session ${sessionId}: ${data.toolCount} tools, capabilities: ${JSON.stringify(data.capabilities || 'none')}`);
+        console.log(`✅ Session ${sessionId}: ${data.toolCount} tools, capabilities: ${JSON.stringify(data.capabilities || "none")}`);
       } else {
         console.log(`❌ Session ${sessionId}: ${data.error} - ${data.message}`);
       }

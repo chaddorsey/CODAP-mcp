@@ -1,10 +1,10 @@
-const https = require('https');
+const https = require("https");
 
 async function testSimpleVerification() {
   console.log("🎯 SIMPLE VERIFICATION: Capability Filtering Integration");
   console.log("=" * 60);
   
-  const baseUrl = 'https://codap-mcp-stable.vercel.app';
+  const baseUrl = "https://codap-mcp-stable.vercel.app";
   
   console.log("\n📋 Testing CODAP-only session connection message...");
   try {
@@ -20,7 +20,7 @@ async function testSimpleVerification() {
       id: 1
     };
     
-    const response = await makeRequest(baseUrl + '/api/mcp', connectRequest);
+    const response = await makeRequest(baseUrl + "/api/mcp", connectRequest);
     const message = response.result.content[0].text;
     
     console.log("✅ Connection Response Received");
@@ -36,11 +36,11 @@ async function testSimpleVerification() {
     ];
     
     checks.forEach(({ test, check }) => {
-      console.log(`  ${check ? '✅' : '❌'} ${test}`);
+      console.log(`  ${check ? "✅" : "❌"} ${test}`);
     });
     
     const allPassed = checks.every(({ check }) => check);
-    console.log(`\n📊 Overall Result: ${allPassed ? '🎉 ALL TESTS PASSED!' : '❌ Some tests failed'}`);
+    console.log(`\n📊 Overall Result: ${allPassed ? "🎉 ALL TESTS PASSED!" : "❌ Some tests failed"}`);
     
     if (allPassed) {
       console.log("\n🎯 SUCCESS SUMMARY:");
@@ -64,22 +64,22 @@ function makeRequest(url, data) {
     const postData = JSON.stringify(data);
     
     const options = {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(postData),
-        'x-vercel-protection-bypass': 'development-override'
+        "Content-Type": "application/json",
+        "Content-Length": Buffer.byteLength(postData),
+        "x-vercel-protection-bypass": "development-override"
       }
     };
     
     const req = https.request(url, options, (res) => {
-      let responseData = '';
+      let responseData = "";
       
-      res.on('data', (chunk) => {
+      res.on("data", (chunk) => {
         responseData += chunk;
       });
       
-      res.on('end', () => {
+      res.on("end", () => {
         try {
           const parsedData = JSON.parse(responseData);
           resolve(parsedData);
@@ -89,7 +89,7 @@ function makeRequest(url, data) {
       });
     });
     
-    req.on('error', (error) => {
+    req.on("error", (error) => {
       reject(error);
     });
     

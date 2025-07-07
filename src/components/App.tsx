@@ -190,7 +190,7 @@ export const AppCODAPOnly = () => {
 
   // Main minimal interface
   return (
-    <div className="codap-mcp-plugin minimal" style={{ width: 385, padding: '0 5px', margin: '0 auto' }}>
+    <div className="codap-mcp-plugin minimal" style={{ width: 385, padding: "0 5px", margin: "0 auto" }}>
       <ClaudeConnectionPanel
         sessionId={sessionId}
         relayConnected={relayConnected}

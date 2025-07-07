@@ -1,10 +1,10 @@
-const https = require('https');
+const https = require("https");
 
 async function fixSessionCapabilities() {
   console.log("🔧 FIXING: Session YG6MZV4Y Capabilities");
   console.log("=" * 50);
   
-  const baseUrl = 'https://codap-mcp-stable.vercel.app';
+  const baseUrl = "https://codap-mcp-stable.vercel.app";
   
   // First, let's see what the session currently has
   console.log("\n📋 Step 1: Checking current session state...");
@@ -21,7 +21,7 @@ async function fixSessionCapabilities() {
       id: 1
     };
     
-    const response = await makeRequest(baseUrl + '/api/mcp', sessionRequest);
+    const response = await makeRequest(baseUrl + "/api/mcp", sessionRequest);
     
     if (response.result) {
       const message = response.result.content[0].text;
@@ -51,7 +51,7 @@ async function fixSessionCapabilities() {
       id: 2
     };
     
-    const sageResponse = await makeRequest(baseUrl + '/api/mcp', sageRequest);
+    const sageResponse = await makeRequest(baseUrl + "/api/mcp", sageRequest);
     
     if (sageResponse.result) {
       const message = sageResponse.result.content[0].text;
@@ -84,22 +84,22 @@ function makeRequest(url, data) {
     const postData = JSON.stringify(data);
     
     const options = {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(postData),
-        'x-vercel-protection-bypass': 'development-override'
+        "Content-Type": "application/json",
+        "Content-Length": Buffer.byteLength(postData),
+        "x-vercel-protection-bypass": "development-override"
       }
     };
     
     const req = https.request(url, options, (res) => {
-      let responseData = '';
+      let responseData = "";
       
-      res.on('data', (chunk) => {
+      res.on("data", (chunk) => {
         responseData += chunk;
       });
       
-      res.on('end', () => {
+      res.on("end", () => {
         try {
           const parsedData = JSON.parse(responseData);
           resolve(parsedData);
@@ -109,7 +109,7 @@ function makeRequest(url, data) {
       });
     });
     
-    req.on('error', (error) => {
+    req.on("error", (error) => {
       reject(error);
     });
     

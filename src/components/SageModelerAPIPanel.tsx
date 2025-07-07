@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from "react";
 import { BrowserWorkerService } from "../services/BrowserWorkerService";
 import "./SageModelerAPIPanel.css";
 
@@ -39,22 +39,28 @@ interface LinkData {
   customData?: string;
 }
 
-export const SageModelerAPIPanel: React.FC = () => {
-  return <SageAPIEmbeddedPanel expanded={true} />;
+export const SageModelerAPIPanel: React.FC<{ iframeRef?: React.RefObject<HTMLIFrameElement> }> = ({ iframeRef }) => {
+  return <SageAPIEmbeddedPanel expanded={true} iframeRef={iframeRef} />;
 };
 
-const SageAPIEmbeddedPanel: React.FC<{ expanded: boolean }> = ({ expanded }) => {
-  const width = 375;
-  const height = expanded ? 600 : 325;
-  return (
-    <div style={{ width, height, background: 'white', paddingTop: 0, margin: 0 }}>
-      <iframe
-        src="/sage-api-reference.html"
-        title="Sage API Reference Plugin"
-        style={{ width: '100%', height: '100%', border: 'none', minHeight: 325, background: 'none' }}
-        sandbox="allow-scripts allow-same-origin"
-        aria-label="SageModeler API Reference Plugin"
-      />
-    </div>
-  );
-}; 
+const SageAPIEmbeddedPanel = forwardRef<HTMLIFrameElement, { expanded: boolean; iframeRef?: React.RefObject<HTMLIFrameElement> }>(
+  ({ expanded, iframeRef }, ref) => {
+    const localRef = React.useRef<HTMLIFrameElement>(null);
+    useImperativeHandle(ref, () => localRef.current as HTMLIFrameElement);
+    useImperativeHandle(iframeRef, () => localRef.current as HTMLIFrameElement);
+    const width = 375;
+    const height = expanded ? 600 : 325;
+    return (
+      <div style={{ width, height, background: "white", paddingTop: 0, margin: 0 }}>
+        <iframe
+          ref={localRef}
+          src="/sage-api-reference.html"
+          title="Sage API Reference Plugin"
+          style={{ width: "100%", height: "100%", border: "none", minHeight: 325, background: "none" }}
+          sandbox="allow-scripts allow-same-origin"
+          aria-label="SageModeler API Reference Plugin"
+        />
+      </div>
+    );
+  }
+); 

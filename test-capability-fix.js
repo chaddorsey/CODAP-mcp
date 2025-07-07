@@ -1,10 +1,10 @@
-const https = require('https');
+const https = require("https");
 
 async function testCapabilityFix() {
   console.log("🧪 TESTING: Capability Lookup Fix");
   console.log("=" * 50);
   
-  const baseUrl = 'https://codap-mcp-stable.vercel.app';
+  const baseUrl = "https://codap-mcp-stable.vercel.app";
   
   // Test SageModeler tool in dual-capability session
   console.log("\n📋 Testing SageModeler tool in dual session...");
@@ -19,7 +19,7 @@ async function testCapabilityFix() {
       id: 1
     };
     
-    const response = await makeRequest(baseUrl + '/api/mcp', sageRequest);
+    const response = await makeRequest(baseUrl + "/api/mcp", sageRequest);
     console.log("📝 Response received:");
     
     if (response.result) {
@@ -43,22 +43,22 @@ function makeRequest(url, data) {
     const postData = JSON.stringify(data);
     
     const options = {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(postData),
-        'x-vercel-protection-bypass': 'development-override'
+        "Content-Type": "application/json",
+        "Content-Length": Buffer.byteLength(postData),
+        "x-vercel-protection-bypass": "development-override"
       }
     };
     
     const req = https.request(url, options, (res) => {
-      let responseData = '';
+      let responseData = "";
       
-      res.on('data', (chunk) => {
+      res.on("data", (chunk) => {
         responseData += chunk;
       });
       
-      res.on('end', () => {
+      res.on("end", () => {
         try {
           const parsedData = JSON.parse(responseData);
           resolve(parsedData);
@@ -68,7 +68,7 @@ function makeRequest(url, data) {
       });
     });
     
-    req.on('error', (error) => {
+    req.on("error", (error) => {
       reject(error);
     });
     

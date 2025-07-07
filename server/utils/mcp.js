@@ -617,7 +617,7 @@ class MCPProtocolHandler {
         // Use unified session lookup for the effective session (pairing session if available, otherwise Claude session)
         const session = await getUnifiedSession(effectiveSessionId);
         
-        console.log(`[MCP] Session lookup for ${effectiveSessionId}: ${session ? 'found' : 'not found'}, capabilities: ${session?.capabilities || 'none'}`);
+        console.log(`[MCP] Session lookup for ${effectiveSessionId}: ${session ? "found" : "not found"}, capabilities: ${session?.capabilities || "none"}`);
         if (session) {
           console.log(`[MCP] Full session data:`, JSON.stringify(session, null, 2));
         }
@@ -865,23 +865,23 @@ class MCPProtocolHandler {
       
       if (!tool) {
         // Provide comprehensive error with full tool list to keep LLM "in the zone"
-        const codapTools = availableTools.filter(t => !t.name.startsWith('sage_'));
-        const sageTools = availableTools.filter(t => t.name.startsWith('sage_'));
+        const codapTools = availableTools.filter(t => !t.name.startsWith("sage_"));
+        const sageTools = availableTools.filter(t => t.name.startsWith("sage_"));
         
         let helpText = `❌ **Tool "${name}" is not available in this session.**\n\n`;
-        helpText += `**Session Capabilities**: ${capabilities.join(' + ')}\n\n`;
+        helpText += `**Session Capabilities**: ${capabilities.join(" + ")}\n\n`;
         
         // Provide complete tool list by category for ongoing context
         helpText += `**🔧 Currently Available Tools** (${availableTools.length + 1} total):\n\n`;
         
         if (codapTools.length > 0) {
           helpText += `**[CODAP] Data Analysis Tools** (${codapTools.length} tools):\n`;
-          helpText += codapTools.map(t => `• ${t.name}`).join('\n') + '\n\n';
+          helpText += codapTools.map(t => `• ${t.name}`).join("\n") + "\n\n";
         }
         
         if (sageTools.length > 0) {
           helpText += `**[SAGEMODELER] Systems Modeling Tools** (${sageTools.length} tools):\n`;
-          helpText += sageTools.map(t => `• ${t.name}`).join('\n') + '\n\n';
+          helpText += sageTools.map(t => `• ${t.name}`).join("\n") + "\n\n";
         }
         
         helpText += `**[CONNECTION] Session Management** (1 tool):\n`;
@@ -1131,7 +1131,7 @@ class MCPProtocolHandler {
           
           // Create unified session entry for Claude with inherited capabilities
           const claudeUnifiedSession = {
-            sessionId: sessionId,
+            sessionId,
             capabilities: capabilitiesToTransfer,
             connectedTo: targetSessionId,
             connectionTime: Date.now(),
@@ -1206,7 +1206,7 @@ class MCPProtocolHandler {
           // Force the transfer by creating the unified session entry
           const { setSession } = require("./kv-utils.js");
           const claudeUnifiedSession = {
-            sessionId: sessionId,
+            sessionId,
             capabilities: targetCapabilities,
             connectedTo: targetSessionId,
             connectionTime: Date.now(),
@@ -1241,8 +1241,8 @@ class MCPProtocolHandler {
         availableTools = CODAP_TOOLS; // Fallback to CODAP only
       }
       
-      const codapTools = availableTools.filter(t => !t.name.startsWith('sage_'));
-      const sageTools = availableTools.filter(t => t.name.startsWith('sage_'));
+      const codapTools = availableTools.filter(t => !t.name.startsWith("sage_"));
+      const sageTools = availableTools.filter(t => t.name.startsWith("sage_"));
       
       // Generate capability-specific response with EXACT tool counts and names
       const hasCodeap = availableCapabilities.includes("CODAP");
@@ -1255,9 +1255,9 @@ class MCPProtocolHandler {
         capabilityText += `⚠️ **IMPORTANT**: Only tools marked **[CODAP]** or **[SAGEMODELER]** are valid for use during this session. Use of any non-valid tools will return errors and waste time.\n\n`;
         capabilityText += `**✅ Valid Tools for This Session** (${availableTools.length + 1} total):\n\n`;
         capabilityText += `**[CODAP] Tools** (${codapTools.length} tools) - Data analysis & visualization:\n`;
-        capabilityText += codapTools.map(t => `• ${t.name}`).join('\n') + '\n\n';
+        capabilityText += codapTools.map(t => `• ${t.name}`).join("\n") + "\n\n";
         capabilityText += `**[SAGEMODELER] Tools** (${sageTools.length} tools) - Systems modeling:\n`;
-        capabilityText += sageTools.map(t => `• ${t.name}`).join('\n') + '\n\n';
+        capabilityText += sageTools.map(t => `• ${t.name}`).join("\n") + "\n\n";
         capabilityText += `**[CONNECTION] Tool** (1 tool):\n• connect_to_session`;
       } else if (hasCodeap) {
         capabilityText = `\n\n🎯 **This is a CODAP-only session**\n\n`;
@@ -1265,7 +1265,7 @@ class MCPProtocolHandler {
         capabilityText += `⚠️ **IMPORTANT**: Only tools marked **[CODAP]** are valid for use during this session. Use of any non-valid tools will return errors and waste time.\n\n`;
         capabilityText += `**✅ Valid Tools for This Session** (${availableTools.length + 1} total):\n\n`;
         capabilityText += `**[CODAP] Tools** (${codapTools.length} tools):\n`;
-        capabilityText += codapTools.map(t => `• ${t.name}`).join('\n') + '\n\n';
+        capabilityText += codapTools.map(t => `• ${t.name}`).join("\n") + "\n\n";
         capabilityText += `**[CONNECTION] Tool** (1 tool):\n• connect_to_session\n\n`;
         capabilityText += `🚫 **Unavailable in this session**: All SageModeler tools (sage_create_node, sage_update_node, etc.) - these will fail with "Tool not found" errors.`;
       } else if (hasSageModeler) {
@@ -1274,7 +1274,7 @@ class MCPProtocolHandler {
         capabilityText += `⚠️ **IMPORTANT**: Only tools marked **[SAGEMODELER]** are valid for use during this session. Use of any non-valid tools will return errors and waste time.\n\n`;
         capabilityText += `**✅ Valid Tools for This Session** (${availableTools.length + 1} total):\n\n`;
         capabilityText += `**[SAGEMODELER] Tools** (${sageTools.length} tools) - Systems modeling:\n`;
-        capabilityText += sageTools.map(t => `• ${t.name}`).join('\n') + '\n\n';
+        capabilityText += sageTools.map(t => `• ${t.name}`).join("\n") + "\n\n";
         capabilityText += `**[CONNECTION] Tool** (1 tool):\n• connect_to_session\n\n`;
         capabilityText += `🚫 **Unavailable in this session**: All CODAP tools (createDataContext, createGraph, etc.) - these will fail with "Tool not found" errors.`;
       }
@@ -1314,7 +1314,7 @@ class MCPProtocolHandler {
       const session = await getUnifiedSession(sessionId);
       if (session && Array.isArray(session.capabilities) && session.capabilities.length > 0) {
         capabilities = session.capabilities;
-        environmentStatus = `Connected with ${capabilities.join(' + ')} capabilities`;
+        environmentStatus = `Connected with ${capabilities.join(" + ")} capabilities`;
       }
     }
     
@@ -1681,7 +1681,7 @@ async function POST(req) {
       try {
         const { setSession } = require("./kv-utils.js");
         const claudeSessionData = {
-          sessionId: sessionId,
+          sessionId,
           capabilities: ["CODAP"], // Start with CODAP-only by default
           type: "claude-desktop-auto",
           createdAt: Date.now(),

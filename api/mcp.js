@@ -11,7 +11,7 @@ const mcpServer = require("../server/utils/mcp.js");
  */
 function createWebAPIRequest(req) {
   // Build the full URL
-  const protocol = req.headers['x-forwarded-proto'] || 'https';
+  const protocol = req.headers["x-forwarded-proto"] || "https";
   const host = req.headers.host;
   const fullUrl = `${protocol}://${host}${req.url}`;
   
@@ -67,11 +67,11 @@ async function handler(req, res) {
       // Copy headers from Web API Response headers object
       if (webResponse.headers) {
         // Check if it's a Headers object with forEach method
-        if (typeof webResponse.headers.forEach === 'function') {
+        if (typeof webResponse.headers.forEach === "function") {
           webResponse.headers.forEach((value, key) => {
             res.setHeader(key, value);
           });
-        } else if (typeof webResponse.headers === 'object') {
+        } else if (typeof webResponse.headers === "object") {
           // Plain object headers
           for (const [key, value] of Object.entries(webResponse.headers)) {
             res.setHeader(key, value);

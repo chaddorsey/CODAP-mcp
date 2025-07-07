@@ -9,7 +9,7 @@
 
 async function testManualSageModelerMode() {
   console.log("🧪 Testing Manual SageModeler Mode Fix");
-  console.log("=" .repeat(50));
+  console.log("=".repeat(50));
   
   const baseUrl = "https://codap-mcp-stable.vercel.app";
   
