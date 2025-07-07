@@ -1489,7 +1489,19 @@ class MCPProtocolHandler {
         const response = await getToolResponse(requestId);
         if (response) {
           console.log(`[MCP] Response received for ${requestId} after ${Date.now() - startTime}ms`);
-          return response;
+          
+          // CRITICAL FIX: Extract the actual result from the stored response wrapper
+          // The browser worker stores: { sessionCode, requestId, result: actualResult }
+          // But the tool execution handler expects just the actualResult
+          if (response.result !== undefined) {
+            return response.result;
+          } else if (response.error !== undefined) {
+            throw new Error(`Tool execution failed: ${response.error.message || JSON.stringify(response.error)}`);
+          } else {
+            // Fallback: return the entire response if format is unexpected
+            console.warn(`[MCP] Unexpected response format for ${requestId}:`, response);
+            return response;
+          }
         }
       } catch (error) {
         console.error(`[MCP] Error checking response for ${requestId}:`, error);
