@@ -48,20 +48,20 @@ const SageAPIEmbeddedPanel = forwardRef<HTMLIFrameElement, { expanded: boolean; 
     const localRef = React.useRef<HTMLIFrameElement>(null);
     useImperativeHandle(ref, () => localRef.current as HTMLIFrameElement);
     useImperativeHandle(iframeRef, () => localRef.current as HTMLIFrameElement);
-    const width = 375;
-    const height = expanded ? 600 : 325;
-    return (
-      <div style={{ width, height, background: "white", paddingTop: 0, margin: 0 }}>
-        <iframe
+  const width = 375;
+  const height = expanded ? 600 : 325;
+  return (
+    <div style={{ width, height, background: "white", paddingTop: 0, margin: 0 }}>
+      <iframe
           ref={localRef}
-          src="/sage-api-reference.html"
-          title="Sage API Reference Plugin"
-          style={{ width: "100%", height: "100%", border: "none", minHeight: 325, background: "none" }}
-          sandbox="allow-scripts allow-same-origin"
-          aria-label="SageModeler API Reference Plugin"
-        />
-      </div>
-    );
+        src="/sage-api-reference.html"
+        title="Sage API Reference Plugin"
+        style={{ width: "100%", height: "100%", border: "none", minHeight: 325, background: "none" }}
+        sandbox="allow-scripts allow-same-origin"
+        aria-label="SageModeler API Reference Plugin"
+      />
+    </div>
+  );
   }
 );
 SageAPIEmbeddedPanel.displayName = "SageAPIEmbeddedPanel"; 
