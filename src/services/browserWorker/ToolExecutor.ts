@@ -398,7 +398,7 @@ export class ToolExecutor implements ToolExecutorInterface {
    */
   private async initializePlugin(args: any): Promise<any> {
     const { name, title, version, dimensions } = args;
-    return await this.sendCODAPMessage("update", "interactiveFrame", {
+    return await sendMessage("update", "interactiveFrame", {
       name: name || title,
       title: title || name,
       version,
@@ -429,7 +429,7 @@ export class ToolExecutor implements ToolExecutorInterface {
    */
   private async createItems(args: any): Promise<any> {
     const { dataContextName, items } = args;
-    return await this.sendCODAPMessage("create", `dataContext[${dataContextName}].item`, items);
+    return await sendMessage("create", `dataContext[${dataContextName}].item`, items);
   }
 
   /**
@@ -461,7 +461,7 @@ export class ToolExecutor implements ToolExecutorInterface {
     if (title) componentValues.name = title;
 
     console.log("Browser worker creating empty graph:", componentValues);
-    const graphResult = await this.sendCODAPMessage("create", "component", componentValues);
+    const graphResult = await sendMessage("create", "component", componentValues);
 
     // Step 2: If axes are specified, update the graph with axis assignments (proven fastest method)
     if ((xAttribute || yAttribute) && graphResult.success && graphResult.values) {
@@ -472,7 +472,7 @@ export class ToolExecutor implements ToolExecutorInterface {
         if (yAttribute) updateValues.yAttributeName = yAttribute;
 
         console.log("Browser worker updating graph axes:", { componentId, updateValues });
-        const updateResult = await this.sendCODAPMessage("update", `component[${componentId}]`, updateValues);
+        const updateResult = await sendMessage("update", `component[${componentId}]`, updateValues);
 
         // Return combined result
         return {
@@ -500,21 +500,21 @@ export class ToolExecutor implements ToolExecutorInterface {
     const updateData = values || updateValues;
     
     // Use component[id] resource format for updates
-    return await this.sendCODAPMessage("update", `component[${componentId}]`, updateData);
+    return await sendMessage("update", `component[${componentId}]`, updateData);
   }
 
   /**
    * Get list of data contexts
    */
   private async getDataContexts(): Promise<any> {
-    return await this.sendCODAPMessage("get", "dataContextList");
+    return await sendMessage("get", "dataContextList");
   }
 
   /**
    * Get list of components
    */
   private async getComponents(): Promise<any> {
-    return await this.sendCODAPMessage("get", "componentList");
+    return await sendMessage("get", "componentList");
   }
 
   /**
@@ -522,7 +522,7 @@ export class ToolExecutor implements ToolExecutorInterface {
    */
   private async createTable(args: any): Promise<any> {
     const { dataContext, name } = args;
-    return await this.sendCODAPMessage("create", "component", { type: "caseTable", dataContext, name });
+    return await sendMessage("create", "component", { type: "caseTable", dataContext, name });
   }
 
   // ==================== Helper Methods ====================
@@ -605,7 +605,7 @@ export class ToolExecutor implements ToolExecutorInterface {
    */
   private async updateItems(args: any): Promise<any> {
     const { dataContextName, items } = args;
-    return await this.sendCODAPMessage("update", `dataContext[${dataContextName}].item`, items);
+    return await sendMessage("update", `dataContext[${dataContextName}].item`, items);
   }
 
   /**
@@ -613,7 +613,7 @@ export class ToolExecutor implements ToolExecutorInterface {
    */
   private async deleteItems(args: any): Promise<any> {
     const { dataContextName, itemIds } = args;
-    return await this.sendCODAPMessage("delete", `dataContext[${dataContextName}].item`, { itemIds });
+    return await sendMessage("delete", `dataContext[${dataContextName}].item`, { itemIds });
   }
 
   /**
@@ -621,7 +621,7 @@ export class ToolExecutor implements ToolExecutorInterface {
    */
   private async getAllItems(args: any): Promise<any> {
     const { dataContextName } = args;
-    return await this.sendCODAPMessage("get", `dataContext[${dataContextName}].itemCount`);
+    return await sendMessage("get", `dataContext[${dataContextName}].itemCount`);
   }
 
   /**
@@ -629,7 +629,7 @@ export class ToolExecutor implements ToolExecutorInterface {
    */
   private async getItemCount(args: any): Promise<any> {
     const { dataContextName } = args;
-    return await this.sendCODAPMessage("get", `dataContext[${dataContextName}].itemCount`);
+    return await sendMessage("get", `dataContext[${dataContextName}].itemCount`);
   }
 
   /**
@@ -637,7 +637,7 @@ export class ToolExecutor implements ToolExecutorInterface {
    */
   private async getItemByID(args: any): Promise<any> {
     const { dataContextName, itemId } = args;
-    return await this.sendCODAPMessage("get", `dataContext[${dataContextName}].item[${itemId}]`);
+    return await sendMessage("get", `dataContext[${dataContextName}].item[${itemId}]`);
   }
 
   /**
@@ -645,7 +645,7 @@ export class ToolExecutor implements ToolExecutorInterface {
    */
   private async selectItems(args: any): Promise<any> {
     const { dataContextName, itemIds } = args;
-    return await this.sendCODAPMessage("update", `dataContext[${dataContextName}].selectionList`, itemIds);
+    return await sendMessage("update", `dataContext[${dataContextName}].selectionList`, itemIds);
   }
 
   /**
@@ -663,7 +663,7 @@ export class ToolExecutor implements ToolExecutorInterface {
       values.parent = parent;
     }
     
-    return await this.sendCODAPMessage("create", `dataContext[${dataContextName}].collection`, values);
+    return await sendMessage("create", `dataContext[${dataContextName}].collection`, values);
   }
 
   /**
@@ -671,7 +671,7 @@ export class ToolExecutor implements ToolExecutorInterface {
    */
   private async createAttribute(args: any): Promise<any> {
     const { dataContextName, collectionName, attribute } = args;
-    return await this.sendCODAPMessage("create", `dataContext[${dataContextName}].collection[${collectionName}].attribute`, attribute);
+    return await sendMessage("create", `dataContext[${dataContextName}].collection[${collectionName}].attribute`, attribute);
   }
 
   /**
@@ -679,7 +679,7 @@ export class ToolExecutor implements ToolExecutorInterface {
    */
   private async updateAttribute(args: any): Promise<any> {
     const { dataContextName, collectionName, attributeName, attribute } = args;
-    return await this.sendCODAPMessage("update", `dataContext[${dataContextName}].collection[${collectionName}].attribute[${attributeName}]`, attribute);
+    return await sendMessage("update", `dataContext[${dataContextName}].collection[${collectionName}].attribute[${attributeName}]`, attribute);
   }
 
   /**
@@ -687,35 +687,35 @@ export class ToolExecutor implements ToolExecutorInterface {
    */
   private async deleteAttribute(args: any): Promise<any> {
     const { dataContextName, collectionName, attributeName } = args;
-    return await this.sendCODAPMessage("delete", `dataContext[${dataContextName}].collection[${collectionName}].attribute[${attributeName}]`);
+    return await sendMessage("delete", `dataContext[${dataContextName}].collection[${collectionName}].attribute[${attributeName}]`);
   }
 
   /**
    * Create slider component
    */
   private async createSlider(args: any): Promise<any> {
-    return await this.sendCODAPMessage("create", "component", { type: "slider", ...args });
+    return await sendMessage("create", "component", { type: "slider", ...args });
   }
 
   /**
    * Create calculator component
    */
   private async createCalculator(args: any): Promise<any> {
-    return await this.sendCODAPMessage("create", "component", { type: "calculator", ...args });
+    return await sendMessage("create", "component", { type: "calculator", ...args });
   }
 
   /**
    * Create text component
    */
   private async createText(args: any): Promise<any> {
-    return await this.sendCODAPMessage("create", "component", { type: "text", ...args });
+    return await sendMessage("create", "component", { type: "text", ...args });
   }
 
   /**
    * Create web view component
    */
   private async createWebView(args: any): Promise<any> {
-    return await this.sendCODAPMessage("create", "component", { type: "webView", ...args });
+    return await sendMessage("create", "component", { type: "webView", ...args });
   }
 
   /**
@@ -723,14 +723,14 @@ export class ToolExecutor implements ToolExecutorInterface {
    */
   private async deleteComponent(args: any): Promise<any> {
     const { componentId } = args;
-    return await this.sendCODAPMessage("delete", `component[${componentId}]`);
+    return await sendMessage("delete", `component[${componentId}]`);
   }
 
   /**
    * Get all components
    */
   private async getAllComponents(args: any): Promise<any> {
-    return await this.sendCODAPMessage("get", "componentList");
+    return await sendMessage("get", "componentList");
   }
 
   /**
@@ -738,14 +738,14 @@ export class ToolExecutor implements ToolExecutorInterface {
    */
   private async getComponent(args: any): Promise<any> {
     const { componentId } = args;
-    return await this.sendCODAPMessage("get", `component[${componentId}]`);
+    return await sendMessage("get", `component[${componentId}]`);
   }
 
   /**
    * Get list of data contexts
    */
   private async getListOfDataContexts(args: any): Promise<any> {
-    return await this.sendCODAPMessage("get", "dataContextList");
+    return await sendMessage("get", "dataContextList");
   }
 
   /**
@@ -753,7 +753,7 @@ export class ToolExecutor implements ToolExecutorInterface {
    */
   private async getDataContext(args: any): Promise<any> {
     const { dataContextName } = args;
-    return await this.sendCODAPMessage("get", `dataContext[${dataContextName}]`);
+    return await sendMessage("get", `dataContext[${dataContextName}]`);
   }
 
   /**
@@ -761,7 +761,7 @@ export class ToolExecutor implements ToolExecutorInterface {
    */
   private async deleteDataContext(args: any): Promise<any> {
     const { dataContextName } = args;
-    return await this.sendCODAPMessage("delete", `dataContext[${dataContextName}]`);
+    return await sendMessage("delete", `dataContext[${dataContextName}]`);
   }
 
   /**
@@ -769,7 +769,7 @@ export class ToolExecutor implements ToolExecutorInterface {
    */
   private async getSelectedItems(args: any): Promise<any> {
     const { dataContextName } = args;
-    return await this.sendCODAPMessage("get", `dataContext[${dataContextName}].selectionList`);
+    return await sendMessage("get", `dataContext[${dataContextName}].selectionList`);
   }
 
   /**
@@ -777,7 +777,7 @@ export class ToolExecutor implements ToolExecutorInterface {
    */
   private async deselectAll(args: any): Promise<any> {
     const { dataContextName } = args;
-    return await this.sendCODAPMessage("update", `dataContext[${dataContextName}].selectionList`, []);
+    return await sendMessage("update", `dataContext[${dataContextName}].selectionList`, []);
   }
 
   /**
@@ -785,7 +785,7 @@ export class ToolExecutor implements ToolExecutorInterface {
    */
   private async getCollectionList(args: any): Promise<any> {
     const { dataContextName } = args;
-    return await this.sendCODAPMessage("get", `dataContext[${dataContextName}].collectionList`);
+    return await sendMessage("get", `dataContext[${dataContextName}].collectionList`);
   }
 
   /**
@@ -793,7 +793,7 @@ export class ToolExecutor implements ToolExecutorInterface {
    */
   private async getCollection(args: any): Promise<any> {
     const { dataContextName, collectionName } = args;
-    return await this.sendCODAPMessage("get", `dataContext[${dataContextName}].collection[${collectionName}]`);
+    return await sendMessage("get", `dataContext[${dataContextName}].collection[${collectionName}]`);
   }
 
   /**
@@ -801,7 +801,7 @@ export class ToolExecutor implements ToolExecutorInterface {
    */
   private async getAttributeList(args: any): Promise<any> {
     const { dataContextName, collectionName } = args;
-    return await this.sendCODAPMessage("get", `dataContext[${dataContextName}].collection[${collectionName}].attributeList`);
+    return await sendMessage("get", `dataContext[${dataContextName}].collection[${collectionName}].attributeList`);
   }
 
   /**
@@ -809,20 +809,20 @@ export class ToolExecutor implements ToolExecutorInterface {
    */
   private async getAttribute(args: any): Promise<any> {
     const { dataContextName, collectionName, attributeName } = args;
-    return await this.sendCODAPMessage("get", `dataContext[${dataContextName}].collection[${collectionName}].attribute[${attributeName}]`);
+    return await sendMessage("get", `dataContext[${dataContextName}].collection[${collectionName}].attribute[${attributeName}]`);
   }
 
   /**
    * Register for notifications
    */
   private async registerForNotifications(args: any): Promise<any> {
-    return await this.sendCODAPMessage("create", "notificationSubscription", args);
+    return await sendMessage("create", "notificationSubscription", args);
   }
 
   /**
    * Unregister for notifications
    */
   private async unregisterForNotifications(args: any): Promise<any> {
-    return await this.sendCODAPMessage("delete", "notificationSubscription", args);
+    return await sendMessage("delete", "notificationSubscription", args);
   }
 } 
