@@ -601,7 +601,16 @@ export class BrowserWorkerService {
       },
 
       getListOfDataContexts: async () => {
-        return await sendMessage("get", "dataContextList");
+        console.log("🔧 [getListOfDataContexts] Starting execution...");
+        try {
+          console.log("🔧 [getListOfDataContexts] Calling sendMessage...");
+          const result = await sendMessage("get", "dataContextList");
+          console.log("✅ [getListOfDataContexts] sendMessage result:", result);
+          return result;
+        } catch (error) {
+          console.error("❌ [getListOfDataContexts] sendMessage error:", error);
+          throw error;
+        }
       },
 
       getDataContext: async (args: any) => {
@@ -866,7 +875,16 @@ export class BrowserWorkerService {
       },
 
       getAllComponents: async () => {
-        return await sendMessage("get", "componentList");
+        console.log("🔧 [getAllComponents] Starting execution...");
+        try {
+          console.log("🔧 [getAllComponents] Calling sendMessage...");
+          const result = await sendMessage("get", "componentList");
+          console.log("✅ [getAllComponents] sendMessage result:", result);
+          return result;
+        } catch (error) {
+          console.error("❌ [getAllComponents] sendMessage error:", error);
+          throw error;
+        }
       },
 
       getComponent: async (args: any) => {
