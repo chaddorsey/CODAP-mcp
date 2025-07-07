@@ -12,7 +12,7 @@ This document lists all tasks associated with PBI 22.
 | 22-2 | [Create Iframe Container Component](./22-2.md) | Done | Develop SageAPIEmbeddedPanel component for iframe hosting and management |
 | 22-3 | [Implement Reference Plugin Asset Serving](./22-3.md) | Done | Copy reference plugin to public directory and configure serving |
 | 22-4 | [Integrate Accordion Section in SageModeler Panel](./22-4.md) | Done | Add accordion section to SageModelerAPIPanel with iframe container |
-| 22-5 | [Implement Message Relay for SageModeler API Tester](./22-5.md) | InProgress | Relay postMessage events between SageAPI tester iframe and SageModeler plugin |
+| 22-5 | [Implement Message Relay for SageModeler API Tester](./22-5.md) | Done | Relay postMessage events between SageAPI tester iframe and SageModeler plugin |
 | 22-6 | [Implement Responsive Design and Error Handling](./22-5.md) | Proposed | Add responsive iframe sizing, loading states, and error handling |
 | 22-6 | [Configure Security and Cross-Origin Settings](./22-6.md) | Proposed | Implement iframe sandbox settings and security configurations |
 | 22-7 | [Integration Testing and Validation](./22-7.md) | Proposed | Test iframe integration functionality and validate isolation |

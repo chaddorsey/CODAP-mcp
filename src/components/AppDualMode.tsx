@@ -42,6 +42,9 @@ export const AppDualMode = () => {
   // Prevent multiple initializations
   const initializationRef = useRef(false);
 
+  // Ref for the SageAPI tester iframe
+  const sageApiIframeRef = useRef<HTMLIFrameElement>(null);
+
   // Determine capabilities based on manual mode selection and auto-detection
   const determineCapabilities = useCallback((): string[] => {
     // PRIORITY 1: If manually set to SageModeler mode, ALWAYS enable dual capabilities (regardless of detection)
@@ -172,6 +175,42 @@ export const AppDualMode = () => {
     return () => {
       window.removeEventListener("sage-api-call", handleApiCallLog as EventListener);
     };
+  }, []);
+
+  // Centralized message relay logic
+  useEffect(() => {
+    function handleMessage(event: MessageEvent) {
+      if (
+        sageApiIframeRef.current &&
+        event.source === sageApiIframeRef.current.contentWindow
+      ) {
+        const message = event.data;
+        if (message && message.action && message.resource) {
+          // Type guard for window.CODAP
+          const win = window as any;
+          if (typeof win.CODAP !== "undefined" && typeof win.CODAP.sendRequest === "function") {
+            win.CODAP.sendRequest(message, (response: any) => {
+              sageApiIframeRef.current?.contentWindow?.postMessage(
+                { type: "response", requestId: message.requestId, ...response },
+                "*"
+              );
+            });
+          } else if (typeof win.codapPluginApi !== "undefined" && typeof win.codapPluginApi.sendRequest === "function") {
+            win.codapPluginApi.sendRequest(message).then((response: any) => {
+              sageApiIframeRef.current?.contentWindow?.postMessage(
+                { type: "response", requestId: message.requestId, ...response },
+                "*"
+              );
+            });
+          } else {
+            // TODO: Implement actual CODAP API relay or log for development
+            console.warn("No CODAP API relay available for message:", message);
+          }
+        }
+      }
+    }
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
   }, []);
 
   const handleCopyConnectionPrompt = async () => {
@@ -334,7 +373,7 @@ export const AppDualMode = () => {
       {/* Main Panel Swap Logic */}
       {pluginMode === "sagemodeler" && showSageApiTester ? (
         <div style={{ width: 375, margin: "0 auto" }}>
-          <SageModelerAPIPanel />
+          <SageModelerAPIPanel iframeRef={sageApiIframeRef as React.RefObject<HTMLIFrameElement>} />
         </div>
       ) : (
         <ClaudeConnectionPanel

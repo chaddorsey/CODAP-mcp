@@ -63,4 +63,5 @@ const SageAPIEmbeddedPanel = forwardRef<HTMLIFrameElement, { expanded: boolean; 
       </div>
     );
   }
-); 
+);
+SageAPIEmbeddedPanel.displayName = "SageAPIEmbeddedPanel"; 
