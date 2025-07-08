@@ -604,6 +604,10 @@ export class BrowserWorkerService {
       getListOfDataContexts: async () => {
         console.log("🔧 [getListOfDataContexts] Starting execution...");
         try {
+          // Ensure CODAP interface is initialized before calling Plugin API functions
+          console.log("🔧 [getListOfDataContexts] Initializing CODAP interface...");
+          await this.initializeCODAPInterface();
+          
           console.log("🔧 [getListOfDataContexts] Calling getListOfDataContexts() from CODAP Plugin API...");
           const result = await getListOfDataContexts();
           console.log("✅ [getListOfDataContexts] CODAP Plugin API result:", result);
