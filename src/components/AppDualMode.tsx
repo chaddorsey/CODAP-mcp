@@ -206,6 +206,25 @@ export const AppDualMode = () => {
    */
   function handleMessage(event: MessageEvent) {
     console.log("[Relay] handleMessage called:", event);
+    
+    // Debug: Log all messages from parent window to see response structure
+    if (event.source === window.parent && event.data) {
+      console.log("[Relay] DEBUG - Message from parent window:", JSON.stringify(event.data));
+      
+      // Check if this looks like a response to our pending requests
+      if (event.data.requestId && pendingSageApiRequests.current.has(event.data.requestId)) {
+        console.log("[Relay] DEBUG - Found pending request for:", event.data.requestId);
+        console.log("[Relay] DEBUG - Response data structure:", {
+          hasType: !!event.data.type,
+          type: event.data.type,
+          hasSageApi: !!event.data.sageApi,
+          sageApi: event.data.sageApi,
+          hasSuccess: !!event.data.success,
+          success: event.data.success
+        });
+      }
+    }
+    
     // Process any message with sageApi: true, regardless of source
     if (event.data && event.data.sageApi) {
       // If the message is from the tester (child iframe), relay to CODAP via window.parent.postMessage
@@ -219,12 +238,12 @@ export const AppDualMode = () => {
         window.parent.postMessage(request, "*");
       }
     }
-    // Forward responses to pending requests
-    else if (event.data && event.data.type === "response" && event.data.requestId && pendingSageApiRequests.current.has(event.data.requestId)) {
-      // This is a response from CODAP for a previously relayed SageAPI request
-      console.info("[Relay] Received response from CODAP, forwarding to tester:", event.data);
+    
+    // Try broader response matching first - check for any response with requestId in our pending set
+    if (event.source === window.parent && event.data && event.data.requestId && pendingSageApiRequests.current.has(event.data.requestId)) {
+      console.info("[Relay] Received response from CODAP for pending request, forwarding to tester:", event.data);
       // Forward the response to the tester iframe
-      sageApiIframeRef.current?.contentWindow?.postMessage(event.data, "*");
+      sageModelerIframeRef.current?.contentWindow?.postMessage(event.data, "*");
       // Remove the requestId from the pending set
       pendingSageApiRequests.current.delete(event.data.requestId);
     }
@@ -237,7 +256,7 @@ export const AppDualMode = () => {
       )
     ) {
       console.info("[Relay] Forwarding unsolicited event or message from CODAP to tester:", event.data);
-      sageApiIframeRef.current?.contentWindow?.postMessage(event.data, "*");
+      sageModelerIframeRef.current?.contentWindow?.postMessage(event.data, "*");
     }
   }
 

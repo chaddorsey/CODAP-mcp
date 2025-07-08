@@ -708,107 +708,118 @@
       console.log('[Tester] Received message:', event.data);
       // Debug: log all incoming messages
       log('[DEBUG] Received message: ' + JSON.stringify(event.data));
-      // --- Robust response handler ---
-      if (event.data && event.data.type === 'response') {
-        // Try to extract nodes from all plausible locations
-        let nodes = [];
-        if (event.data.data && Array.isArray(event.data.data.nodes)) {
-          nodes = event.data.data.nodes;
-        } else if (event.data.values && Array.isArray(event.data.values.nodes)) {
-          nodes = event.data.values.nodes;
-        } else if (Array.isArray(event.data.nodes)) {
-          nodes = event.data.nodes;
-        } else if (event.data.data && event.data.data.node) {
-          nodes = [event.data.data.node];
-        }
-        console.log('[Tester] Extracted nodes:', nodes);
-        // Update the UI node list if nodes found
-        if (nodes.length > 0) {
-          const sel = document.getElementById('nodesList');
-          if (sel) {
-            sel.innerHTML = '';
-            nodes.forEach(n => {
-              const opt = document.createElement('option');
-              opt.value = n.id || n.key || '';
-              opt.textContent = `${n.id || n.key || ''} (${n.title || n.data?.title || ''})`;
-              sel.appendChild(opt);
-            });
-          }
-        }
-        // Also update inspector result if present
-        if (event.data.data && (event.data.data.node || event.data.data.link || event.data.data.nodes || event.data.data.links)) {
-          document.getElementById('inspectorResult').textContent = JSON.stringify(event.data.data, null, 2);
-        }
-      }
-      // --- Robust event handler ---
-      if (event.data && event.data.type === 'event') {
-        const eventName = event.data.event;
-        const eventData = event.data.data;
-        log(`[DEBUG] Handling event: ${eventName}`);
-        if (eventName === 'nodesSelected' && eventData && Array.isArray(eventData.nodes) && eventData.nodes.length > 0) {
-          // Populate the node form with the first selected node
-          const primaryNode = eventData.nodes[0];
-          if (primaryNode) {
-            populateNodeForm(primaryNode);
-            // Update node selection in the list
-            const sel = document.getElementById('nodesList');
-            if (sel && primaryNode.id) {
-              sel.value = primaryNode.id;
-            }
-          }
-        } else if (eventName === 'nodesDeselected') {
-          clearNodeSelection();
-        } else if (eventName === 'linksSelected' && eventData && Array.isArray(eventData.links) && eventData.links.length > 0) {
-          const primaryLink = eventData.links[0];
-          if (primaryLink) {
-            populateLinkForm(primaryLink);
-            // Update link selection in the list
-            const sel = document.getElementById('linksList');
-            if (sel && primaryLink.id) {
-              sel.value = primaryLink.id;
-            }
-          }
-        } else if (eventName === 'linksDeselected') {
-          clearLinkSelection();
-        }
-      }
+      
+      // Debug: check message origin and properties
+      log('[DEBUG] Message origin: ' + event.origin + ', hasType: ' + (event.data && !!event.data.type) + ', type: ' + (event.data && event.data.type));
+      
+      // Handle CODAP interactiveFrame registration
       if (event.data && event.data.resource === 'interactiveFrame') {
         log('✅ Registered with CODAP: interactiveFrame acknowledged.');
         updateStatus('Registered with CODAP.');
+        return;
       }
+      
+      // Handle self-test message
       if (event.data && event.data.test === "self-message") {
         log("[DEBUG] Self-message handler works!");
+        return;
       }
-      // --- Track node/link IDs from API responses (OpenAPI/REST-compliant) ---
-      if (event.data && event.data.type === 'response' && event.data.success) {
-        // Node creation: if response includes a new node id
-        if (event.data.data && event.data.data.id && event.data.data.title) {
-          lastCreatedNodeId = event.data.data.id;
-          lastCreatedNodeIds.push(event.data.data.id);
-          log('🆔 Stored lastCreatedNodeId: ' + lastCreatedNodeId);
+
+      // --- Handle API responses (with broader matching) ---
+      if (event.data && event.data.type === 'response') {
+        log('[DEBUG] Processing response: ' + JSON.stringify(event.data));
+        
+        // Check if this is a successful response
+        if (event.data.success) {
+          // Handle getAllNodes response - populate the nodesList dropdown (match by data.nodes presence)
+          if (event.data.data && event.data.data.nodes && Array.isArray(event.data.data.nodes)) {
+            const nodes = event.data.data.nodes;
+            const sel = document.getElementById('nodesList');
+            if (sel) {
+              sel.innerHTML = '';
+              nodes.forEach(n => {
+                const opt = document.createElement('option');
+                opt.value = n.id;
+                opt.textContent = `${n.id} (${n.title})`;
+                sel.appendChild(opt);
+              });
+              log(`📝 Updated nodesList with ${nodes.length} nodes`);
+            }
+          }
+          
+          // Handle getAllLinks response - populate the linksList dropdown (match by data.links presence)
+          if (event.data.data && event.data.data.links && Array.isArray(event.data.data.links)) {
+            const links = event.data.data.links;
+            const sel = document.getElementById('linksList');
+            if (sel) {
+              sel.innerHTML = '';
+              links.forEach(l => {
+                const opt = document.createElement('option');
+                opt.value = l.id;
+                opt.textContent = `${l.id} (${l.label || l.relation})`;
+                sel.appendChild(opt);
+              });
+              log(`📝 Updated linksList with ${links.length} links`);
+            }
+          }
+          
+          // Show result in inspector for any get operation
+          if (event.data.data && (event.data.data.node || event.data.data.link || event.data.data.nodes || event.data.data.links)) {
+            document.getElementById('inspectorResult').textContent = JSON.stringify(event.data.data, null, 2);
+          }
+          
+          // Track node/link IDs from creation responses (detect by data structure)
+          if (event.data.data && event.data.data.id) {
+            // Node creation: if response includes a new node id and title (but no source/target)
+            if (event.data.data.title && !event.data.data.source && !event.data.data.target) {
+              lastCreatedNodeId = event.data.data.id;
+              lastCreatedNodeIds.push(event.data.data.id);
+              log('🆔 Stored lastCreatedNodeId: ' + lastCreatedNodeId);
+              // Refresh the nodes list after creating a node
+              if (typeof getAllNodes === 'function') getAllNodes();
+            }
+            // Link creation: if response includes a new link id with source and target
+            if (event.data.data.source && event.data.data.target) {
+              lastCreatedLinkId = event.data.data.id;
+              log('🆔 Stored lastCreatedLinkId: ' + lastCreatedLinkId);
+              // Refresh the links list after creating a link
+              if (typeof getAllLinks === 'function') getAllLinks();
+            }
+          }
+          
+          updateStatus('API request completed successfully');
+        } else {
+          log('[DEBUG] Received response but not successful: ' + JSON.stringify(event.data));
         }
-        // Link creation: if response includes a new link id
-        if (event.data.data && event.data.data.id && event.data.data.source && event.data.data.target) {
-          lastCreatedLinkId = event.data.data.id;
-          log('🆔 Stored lastCreatedLinkId: ' + lastCreatedLinkId);
+      }
+      
+      // --- Handle selection events from SageModeler ---
+      if (event.data && event.data.sageApi && event.data.type === 'event') {
+        const eventName = event.data.event;
+        const eventData = event.data.data;
+        
+        switch (eventName) {
+          case 'nodesSelected':
+            handleNodesSelected(eventData);
+            break;
+          case 'nodesDeselected':
+            handleNodesDeselected(eventData);
+            break;
+          case 'linksSelected':
+            handleLinksSelected(eventData);
+            break;
+          case 'linksDeselected':
+            handleLinksDeselected(eventData);
+            break;
         }
       }
-      // Handle node creation response
-      if (event.data && event.data.sageApi && event.data.action === 'create' && event.data.resource === 'nodes') {
-        updateStatus('Node created successfully!');
-        if (typeof getAllNodes === 'function') getAllNodes();
-      }
-      // Handle get all nodes response
-      if (event.data && event.data.sageApi && event.data.action === 'get' && event.data.resource === 'nodes') {
-        updateStatus('Fetched all nodes!');
-        // Log the full response for debugging
-        console.log('[Tester] getAllNodes response:', event.data);
-        // Try to extract nodes from possible locations
-        const nodes = (event.data.values && event.data.values.nodes) ||
-                      (event.data.data && event.data.data.nodes) ||
-                      event.data.nodes || [];
-        console.log('[Tester] Extracted nodes:', nodes);
-        // TODO: Update the UI with nodes (e.g., updateNodeList(nodes));
+      
+      // --- Handle simulationSettingsUpdated events ---
+      if (event.data && event.data.sageApi && event.data.type === 'event' && event.data.event === 'simulationSettingsUpdated') {
+        if (event.data.data && typeof event.data.data.simulationType !== 'undefined') {
+          modelType = event.data.data.simulationType;
+          applyPropertyStates();
+        }
       }
     });
 
@@ -1947,58 +1958,7 @@
       document.getElementById('customDataGroup').style.display = (vector === 'vary') ? '' : 'none';
     }
 
-    // --- Update lists after API responses ---
-    window.addEventListener('message', function(event) {
-      if (event.data && event.data.sageApi && event.data.type === 'response' && event.data.success) {
-        if (event.data.data && event.data.data.nodes) {
-          const nodes = event.data.data.nodes;
-          const sel = document.getElementById('nodesList');
-          sel.innerHTML = '';
-          nodes.forEach(n => {
-            const opt = document.createElement('option');
-            opt.value = n.id;
-            opt.textContent = `${n.id} (${n.title})`;
-            sel.appendChild(opt);
-          });
-        }
-        if (event.data.data && event.data.data.links) {
-          const links = event.data.data.links;
-          const sel = document.getElementById('linksList');
-          sel.innerHTML = '';
-          links.forEach(l => {
-            const opt = document.createElement('option');
-            opt.value = l.id;
-            opt.textContent = `${l.id} (${l.label || l.relation})`;
-            sel.appendChild(opt);
-          });
-        }
-        // Show result in inspector
-        if (event.data.data && (event.data.data.node || event.data.data.link || event.data.data.nodes || event.data.data.links)) {
-          document.getElementById('inspectorResult').textContent = JSON.stringify(event.data.data, null, 2);
-        }
-      }
-      
-      // --- Handle selection events from SageModeler ---
-      if (event.data && event.data.sageApi && event.data.type === 'event') {
-        const eventName = event.data.event;
-        const eventData = event.data.data;
-        
-        switch (eventName) {
-          case 'nodesSelected':
-            handleNodesSelected(eventData);
-            break;
-          case 'nodesDeselected':
-            handleNodesDeselected(eventData);
-            break;
-          case 'linksSelected':
-            handleLinksSelected(eventData);
-            break;
-          case 'linksDeselected':
-            handleLinksDeselected(eventData);
-            break;
-        }
-      }
-    });
+    // Selection event handlers are now handled by the main message listener above
 
          // --- Selection Event Handlers ---
      function handleNodesSelected(eventData) {
@@ -2127,15 +2087,7 @@
       log('📍 Plugin link selection cleared');
     }
 
-    // --- Listen for simulationSettingsUpdated events from the API ---
-    window.addEventListener('message', function(event) {
-      if (event.data && event.data.sageApi && event.data.type === 'event' && event.data.event === 'simulationSettingsUpdated') {
-        if (event.data.data && typeof event.data.data.simulationType !== 'undefined') {
-          modelType = event.data.data.simulationType;
-          applyPropertyStates();
-        }
-      }
-    });
+    // simulationSettingsUpdated events are now handled by the main message listener above
 
     // --- Dynamic link property UI logic ---
     function updateLinkFormControls(linkData) {
@@ -2382,5 +2334,5 @@
       }
     }
   </script>
-</body>
-</html> 
+  </body>
+  </html>
