@@ -471,34 +471,30 @@
               -->
               <!-- Add all three buttons in a single row at the bottom -->
               
-              <!-- Direction Control -->
-              <div class="input-row">
-                <div class="input-group">
-                  <label>Direction:</label>
-                  <div style="display: flex; align-items: center; gap: 5px;">
-                    <span id="linkSourceNode">Node 1</span>
-                    <select id="linkDirection" onchange="onLinkPropertyChange()">
-                      <option value="forward">→</option>
-                      <option value="backward">←</option>
-                    </select>
-                    <span id="linkTargetNode">Node 2</span>
-                  </div>
-                </div>
+              <!-- Node Names Row with Centered Direction -->
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <span id="linkSourceNode" style="font-weight: bold; color: #007cba;">Node 1</span>
+                <select id="linkDirection" onchange="onLinkPropertyChange()" style="width: 50px; text-align: center;">
+                  <option value="forward">→</option>
+                  <option value="backward">←</option>
+                </select>
+                <span id="linkTargetNode" style="font-weight: bold; color: #007cba;">Node 2</span>
               </div>
               
-              <!-- Basic Link Properties -->
-            <div class="input-row">
+              <!-- Relation Vector -->
               <div class="input-group">
                 <label for="linkRelationVector">Relation Vector:</label>
-                  <select id="linkRelationVector" onchange="onRelationVectorChange(); onLinkPropertyChange();">
+                <select id="linkRelationVector" onchange="onRelationVectorChange(); onLinkPropertyChange();" style="width: 100%;">
                   <option value="increase">Increase</option>
                   <option value="decrease">Decrease</option>
                   <option value="vary">Vary (Custom)</option>
                 </select>
               </div>
+              
+              <!-- Relation Scalar -->
               <div class="input-group" id="scalarGroup">
                 <label for="linkRelationScalar">Relation Scalar:</label>
-                  <select id="linkRelationScalar" onchange="onLinkPropertyChange()">
+                <select id="linkRelationScalar" onchange="onLinkPropertyChange()" style="width: 100%;">
                   <option value="aboutTheSame">About the Same</option>
                   <option value="aLittle">A Little</option>
                   <option value="aLot">A Lot</option>
@@ -506,15 +502,18 @@
                   <option value="lessAndLess">Less and Less</option>
                 </select>
               </div>
+              
+              <!-- Custom Data -->
               <div class="input-group" id="customDataGroup" style="display:none;">
-                <label for="linkCustomData">Custom Data (JSON):</label>
-                  <input id="linkCustomData" type="text" placeholder='e.g. [[0,0],[1,1],[2,2]]' onchange="onLinkPropertyChange()" />
+                <label for="linkCustomData">Custom Data:</label>
+                <input id="linkCustomData" type="text" placeholder='e.g. [[0,0],[1,1],[2,2]]' onchange="onLinkPropertyChange()" style="width: 100%;" />
               </div>
-            </div>
-            <div class="input-group" id="labelGroup">
-              <label for="linkLabel">Label (optional):</label>
-                <input id="linkLabel" type="text" placeholder="e.g. Relationship label" onchange="onLinkPropertyChange()" />
-            </div>
+              
+              <!-- Label -->
+              <div class="input-group" id="labelGroup">
+                <label for="linkLabel">Label:</label>
+                <input id="linkLabel" type="text" placeholder="e.g. Relationship label" onchange="onLinkPropertyChange()" style="width: 100%;" />
+              </div>
               
               <!-- Link Properties: Restore button row above Advanced Properties -->
               <div class="input-row" style="margin-top: 10px;">
@@ -571,16 +570,24 @@
           <button id="recordStreamBtn" style="display: none;">Record Continuously</button>
           <button id="stopRecordingBtn" style="display: none;">Stop Recording</button>
           <div class="input-row" style="margin-top: 8px;">
-            <div class="input-group">
-              <label for="recordDuration">Duration (optional):</label>
-              <input type="number" id="recordDuration" min="1" max="50000" placeholder="e.g. 100">
+            <div class="input-group" style="flex: 1;">
+              <label for="recordDuration">Duration:</label>
+              <input type="number" id="recordDuration" min="1" max="50000" placeholder="e.g. 100" style="width: 100%; padding: 6px;">
             </div>
-            <div class="input-group">
-              <label for="recordUnits">Units (optional):</label>
-              <input type="text" id="recordUnits" placeholder="e.g. steps, minutes">
+            <div class="input-group" style="flex: 1;">
+              <label for="recordUnits">Units:</label>
+              <select id="recordUnits" style="width: 100%; padding: 6px;">
+                <option value="">Select units</option>
+                <option value="steps">Steps</option>
+                <option value="minutes">Minutes</option>
+                <option value="seconds">Seconds</option>
+                <option value="hours">Hours</option>
+                <option value="days">Days</option>
+                <option value="iterations">Iterations</option>
+              </select>
             </div>
             <div class="input-group" style="align-self: flex-end;">
-              <button onclick="setRecordingOptions()" style="width: 100%;">Set Recording Options</button>
+              <button onclick="setRecordingOptions()" style="width: 100%; padding: 8px;">Set Recording Options</button>
             </div>
           </div>
         </div>
@@ -640,6 +647,28 @@
           </div>
           <button onclick="restoreAllUi()" type="button">Restore All UI</button>
           <button onclick="updateUiSettings()">Update UI Settings</button>
+          
+          <!-- Model Type Selection -->
+          <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #ddd;">
+            <div class="input-group">
+              <label style="font-weight: bold; margin-bottom: 8px; display: block;">Model Type:</label>
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="display: flex; align-items: center; gap: 6px;">
+                  <input type="radio" name="modelType" value="0" id="modelTypeDiagram">
+                  <span>Model diagram</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 6px;">
+                  <input type="radio" name="modelType" value="1" id="modelTypeStatic">
+                  <span>Static equilibrium simulation</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 6px;">
+                  <input type="radio" name="modelType" value="2" id="modelTypeDynamic">
+                  <span>Dynamic time-based simulation</span>
+                </label>
+              </div>
+            </div>
+            <button id="updateModelTypeBtn" onclick="updateModelType()" disabled style="margin-top: 8px; padding: 8px 12px;">Update Model Type</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1187,8 +1216,39 @@
 
       // Update direction display (if source/target available)
       if (linkData.source && linkData.target) {
-        document.getElementById('linkSourceNode').textContent = linkData.source;
-        document.getElementById('linkTargetNode').textContent = linkData.target;
+        // Try to get node titles from the nodesList dropdown first, fall back to IDs
+        const nodesList = document.getElementById('nodesList');
+        let sourceDisplay = linkData.source;
+        let targetDisplay = linkData.target;
+        
+        if (nodesList && nodesList.options) {
+          // Look for source node title
+          for (let option of nodesList.options) {
+            if (option.value === linkData.source) {
+              // Extract title from "ID (Title)" format
+              const match = option.textContent.match(/^[^(]+\((.+)\)$/);
+              if (match) {
+                sourceDisplay = match[1];
+              }
+              break;
+            }
+          }
+          
+          // Look for target node title  
+          for (let option of nodesList.options) {
+            if (option.value === linkData.target) {
+              // Extract title from "ID (Title)" format
+              const match = option.textContent.match(/^[^(]+\((.+)\)$/);
+              if (match) {
+                targetDisplay = match[1];
+              }
+              break;
+            }
+          }
+        }
+        
+        document.getElementById('linkSourceNode').textContent = sourceDisplay;
+        document.getElementById('linkTargetNode').textContent = targetDisplay;
       }
 
       // Show/hide scalar/customData fields
@@ -1878,6 +1938,92 @@
       ].forEach(id => document.getElementById(id).checked = true);
     }
 
+    // --- Model Type Management ---
+    let currentModelType = null;
+    
+    function syncModelTypeRadios() {
+      // Get current model type from SageModeler
+      sendApiRequestWithHandlers('get', 'simulation/state', {},
+        (data) => {
+          if (data && typeof data.simulationType !== 'undefined') {
+            currentModelType = data.simulationType;
+            // Set the appropriate radio button
+            const radioButtons = document.querySelectorAll('input[name="modelType"]');
+            radioButtons.forEach(radio => {
+              radio.checked = (parseInt(radio.value) === currentModelType);
+            });
+            // Disable Update button initially since selection matches current
+            document.getElementById('updateModelTypeBtn').disabled = true;
+            log(`📊 Current model type synced: ${getModelTypeName(currentModelType)}`);
+          }
+        },
+        (err) => {
+          log('❌ Error getting model type: ' + err);
+        }
+      );
+    }
+    
+    function getModelTypeName(type) {
+      const names = {
+        0: 'Model diagram',
+        1: 'Static equilibrium simulation', 
+        2: 'Dynamic time-based simulation'
+      };
+      return names[type] || 'Unknown';
+    }
+    
+    function onModelTypeChange() {
+      const selectedType = parseInt(document.querySelector('input[name="modelType"]:checked').value);
+      const updateBtn = document.getElementById('updateModelTypeBtn');
+      
+      // Enable Update button only if selection differs from current
+      updateBtn.disabled = (selectedType === currentModelType);
+      
+      if (!updateBtn.disabled) {
+        updateBtn.style.background = '#007cba';
+        updateBtn.style.color = 'white';
+      } else {
+        updateBtn.style.background = '';
+        updateBtn.style.color = '';
+      }
+    }
+    
+    function updateModelType() {
+      const selectedType = parseInt(document.querySelector('input[name="modelType"]:checked').value);
+      
+      if (selectedType === currentModelType) {
+        log('⚠️ Selected model type is already current');
+        return;
+      }
+      
+      const typeName = getModelTypeName(selectedType);
+      log(`🔄 Updating model type to: ${typeName}`);
+      
+      sendApiRequestWithHandlers('update', 'simulation/settings', { simulationType: selectedType },
+        (data) => {
+          log(`✅ Model type updated to: ${typeName}`);
+          currentModelType = selectedType;
+          document.getElementById('updateModelTypeBtn').disabled = true;
+          document.getElementById('updateModelTypeBtn').style.background = '';
+          document.getElementById('updateModelTypeBtn').style.color = '';
+        },
+        (err) => {
+          log('❌ Error updating model type: ' + err);
+        }
+      );
+    }
+    
+    // Add event listeners to model type radio buttons
+    document.addEventListener('DOMContentLoaded', function() {
+      const radioButtons = document.querySelectorAll('input[name="modelType"]');
+      radioButtons.forEach(radio => {
+        radio.addEventListener('change', onModelTypeChange);
+      });
+      
+      // Sync model type when plugin loads
+      setTimeout(syncModelTypeRadios, 1000); // Wait for SageModeler to be ready
+    });
+
     // Test: send a message to self to confirm handler works
     window.postMessage({ test: "self-message" }, "*");
 
@@ -2245,6 +2391,27 @@
 
     function stopRecordingBtnHandler() {
       sendApiRequest('call', 'simulation/stopRecording', {}, 'Stop Recording');
+    }
+
+    function setRecordingOptions() {
+      const duration = document.getElementById('recordDuration').value;
+      const units = document.getElementById('recordUnits').value;
+      
+      const options = {};
+      if (duration) options.duration = Number(duration);
+      if (units) options.units = units;
+      
+      if (Object.keys(options).length === 0) {
+        log('⚠️ No recording options specified');
+        return;
+      }
+      
+      sendApiRequest('update', 'simulation/recording-options', options, 'Set Recording Options');
+      
+      const optionsText = Object.entries(options)
+        .map(([key, value]) => `${key}: ${value}`)
+        .join(', ');
+      log(`📊 Recording options set: ${optionsText}`);
     }
 
     // [13-4] Add SD-JSON import/export logic
