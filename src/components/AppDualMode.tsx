@@ -113,6 +113,19 @@ export const AppDualMode = () => {
     try {
       setIsInitializing(true);
       setInitializationError(null);
+
+      // Initialize CODAP plugin first
+      try {
+        await initializePlugin({
+          pluginName: "CODAP + Claude AI",
+          version: "1.0.0",
+          dimensions: { width: 415, height: 295 }
+        });
+        console.log("CODAP plugin initialized");
+      } catch (error) {
+        console.log("CODAP plugin initialization had issues, but continuing...", error);
+      }
+
       // Only generate a session if not present
       if (!sessionId) {
         // Determine capabilities based on manual mode selection and auto-detection

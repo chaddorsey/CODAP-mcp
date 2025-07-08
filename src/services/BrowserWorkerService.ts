@@ -20,7 +20,6 @@ import {
   createItems,
   createTable,
   sendMessage,
-  initializePlugin,
   getListOfDataContexts
 } from "@concord-consortium/codap-plugin-api";
 
@@ -53,7 +52,6 @@ export class BrowserWorkerService {
   private lastClaudeActivity = 0; // Track last Claude activity
   private claudeTimeoutTimer: NodeJS.Timeout | null = null; // Timeout timer
   private capabilities: string[]; // Supported capabilities
-  private codapInitialized = false; // Track CODAP interface initialization
 
   private static readonly CLAUDE_TIMEOUT_MS = 120000; // 2 minutes of inactivity
 
@@ -503,30 +501,7 @@ export class BrowserWorkerService {
     }
   }
 
-  /**
-   * Initialize CODAP Plugin API interface
-   */
-  private async initializeCODAPInterface(): Promise<void> {
-    if (this.codapInitialized) {
-      return; // Already initialized
-    }
-    
-    try {
-      console.log("🔧 [BrowserWorkerService] Initializing CODAP Plugin API interface...");
-      
-      await initializePlugin({
-        pluginName: "CODAP-MCP",
-        version: "1.0.0",
-        dimensions: { width: 300, height: 200 }
-      });
-      
-      this.codapInitialized = true;
-      console.log("🔧 [BrowserWorkerService] CODAP Plugin API interface initialized successfully");
-    } catch (error) {
-      console.error("🔧 [BrowserWorkerService] Failed to initialize CODAP interface:", error);
-      throw error;
-    }
-  }
+
 
   /**
    * Send CODAP message using the proper CODAP Plugin API interface
@@ -535,9 +510,6 @@ export class BrowserWorkerService {
     console.log("🔧 [BrowserWorkerService] Sending CODAP API message via sendMessage:", { action, resource, values });
     
     try {
-      // Ensure CODAP interface is initialized before sending messages
-      await this.initializeCODAPInterface();
-      
       const message = {
         action,
         resource,
@@ -602,8 +574,6 @@ export class BrowserWorkerService {
       },
 
       getListOfDataContexts: async () => {
-        // Ensure CODAP interface is initialized before calling Plugin API functions
-        await this.initializeCODAPInterface();
         return await getListOfDataContexts();
       },
 
