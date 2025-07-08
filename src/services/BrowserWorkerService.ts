@@ -20,7 +20,8 @@ import {
   createItems,
   createTable,
   sendMessage,
-  initializePlugin
+  initializePlugin,
+  getListOfDataContexts
 } from "@concord-consortium/codap-plugin-api";
 
 // Import comprehensive tool handlers for dynamic execution
@@ -603,24 +604,24 @@ export class BrowserWorkerService {
       getListOfDataContexts: async () => {
         console.log("🔧 [getListOfDataContexts] Starting execution...");
         try {
-          console.log("🔧 [getListOfDataContexts] Calling sendMessage...");
-          const result = await sendMessage("get", "dataContextList");
-          console.log("✅ [getListOfDataContexts] sendMessage result:", result);
+          console.log("🔧 [getListOfDataContexts] Calling getListOfDataContexts() from CODAP Plugin API...");
+          const result = await getListOfDataContexts();
+          console.log("✅ [getListOfDataContexts] CODAP Plugin API result:", result);
           return result;
         } catch (error) {
-          console.error("❌ [getListOfDataContexts] sendMessage error:", error);
+          console.error("❌ [getListOfDataContexts] CODAP Plugin API error:", error);
           throw error;
         }
       },
 
       getDataContext: async (args: any) => {
         const { dataContext } = args;
-        return await sendMessage("get", `dataContext[${dataContext}]`);
+        return await this.sendCODAPMessage("get", `dataContext[${dataContext}]`);
       },
 
       deleteDataContext: async (args: any) => {
         const { dataContext } = args;
-        return await sendMessage("delete", `dataContext[${dataContext}]`);
+        return await this.sendCODAPMessage("delete", `dataContext[${dataContext}]`);
       },
 
       // Collection Tools
@@ -634,17 +635,17 @@ export class BrowserWorkerService {
         if (collection.parent) values.parent = collection.parent;
         if (collection.attrs) values.attrs = collection.attrs;
         
-        return await sendMessage("create", `dataContext[${dataContext}].collection`, values);
+        return await this.sendCODAPMessage("create", `dataContext[${dataContext}].collection`, values);
       },
 
       getCollectionList: async (args: any) => {
         const { dataContext } = args;
-        return await sendMessage("get", `dataContext[${dataContext}].collectionList`);
+        return await this.sendCODAPMessage("get", `dataContext[${dataContext}].collectionList`);
       },
 
       getCollection: async (args: any) => {
         const { dataContext, collection } = args;
-        return await sendMessage("get", `dataContext[${dataContext}].collection[${collection}]`);
+        return await this.sendCODAPMessage("get", `dataContext[${dataContext}].collection[${collection}]`);
       },
 
       // Attribute Tools
@@ -660,7 +661,7 @@ export class BrowserWorkerService {
         if (attribute.unit) values.unit = attribute.unit;
         if (attribute.formula) values.formula = attribute.formula;
         
-        return await sendMessage("create", `dataContext[${dataContext}].collection[${collection}].attribute`, values);
+        return await this.sendCODAPMessage("create", `dataContext[${dataContext}].collection[${collection}].attribute`, values);
       },
 
       getAttributeList: async (args: any) => {
@@ -877,12 +878,12 @@ export class BrowserWorkerService {
       getAllComponents: async () => {
         console.log("🔧 [getAllComponents] Starting execution...");
         try {
-          console.log("🔧 [getAllComponents] Calling sendMessage...");
-          const result = await sendMessage("get", "componentList");
-          console.log("✅ [getAllComponents] sendMessage result:", result);
+          console.log("🔧 [getAllComponents] Calling sendCODAPMessage...");
+          const result = await this.sendCODAPMessage("get", "componentList");
+          console.log("✅ [getAllComponents] sendCODAPMessage result:", result);
           return result;
         } catch (error) {
-          console.error("❌ [getAllComponents] sendMessage error:", error);
+          console.error("❌ [getAllComponents] sendCODAPMessage error:", error);
           throw error;
         }
       },
