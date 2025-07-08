@@ -602,20 +602,9 @@ export class BrowserWorkerService {
       },
 
       getListOfDataContexts: async () => {
-        console.log("🔧 [getListOfDataContexts] Starting execution...");
-        try {
-          // Ensure CODAP interface is initialized before calling Plugin API functions
-          console.log("🔧 [getListOfDataContexts] Initializing CODAP interface...");
-          await this.initializeCODAPInterface();
-          
-          console.log("🔧 [getListOfDataContexts] Calling getListOfDataContexts() from CODAP Plugin API...");
-          const result = await getListOfDataContexts();
-          console.log("✅ [getListOfDataContexts] CODAP Plugin API result:", result);
-          return result;
-        } catch (error) {
-          console.error("❌ [getListOfDataContexts] CODAP Plugin API error:", error);
-          throw error;
-        }
+        // Ensure CODAP interface is initialized before calling Plugin API functions
+        await this.initializeCODAPInterface();
+        return await getListOfDataContexts();
       },
 
       getDataContext: async (args: any) => {
@@ -880,16 +869,7 @@ export class BrowserWorkerService {
       },
 
       getAllComponents: async () => {
-        console.log("🔧 [getAllComponents] Starting execution...");
-        try {
-          console.log("🔧 [getAllComponents] Calling sendCODAPMessage...");
-          const result = await this.sendCODAPMessage("get", "componentList");
-          console.log("✅ [getAllComponents] sendCODAPMessage result:", result);
-          return result;
-        } catch (error) {
-          console.error("❌ [getAllComponents] sendCODAPMessage error:", error);
-          throw error;
-        }
+        return await this.sendCODAPMessage("get", "componentList");
       },
 
       getComponent: async (args: any) => {
