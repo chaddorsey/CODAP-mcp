@@ -551,7 +551,7 @@
     <div class="tab-content" id="tab-content-experiment">
       <div class="accordion">
         <div class="accordion-content active">
-          <button onclick="reloadExperimentNodes()">Reload Nodes</button>
+          <button onclick="reloadExperimentNodes()">🔄 Reload Nodes</button>
           <div id="experimentNodesContainer"></div>
           <div id="experimentModeControls"></div>
           <div style="margin: 8px 0;">
@@ -613,61 +613,131 @@
     <div class="tab-content" id="tab-content-settings">
       <div class="accordion">
         <div class="accordion-content active">
-          <div class="input-row">
-            <div class="input-group">
-              <label>Relationship Complexity:</label>
-              <label><input type="radio" name="modelComplexity" value="0"> Basic</label>
-              <label><input type="radio" name="modelComplexity" value="1" checked> Expanded</label>
-            </div>
-          </div>
-          <button onclick="updateModelComplexity()">Update Relationship Complexity</button>
-          <div class="input-row" style="margin-top: 8px;">
-            <div class="input-group"><label><input type="checkbox" id="uiRelationshipSymbols" checked> Show Relationship Symbols</label></div>
-            <div class="input-group"><label><input type="checkbox" id="uiGuide" checked> Show Guide</label></div>
-          </div>
-          <div class="input-row">
-            <div class="input-group"><label><input type="checkbox" id="uiLockdown"> Lockdown Mode</label></div>
-            <div class="input-group"><label><input type="checkbox" id="uiTouchDevice"> Touch Device</label></div>
-          </div>
-          <div class="input-row">
-            <div class="input-group"><label><input type="checkbox" id="uiGlobalNav" checked> Global Nav</label></div>
-            <div class="input-group"><label><input type="checkbox" id="uiActionBar" checked> Action Bar</label></div>
-          </div>
-          <div class="input-row">
-            <div class="input-group"><label><input type="checkbox" id="uiInspectorPanel" checked> Inspector Panel</label></div>
-            <div class="input-group"><label><input type="checkbox" id="uiNodePalette" checked> Node Palette</label></div>
-          </div>
-          <div class="input-row">
-            <div class="input-group"><label><input type="checkbox" id="uiFullscreenButton" checked> Fullscreen Button</label></div>
-            <div class="input-group"><label><input type="checkbox" id="uiScaling" checked> Scaling</label></div>
-          </div>
-          <div class="input-group">
-            <label for="uiGuideItems">Guide Items (JSON array):</label>
-            <textarea id="uiGuideItems" rows="2" style="width:100%; font-family:monospace;"></textarea>
-          </div>
-          <button onclick="restoreAllUi()" type="button">Restore All UI</button>
-          <button onclick="updateUiSettings()">Update UI Settings</button>
-          
-          <!-- Model Type Selection -->
-          <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #ddd;">
-            <div class="input-group">
-              <label style="font-weight: bold; margin-bottom: 8px; display: block;">Model Type:</label>
-              <div style="display: flex; flex-direction: column; gap: 6px;">
+          <!-- Top row: Relationship Complexity (left) and Model Type (right) -->
+          <div style="display: flex; gap: 20px; margin-bottom: 16px;">
+            <!-- Left side: Relationship Complexity -->
+            <div style="flex: 1;">
+              <div style="margin-bottom: 8px;">
+                <strong>Relationship Complexity</strong>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px;">
                 <label style="display: flex; align-items: center; gap: 6px;">
-                  <input type="radio" name="modelType" value="0" id="modelTypeDiagram">
+                  <input type="radio" name="modelComplexity" value="0">
+                  <span>Basic</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 6px;">
+                  <input type="radio" name="modelComplexity" value="1" checked>
+                  <span>Expanded</span>
+                </label>
+              </div>
+              <div style="text-align: center;">
+                <button onclick="updateModelComplexity()">Update Relationships</button>
+              </div>
+            </div>
+            
+            <!-- Right side: Model Type -->
+            <div style="flex: 1;">
+              <div style="margin-bottom: 8px;">
+                <strong>Model Type</strong>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px;">
+                <label style="display: flex; align-items: center; gap: 6px;">
+                  <input type="radio" name="modelType" value="0" id="modelTypeDiagram" onchange="onModelTypeChange()">
                   <span>Model diagram</span>
                 </label>
                 <label style="display: flex; align-items: center; gap: 6px;">
-                  <input type="radio" name="modelType" value="1" id="modelTypeStatic">
+                  <input type="radio" name="modelType" value="1" id="modelTypeStatic" onchange="onModelTypeChange()">
                   <span>Static equilibrium simulation</span>
                 </label>
                 <label style="display: flex; align-items: center; gap: 6px;">
-                  <input type="radio" name="modelType" value="2" id="modelTypeDynamic">
+                  <input type="radio" name="modelType" value="2" id="modelTypeDynamic" onchange="onModelTypeChange()">
                   <span>Dynamic time-based simulation</span>
                 </label>
               </div>
+              <div style="text-align: center;">
+                <button id="updateModelTypeBtn" onclick="updateModelType()" disabled>Update Model Type</button>
+              </div>
             </div>
-            <button id="updateModelTypeBtn" onclick="updateModelType()" disabled style="margin-top: 8px; padding: 8px 12px;">Update Model Type</button>
+          </div>
+          
+          <!-- UI Settings with inline checkboxes -->
+          <div style="border-top: 1px solid #ddd; padding-top: 12px;">
+            <div class="input-row" style="margin-bottom: 8px;">
+              <div class="input-group">
+                <label style="display: flex; align-items: center; gap: 6px;">
+                  <span>Show Relationship Symbols</span>
+                  <input type="checkbox" id="uiRelationshipSymbols" checked>
+                </label>
+              </div>
+              <div class="input-group">
+                <label style="display: flex; align-items: center; gap: 6px;">
+                  <span>Show Guide</span>
+                  <input type="checkbox" id="uiGuide" checked>
+                </label>
+              </div>
+            </div>
+            <div class="input-row" style="margin-bottom: 8px;">
+              <div class="input-group">
+                <label style="display: flex; align-items: center; gap: 6px;">
+                  <span>Lockdown Mode</span>
+                  <input type="checkbox" id="uiLockdown">
+                </label>
+              </div>
+              <div class="input-group">
+                <label style="display: flex; align-items: center; gap: 6px;">
+                  <span>Touch Device</span>
+                  <input type="checkbox" id="uiTouchDevice">
+                </label>
+              </div>
+            </div>
+            <div class="input-row" style="margin-bottom: 8px;">
+              <div class="input-group">
+                <label style="display: flex; align-items: center; gap: 6px;">
+                  <span>Global Nav</span>
+                  <input type="checkbox" id="uiGlobalNav" checked>
+                </label>
+              </div>
+              <div class="input-group">
+                <label style="display: flex; align-items: center; gap: 6px;">
+                  <span>Action Bar</span>
+                  <input type="checkbox" id="uiActionBar" checked>
+                </label>
+              </div>
+            </div>
+            <div class="input-row" style="margin-bottom: 8px;">
+              <div class="input-group">
+                <label style="display: flex; align-items: center; gap: 6px;">
+                  <span>Inspector Panel</span>
+                  <input type="checkbox" id="uiInspectorPanel" checked>
+                </label>
+              </div>
+              <div class="input-group">
+                <label style="display: flex; align-items: center; gap: 6px;">
+                  <span>Node Palette</span>
+                  <input type="checkbox" id="uiNodePalette" checked>
+                </label>
+              </div>
+            </div>
+            <div class="input-row" style="margin-bottom: 8px;">
+              <div class="input-group">
+                <label style="display: flex; align-items: center; gap: 6px;">
+                  <span>Fullscreen Button</span>
+                  <input type="checkbox" id="uiFullscreenButton" checked>
+                </label>
+              </div>
+              <div class="input-group">
+                <label style="display: flex; align-items: center; gap: 6px;">
+                  <span>Scaling</span>
+                  <input type="checkbox" id="uiScaling" checked>
+                </label>
+              </div>
+            </div>
+            <div class="input-group" style="margin-bottom: 12px;">
+              <label for="uiGuideItems">Guide Items (JSON array):</label>
+              <textarea id="uiGuideItems" rows="2" style="width:100%; font-family:monospace;"></textarea>
+            </div>
+            <button onclick="restoreAllUi()" type="button">Restore All UI</button>
+            <button onclick="updateUiSettings()">Update UI Settings</button>
           </div>
         </div>
       </div>
@@ -977,6 +1047,11 @@
           if (field) field.disabled = true;
         });
       }
+      
+      // Sync model type radio buttons
+      if (typeof syncModelTypeRadios === 'function') {
+        syncModelTypeRadios();
+      }
     }
 
     // --- Node Operations ---
@@ -1162,6 +1237,8 @@
       const dirEl = document.getElementById('linkDirection');
       if (dirEl && selectedLinkSourceId && selectedLinkTargetId) {
         dirEl.value = 'forward';
+        // Enable direction changing (assuming bidirectional links are allowed)
+        dirEl.disabled = false;
       }
 
       // Handle both API response formats for relation vector/scalar
@@ -1214,7 +1291,7 @@
         log('❌ linkCustomData element not found');
       }
 
-      // Update direction display (if source/target available)
+      // Update direction display (if source/target available) with improved node title lookup
       if (linkData.source && linkData.target) {
         // Try to get node titles from the nodesList dropdown first, fall back to IDs
         const nodesList = document.getElementById('nodesList');
@@ -1229,6 +1306,9 @@
               const match = option.textContent.match(/^[^(]+\((.+)\)$/);
               if (match) {
                 sourceDisplay = match[1];
+              } else {
+                // If no parentheses, use the full text content (likely just the title)
+                sourceDisplay = option.textContent.trim();
               }
               break;
             }
@@ -1241,14 +1321,20 @@
               const match = option.textContent.match(/^[^(]+\((.+)\)$/);
               if (match) {
                 targetDisplay = match[1];
+              } else {
+                // If no parentheses, use the full text content (likely just the title)
+                targetDisplay = option.textContent.trim();
               }
               break;
             }
           }
         }
         
-        document.getElementById('linkSourceNode').textContent = sourceDisplay;
-        document.getElementById('linkTargetNode').textContent = targetDisplay;
+        // Update the direction display elements
+        const sourceNodeEl = document.getElementById('linkSourceNode');
+        const targetNodeEl = document.getElementById('linkTargetNode');
+        if (sourceNodeEl) sourceNodeEl.textContent = sourceDisplay;
+        if (targetNodeEl) targetNodeEl.textContent = targetDisplay;
       }
 
       // Show/hide scalar/customData fields
@@ -1989,28 +2075,50 @@
     }
     
     function updateModelType() {
-      const selectedType = parseInt(document.querySelector('input[name="modelType"]:checked').value);
+      const selectedValue = document.querySelector('input[name="modelType"]:checked')?.value;
       
-      if (selectedType === currentModelType) {
-        log('⚠️ Selected model type is already current');
+      if (!selectedValue) {
+        log('❌ No model type selected');
         return;
       }
       
-      const typeName = getModelTypeName(selectedType);
-      log(`🔄 Updating model type to: ${typeName}`);
+      const newType = parseInt(selectedValue);
+      log(`📝 Updating model type from ${modelType} to ${newType}`);
       
-      sendApiRequestWithHandlers('update', 'simulation/settings', { simulationType: selectedType },
-        (data) => {
-          log(`✅ Model type updated to: ${typeName}`);
-          currentModelType = selectedType;
-          document.getElementById('updateModelTypeBtn').disabled = true;
-          document.getElementById('updateModelTypeBtn').style.background = '';
-          document.getElementById('updateModelTypeBtn').style.color = '';
-        },
-        (err) => {
-          log('❌ Error updating model type: ' + err);
+      // 1. Fetch current model
+      sendApiRequestWithHandlers('get', 'model', {}, function(data) {
+        if (!data) {
+          log('❌ Could not fetch current model');
+          return;
         }
-      );
+        // 2. Update settings
+        if (!data.settings) data.settings = {};
+        data.settings.simulationType = newType;
+        // 3. Send full model back, wrapped in { model: data }
+        sendApiRequestWithHandlers('update', 'model', { model: data }, function(resp) {
+          log(`✅ Model type updated successfully to ${newType}`);
+          modelType = newType;
+          syncModelTypeRadios();
+          applyPropertyStates();
+          // Visual feedback
+          const updateBtn = document.getElementById('updateModelTypeBtn');
+          if (updateBtn) {
+            const originalText = updateBtn.textContent;
+            updateBtn.textContent = '✅ Updated!';
+            updateBtn.style.background = '#28a745';
+            setTimeout(() => {
+              updateBtn.textContent = originalText;
+              updateBtn.style.background = '';
+            }, 2000);
+          }
+        }, function(err) {
+          log(`❌ Error updating model type: ${err}`);
+          // Reset radio to current value on error
+          syncModelTypeRadios();
+        });
+      }, function(err) {
+        log('❌ Error fetching model: ' + err);
+      });
     }
     
     // Add event listeners to model type radio buttons
@@ -2083,11 +2191,20 @@
         const linkId = sel.value;
         selectLink(linkId);
         document.getElementById('linkIdInput').value = linkId;
+        
+        log(`📍 Link selected from dropdown: ${linkId}`);
+        
         // Get the link data to populate form
         sendApiRequestWithHandlers('get', getLinkResource(linkId), {},
           (data) => {
+            log(`📥 Received link data: ${JSON.stringify(data, null, 2)}`);
             if (data.link) {
               populateLinkForm(data.link);
+            } else if (data.id) {
+              // Handle case where response is the link data directly
+              populateLinkForm(data);
+            } else {
+              log('❌ No link data found in response');
             }
           },
           (err) => {
@@ -2499,6 +2616,87 @@
         header.classList.add('collapsed');
         if (arrow) arrow.style.transform = 'rotate(-90deg)';
       }
+    }
+
+    // --- Model Type Management Functions ---
+    function onModelTypeChange() {
+      const selectedValue = document.querySelector('input[name="modelType"]:checked')?.value;
+      const currentValue = modelType.toString();
+      const updateBtn = document.getElementById('updateModelTypeBtn');
+      
+      if (updateBtn) {
+        if (selectedValue && selectedValue !== currentValue) {
+          updateBtn.disabled = false;
+          updateBtn.style.fontWeight = 'bold';
+          log(`📝 Model type change detected: ${currentValue} → ${selectedValue}`);
+        } else {
+          updateBtn.disabled = true;
+          updateBtn.style.fontWeight = 'normal';
+        }
+      }
+    }
+
+    function syncModelTypeRadios() {
+      const radios = document.querySelectorAll('input[name="modelType"]');
+      radios.forEach(radio => {
+        radio.checked = (radio.value === modelType.toString());
+      });
+      
+      // Reset update button state
+      const updateBtn = document.getElementById('updateModelTypeBtn');
+      if (updateBtn) {
+        updateBtn.disabled = true;
+        updateBtn.style.fontWeight = 'normal';
+      }
+      
+      log(`📝 Synced model type radios to current value: ${modelType}`);
+    }
+
+    function updateModelType() {
+      const selectedValue = document.querySelector('input[name="modelType"]:checked')?.value;
+      
+      if (!selectedValue) {
+        log('❌ No model type selected');
+        return;
+      }
+      
+      const newType = parseInt(selectedValue);
+      log(`📝 Updating model type from ${modelType} to ${newType}`);
+      
+      // 1. Fetch current model
+      sendApiRequestWithHandlers('get', 'model', {}, function(data) {
+        if (!data) {
+          log('❌ Could not fetch current model');
+          return;
+        }
+        // 2. Update settings
+        if (!data.settings) data.settings = {};
+        data.settings.simulationType = newType;
+        // 3. Send full model back, wrapped in { model: data }
+        sendApiRequestWithHandlers('update', 'model', { model: data }, function(resp) {
+          log(`✅ Model type updated successfully to ${newType}`);
+          modelType = newType;
+          syncModelTypeRadios();
+          applyPropertyStates();
+          // Visual feedback
+          const updateBtn = document.getElementById('updateModelTypeBtn');
+          if (updateBtn) {
+            const originalText = updateBtn.textContent;
+            updateBtn.textContent = '✅ Updated!';
+            updateBtn.style.background = '#28a745';
+            setTimeout(() => {
+              updateBtn.textContent = originalText;
+              updateBtn.style.background = '';
+            }, 2000);
+          }
+        }, function(err) {
+          log(`❌ Error updating model type: ${err}`);
+          // Reset radio to current value on error
+          syncModelTypeRadios();
+        });
+      }, function(err) {
+        log('❌ Error fetching model: ' + err);
+      });
     }
   </script>
   </body>
