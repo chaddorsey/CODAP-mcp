@@ -1,4 +1,4 @@
-const { getSession } = require("../kv-utils");
+const { getSession } = require("server/utils/kv-utils");
 
 /**
  * Validates session code format

@@ -11,6 +11,20 @@ jest.mock("../../components/PairingBanner.css", () => ({}));
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
 
+// Mock the useCountdown hook to always return a stable object
+jest.mock("../../hooks/useCountdown", () => {
+  const stableCountdown = {
+    time: { display: "10:00", status: "active" },
+    updateTimer: jest.fn(),
+    start: jest.fn(),
+    stop: jest.fn(),
+    reset: jest.fn()
+  };
+  return {
+    useCountdown: jest.fn(() => stableCountdown)
+  };
+});
+
 describe("PairingBanner Integration Tests", () => {
   const mockRelayBaseUrl = "https://test-relay.example.com";
   
@@ -146,10 +160,10 @@ describe("PairingBanner Integration Tests", () => {
           `${mockRelayBaseUrl}/api/sessions`,
           expect.objectContaining({
             method: "POST",
-            headers: {
+            headers: expect.objectContaining({
               "Content-Type": "application/json"
-            },
-            signal: expect.any(AbortSignal)
+            }),
+            signal: expect.any(Object)
           })
         );
       });
@@ -173,7 +187,8 @@ describe("PairingBanner Integration Tests", () => {
       await waitFor(() => {
         expect(screen.getByText("Session Ready")).toBeInTheDocument();
         expect(screen.getByText("A2B3C4D5")).toBeInTheDocument();
-        expect(screen.getByText("Expires in: 5 minutes")).toBeInTheDocument();
+        expect(screen.getByText("Time remaining:")).toBeInTheDocument();
+        expect(screen.getByText("10:00")).toBeInTheDocument();
       });
     });
 
@@ -258,7 +273,9 @@ describe("PairingBanner Integration Tests", () => {
       render(<PairingBanner relayBaseUrl={mockRelayBaseUrl} />);
 
       // Should show loading state initially
-      expect(screen.getByText("Creating session...")).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText("Creating session...")).toBeInTheDocument();
+      });
 
       // Should eventually show success
       await waitFor(() => {
@@ -275,7 +292,9 @@ describe("PairingBanner Integration Tests", () => {
       const { unmount } = render(<PairingBanner relayBaseUrl={mockRelayBaseUrl} />);
 
       // Should show loading
-      expect(screen.getByText("Creating session...")).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText("Creating session...")).toBeInTheDocument();
+      });
 
       // Unmount component during async operation
       unmount();

@@ -1,5 +1,12 @@
 import { toolSchemaToJsonSchema } from "../../../services/browserWorker/utils/schemaTransform";
-import { ToolSchema } from "../../../services/browserWorker/types";
+// If ToolSchema is not exported, comment out or remove the import and use an inline type for the test
+// import { ToolSchema } from "../../../services/browserWorker/types";
+
+type ToolSchema = {
+  name: string;
+  description: string;
+  parameters: any;
+};
 
 describe("toolSchemaToJsonSchema", () => {
   it("should transform a simple ToolSchema to JSON Schema draft-07", () => {

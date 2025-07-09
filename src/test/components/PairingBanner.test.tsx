@@ -6,18 +6,37 @@ import { BannerState } from "../../components/types";
 import { SessionData, SessionServiceError } from "../../services/types";
 
 // Mock the session service
-jest.mock("../../services", () => ({
-  createSessionService: jest.fn(),
-  SessionService: jest.fn(),
-  SessionServiceError: jest.fn().mockImplementation((message, code) => {
-    const error = new Error(message);
-    (error as any).code = code;
-    return error;
-  })
-}));
+jest.mock("../../services", () => {
+  const mockSessionService = {
+    createSession: jest.fn()
+  };
+  return {
+    createSessionService: jest.fn(() => mockSessionService),
+    SessionService: jest.fn(),
+    SessionServiceError: jest.fn().mockImplementation((message, code) => {
+      const error = new Error(message);
+      (error as any).code = code;
+      return error;
+    })
+  };
+});
 
 // Mock CSS import
 jest.mock("../../components/PairingBanner.css", () => ({}));
+
+// Mock the useCountdown hook to always return a stable object
+jest.mock("../../hooks/useCountdown", () => {
+  const stableCountdown = {
+    time: { display: "10:00", status: "active" },
+    updateTimer: jest.fn(),
+    start: jest.fn(),
+    stop: jest.fn(),
+    reset: jest.fn()
+  };
+  return {
+    useCountdown: jest.fn(() => stableCountdown)
+  };
+});
 
 describe("PairingBanner", () => {
   const mockSessionData: SessionData = {
@@ -26,14 +45,14 @@ describe("PairingBanner", () => {
     expiresAt: new Date(Date.now() + 600000).toISOString()
   };
 
-  const mockSessionService = {
-    createSession: jest.fn()
-  };
-
   beforeEach(() => {
     jest.clearAllMocks();
     const { createSessionService } = require("../../services");
-    createSessionService.mockReturnValue(mockSessionService);
+    // Only reset the mock function, not the object
+    createSessionService.mockClear();
+    // Reset the mockSessionService methods
+    const mockSessionService = createSessionService();
+    mockSessionService.createSession.mockReset();
     mockSessionService.createSession.mockResolvedValue(mockSessionData);
   });
 
@@ -46,6 +65,8 @@ describe("PairingBanner", () => {
       
       // Should automatically start session creation
       waitFor(() => {
+        const { createSessionService } = require("../../services");
+        const mockSessionService = createSessionService();
         expect(mockSessionService.createSession).toHaveBeenCalled();
       });
     });
@@ -54,6 +75,8 @@ describe("PairingBanner", () => {
       render(<PairingBanner autoStart={false} />);
       
       expect(screen.getByRole("region")).toBeInTheDocument();
+      const { createSessionService } = require("../../services");
+      const mockSessionService = createSessionService();
       expect(mockSessionService.createSession).not.toHaveBeenCalled();
     });
 
@@ -69,6 +92,8 @@ describe("PairingBanner", () => {
 
   describe("Loading State", () => {
     it("shows loading indicators during session creation", async () => {
+      const { createSessionService } = require("../../services");
+      const mockSessionService = createSessionService();
       // Make the service call hang
       mockSessionService.createSession.mockImplementation(() => new Promise(() => {}));
       
@@ -81,6 +106,8 @@ describe("PairingBanner", () => {
     });
 
     it("shows retry indicator when retrying", async () => {
+      const { createSessionService } = require("../../services");
+      const mockSessionService = createSessionService();
       // First call fails, second call hangs
       mockSessionService.createSession
         .mockRejectedValueOnce(new Error("Network error"))
@@ -103,6 +130,8 @@ describe("PairingBanner", () => {
     });
 
     it("applies loading state CSS class", async () => {
+      const { createSessionService } = require("../../services");
+      const mockSessionService = createSessionService();
       mockSessionService.createSession.mockImplementation(() => new Promise(() => {}));
       
       render(<PairingBanner />);
@@ -161,6 +190,8 @@ describe("PairingBanner", () => {
       render(<PairingBanner onSessionCreated={onSessionCreated} />);
       
       await waitFor(() => {
+        const { createSessionService } = require("../../services");
+        const mockSessionService = createSessionService();
         expect(onSessionCreated).toHaveBeenCalledWith(mockSessionData);
       });
     });
@@ -171,6 +202,8 @@ describe("PairingBanner", () => {
       const errorMessage = "Network connection failed";
       const mockError = new Error(errorMessage);
       (mockError as any).code = "NETWORK_ERROR";
+      const { createSessionService } = require("../../services");
+      const mockSessionService = createSessionService();
       mockSessionService.createSession.mockRejectedValue(mockError);
       
       render(<PairingBanner />);
@@ -182,6 +215,8 @@ describe("PairingBanner", () => {
     });
 
     it("shows generic error message for non-SessionServiceError", async () => {
+      const { createSessionService } = require("../../services");
+      const mockSessionService = createSessionService();
       mockSessionService.createSession.mockRejectedValue(new Error("Generic error"));
       
       render(<PairingBanner />);
@@ -192,6 +227,8 @@ describe("PairingBanner", () => {
     });
 
     it("applies error state CSS class", async () => {
+      const { createSessionService } = require("../../services");
+      const mockSessionService = createSessionService();
       mockSessionService.createSession.mockRejectedValue(new Error("Test error"));
       
       render(<PairingBanner />);
@@ -205,6 +242,8 @@ describe("PairingBanner", () => {
     it("calls onError callback when provided", async () => {
       const onError = jest.fn();
       const testError = new Error("Test error");
+      const { createSessionService } = require("../../services");
+      const mockSessionService = createSessionService();
       mockSessionService.createSession.mockRejectedValue(testError);
       
       render(<PairingBanner onError={onError} />);
@@ -217,6 +256,8 @@ describe("PairingBanner", () => {
 
   describe("Retry Functionality", () => {
     it("allows retry after failed session creation", async () => {
+      const { createSessionService } = require("../../services");
+      const mockSessionService = createSessionService();
       mockSessionService.createSession
         .mockRejectedValueOnce(new Error("First failure"))
         .mockResolvedValueOnce(mockSessionData);
@@ -241,6 +282,8 @@ describe("PairingBanner", () => {
     });
 
     it("retry button has proper accessibility attributes", async () => {
+      const { createSessionService } = require("../../services");
+      const mockSessionService = createSessionService();
       mockSessionService.createSession.mockRejectedValue(new Error("Test error"));
       
       render(<PairingBanner />);
@@ -268,6 +311,8 @@ describe("PairingBanner", () => {
       fireEvent.click(screen.getByText("Create Session"));
       
       await waitFor(() => {
+        const { createSessionService } = require("../../services");
+        const mockSessionService = createSessionService();
         expect(mockSessionService.createSession).toHaveBeenCalledTimes(1);
       });
     });
@@ -319,7 +364,7 @@ describe("PairingBanner", () => {
       render(<PairingBanner autoStart={false} />);
       
       expect(createSessionService).toHaveBeenCalledWith(
-        "https://codap-mcp-cdorsey-concordorgs-projects.vercel.app",
+        "https://codap-9o3vyf2g9-cdorsey-concordorgs-projects.vercel.app",
         {
           timeout: 10000,
           maxRetries: 3,

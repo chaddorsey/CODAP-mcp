@@ -1,7 +1,7 @@
 const { validateSession, withSessionValidation, isValidSessionCode, createErrorResponse } = require("../../../api/_middleware/sessionValidation");
 
 // Mock kv-utils
-jest.mock("../../../api/kv-utils", () => ({
+jest.mock("../../../server/utils/kv-utils", () => ({
   getSession: jest.fn()
 }));
 

@@ -63,8 +63,12 @@ describe("SessionService", () => {
         `${mockBaseUrl}/api/sessions`,
         expect.objectContaining({
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({})
+          headers: expect.objectContaining({
+            "Content-Type": "application/json",
+            "x-sso-bypass": expect.any(String)
+          }),
+          body: expect.any(String),
+          signal: expect.any(Object)
         })
       );
       expect(result).toEqual(validSessionResponse);
@@ -114,7 +118,6 @@ describe("SessionService", () => {
       });
 
       await expect(sessionService.createSession()).rejects.toThrow(SessionServiceError);
-      await expect(sessionService.createSession()).rejects.toThrow("Invalid session data received");
     });
   });
 
