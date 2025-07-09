@@ -1,6 +1,6 @@
 # Product Requirements Document (PRD)
 
-## 1. Overview & Objectives
+## 1. Overview & Objectives.
 
 **Goal:**  
 Enable external LLMs (ChatGPT desktop/web, Claude, local LLaMA, OpenAI plugins) to drive a CODAP plugin via MCP tool calls, without requiring users to run local servers. We'll accomplish this with:
