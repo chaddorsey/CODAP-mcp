@@ -1,3 +1,4 @@
+require('dotenv').config();
 // Session creation endpoint using Node.js runtime
 // Self-contained version to avoid import path issues
 const Redis = require("ioredis");
@@ -15,12 +16,9 @@ function getRedisClient() {
     const port = process.env.REDIS_PORT;
     const password = process.env.REDIS_PASSWORD;
 
-    if (!host || !port || !password) {
-      throw new Error("Missing Redis configuration in environment variables.");
-    }
-
-    console.log("[sessions] Redis connection details:", { host, port, hasPassword: !!password });
-
+    
+    console.log('[sessions] Redis connection details:', { host, port, hasPassword: !!password });
+    
     redis = new Redis({
       host,
       port,
@@ -35,17 +33,17 @@ function getRedisClient() {
       lazyConnect: true,
       // Add error handling
       onError: (error) => {
-        console.error("[sessions] Redis connection error:", error.message);
+        console.error('[sessions] Redis connection error:', error.message);
       }
     });
-
+    
     // Add connection event listeners
-    redis.on("connect", () => {
-      console.log("[sessions] Redis connected successfully");
+    redis.on('connect', () => {
+      console.log('[sessions] Redis connected successfully');
     });
-
-    redis.on("error", (error) => {
-      console.error("[sessions] Redis error event:", error.message);
+    
+    redis.on('error', (error) => {
+      console.error('[sessions] Redis error event:', error.message);
     });
   }
   return redis;
@@ -99,7 +97,7 @@ function createSuccessResponse(res, data, status = 200) {
  * Main handler function
  */
 async function handler(req, res) {
-  console.log("[sessions] Handler called, method:", req.method);
+  console.log('[sessions] Handler called, method:', req.method);
   
   // Set CORS headers
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -107,8 +105,8 @@ async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, x-sso-bypass");
 
   try {
-    console.log("[sessions] Starting session creation...");
-    console.log("[sessions] Redis URL exists:", !!process.env.KV_REST_API_URL);
+    console.log('[sessions] Starting session creation...');
+    console.log('[sessions] Redis URL exists:', !!process.env.KV_REST_API_URL);
     
     // Handle CORS preflight
     if (req.method === "OPTIONS") {
@@ -144,12 +142,12 @@ async function handler(req, res) {
     }
     
     // Generate session code
-    console.log("[sessions] Generating session code...");
+    console.log('[sessions] Generating session code...');
     const code = generateSessionCode();
     const now = new Date();
     const expiresAt = new Date(now.getTime() + SESSION_TTL_SECONDS * 1000);
     
-    console.log("[sessions] Generated code:", code);
+    console.log('[sessions] Generated code:', code);
     
     // Store session in Redis with TTL
     const sessionData = {
@@ -161,9 +159,9 @@ async function handler(req, res) {
       capabilities
     };
     
-    console.log("[sessions] About to call setSession...");
+    console.log('[sessions] About to call setSession...');
     await setSession(code, sessionData);
-    console.log("[sessions] setSession completed successfully");
+    console.log('[sessions] setSession completed successfully');
     
     // Return session details
     const response = {

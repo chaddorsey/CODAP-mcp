@@ -1,3 +1,4 @@
+require('dotenv').config();
 // Session creation endpoint using Node.js runtime
 // Self-contained version to avoid import path issues
 const Redis = require("ioredis");
@@ -15,12 +16,9 @@ function getRedisClient() {
     const port = process.env.REDIS_PORT;
     const password = process.env.REDIS_PASSWORD;
 
-    if (!host || !port || !password) {
-      throw new Error("Missing Redis configuration in environment variables.");
-    }
-
+    
     console.log("[sessions] Redis connection details:", { host, port, hasPassword: !!password });
-
+    
     redis = new Redis({
       host,
       port,
@@ -38,12 +36,12 @@ function getRedisClient() {
         console.error("[sessions] Redis connection error:", error.message);
       }
     });
-
+    
     // Add connection event listeners
     redis.on("connect", () => {
       console.log("[sessions] Redis connected successfully");
     });
-
+    
     redis.on("error", (error) => {
       console.error("[sessions] Redis error event:", error.message);
     });

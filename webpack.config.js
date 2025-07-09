@@ -187,7 +187,7 @@ module.exports = (env, argv) => {
         favicon: 'src/public/favicon.ico',
         publicPath: DEPLOY_PATH
       })] : []),
-      new CleanWebpackPlugin(),
+      //new CleanWebpackPlugin(),
       new CopyWebpackPlugin({
         patterns: [
           { from: 'public', to: '.' }

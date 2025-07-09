@@ -78,10 +78,10 @@ export class SessionService implements SessionServiceInterface {
 
         const sessionData: SessionData = await response.json();
         // Debug log
-        console.log('SessionService: validating sessionData', sessionData);
+        console.log("SessionService: validating sessionData", sessionData);
         // Validate response structure
         if (!this.isValidSessionData(sessionData)) {
-          console.log('SessionService: sessionData is invalid', sessionData);
+          console.log("SessionService: sessionData is invalid", sessionData);
           throw new SessionServiceError(
             "Invalid session data received from server",
             SESSION_ERROR_CODES.INVALID_RESPONSE
@@ -203,7 +203,7 @@ export class SessionService implements SessionServiceInterface {
       typeof data.expiresAt === "string"
     );
     if (!valid) {
-      console.log('isValidSessionData failed:', {
+      const debugInfo = {
         typeofData: typeof data,
         data,
         code: data && data.code,
@@ -213,7 +213,8 @@ export class SessionService implements SessionServiceInterface {
         ttlType: data && typeof data.ttl,
         expiresAt: data && data.expiresAt,
         expiresAtType: data && typeof data.expiresAt
-      });
+      };
+      console.log("isValidSessionData failed:", debugInfo);
     }
     return valid;
   }
