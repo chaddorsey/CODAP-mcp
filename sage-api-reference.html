@@ -2182,8 +2182,8 @@
             log('❌ Error getting node: ' + err);
           }
         );
-        // Select node in SageModeler
-        sendApiRequest('call', 'nodes/select', { nodeId }, 'Select node in SageModeler');
+        // Select node in SageModeler using the correct API
+        sendApiRequest('call', 'ui/select', { nodes: [nodeId] }, 'Select node in SageModeler');
       }
     }
     function onLinkSelect() {
@@ -2210,8 +2210,8 @@
             log('❌ Error getting link: ' + err);
           }
         );
-        // Select link in SageModeler
-        sendApiRequest('call', 'links/select', { linkId }, 'Select link in SageModeler');
+        // Select link in SageModeler using the correct API
+        sendApiRequest('call', 'ui/select', { links: [linkId] }, 'Select link in SageModeler');
       }
     }
 
