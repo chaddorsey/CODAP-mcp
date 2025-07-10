@@ -596,37 +596,42 @@
     <!-- Tab: Import/Export -->
     <div class="tab-content" id="tab-content-importexport" style="overflow-y: auto; max-height: 350px;">
       <!-- API Test Subsection -->
-      <div id="api-test-section" style="display: flex; gap: 12px; margin-bottom: 16px; align-items: flex-start; max-height: 220px;">
-        <div style="flex: 1; display: flex; flex-direction: column;">
-          <label for="apiTestRequest" style="font-weight: bold; margin-bottom: 4px;">Request</label>
-          <textarea id="apiTestRequest" style="width: 100%; height: 120px; font-family: monospace; font-size: 12px; resize: vertical;">{
+      <div id="api-test-section" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; max-height: 240px;">
+        <div style="display: flex; gap: 12px; align-items: flex-start;">
+          <div style="flex: 1; display: flex; flex-direction: column;">
+            <label for="apiTestRequest" style="font-weight: bold; margin-bottom: 4px;">Request</label>
+            <textarea id="apiTestRequest" style="width: 100%; height: 120px; font-family: monospace; font-size: 12px; resize: vertical;">{
   "sageApi": true,
   "action": "get",
   "resource": "model",
   "values": {},
   "requestId": "test-1"
 }</textarea>
+          </div>
+          <div style="flex: 1; display: flex; flex-direction: column;">
+            <label for="apiTestResponse" style="font-weight: bold; margin-bottom: 4px;">Response</label>
+            <textarea id="apiTestResponse" style="width: 100%; height: 120px; font-family: monospace; font-size: 12px; background: #f5f5f5; color: #333; resize: vertical;" readonly></textarea>
+          </div>
         </div>
-        <div style="flex: 1; display: flex; flex-direction: column;">
-          <label for="apiTestResponse" style="font-weight: bold; margin-bottom: 4px;">Response</label>
-          <textarea id="apiTestResponse" style="width: 100%; height: 120px; font-family: monospace; font-size: 12px; background: #f5f5f5; color: #333; resize: vertical;" readonly></textarea>
-        </div>
-        <div style="display: flex; flex-direction: column; justify-content: flex-end;">
-          <button id="apiTestSendBtn" style="margin-bottom: 0;">Send API Command</button>
+        <div style="display: flex; justify-content: flex-end;">
+          <button id="apiTestSendBtn" style="margin-top: 4px;">Send API Command</button>
         </div>
       </div>
-      <!-- Existing Model JSON section follows -->
+      <!-- Model JSON Section -->
       <div class="accordion">
         <div class="accordion-content active">
-          <div class="input-group">
-            <label for="modelJsonInput">Model JSON (Paste, Edit, or Export):</label>
-            <textarea id="modelJsonInput" rows="5" placeholder="Paste or export model JSON here..."></textarea>
+          <div style="font-weight: bold; font-size: 15px; margin-bottom: 6px;">Model JSON (Paste, Edit, or Export)</div>
+          <div style="display: flex; gap: 12px; align-items: flex-start;">
+            <div style="flex: 2;">
+              <textarea id="modelJsonInput" rows="5" placeholder="Paste or export model JSON here..." style="width: 100%;"></textarea>
+            </div>
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 6px;">
+              <button onclick="loadModelFromInput()">Load Model</button>
+              <button onclick="getModel()">Export Model</button>
+              <button onclick="importSdJson()">Import SD-JSON</button>
+              <button onclick="exportSdJson()">Export SD-JSON</button>
+            </div>
           </div>
-          <button onclick="loadModelFromInput()">Load Model</button>
-          <button onclick="getModel()">Export Model</button>
-          <!-- [13-4] Add SD-JSON import/export buttons -->
-          <button onclick="importSdJson()">Import SD-JSON</button>
-          <button onclick="exportSdJson()">Export SD-JSON</button>
         </div>
       </div>
     </div>
