@@ -898,15 +898,14 @@ export class BrowserWorkerService {
         const { width, height } = frameResponse.values.dimensions || { width: 416, height: 300 };
         // 2. Get current model type
         const modelResponse = await sendMessage("get", "model");
-        const modelType = modelResponse.values?.modelType || "static";
+        const modelType = modelResponse.values?.modelType || "Model diagram";
         // 3. Map model type to allowed node types
         const allowedNodeTypesByModelType: Record<string, string[]> = {
-          "static": ["stock", "constant"],
-          "model diagram": ["stock", "constant"],
-          "equilibrium": ["stock", "constant", "flow"],
-          "dynamic": ["stock", "constant", "flow", "auxiliary"]
+          "Model diagram": ["constant"],
+          "Static equilibrium simulation": ["constant"],
+          "Dynamic time-based simulation": ["stock", "constant", "flow", "auxiliary"]
         };
-        const allowedTypes = allowedNodeTypesByModelType[modelType] || ["stock", "constant"];
+        const allowedTypes = allowedNodeTypesByModelType[modelType] || ["constant"];
         // 4. Randomly select a node type
         const nodeType = allowedTypes[Math.floor(Math.random() * allowedTypes.length)];
         // 5. Node size and position (center-origin, 50x50)
