@@ -918,11 +918,9 @@ export class BrowserWorkerService {
         const x = Math.floor(Math.random() * (maxX - minX + 1)) + minX;
         const y = Math.floor(Math.random() * (maxY - minY + 1)) + minY;
         // 6. Prepare node args
-        let nodeArgs = { ...args, x, y, type: nodeType };
-        if (nodeType === "constant") {
-          nodeArgs.isAccumulator = false;
-          nodeArgs.isFlowVariable = false;
-        }
+        const nodeArgs = nodeType === "constant"
+          ? { ...args, x, y, type: nodeType, isAccumulator: false, isFlowVariable: false }
+          : { ...args, x, y, type: nodeType };
         // 7. Use direct node creation endpoint
         return await this.sendSageModelerMessage("create", "nodes", nodeArgs);
       };
