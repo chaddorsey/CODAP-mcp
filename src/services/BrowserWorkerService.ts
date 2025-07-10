@@ -893,7 +893,20 @@ export class BrowserWorkerService {
       };
 
       handlers.sage_create_random_node = async (args: any) => {
-        return await this.sendSageModelerMessage("create", "nodes/random", args);
+        // 1. Get plugin window dimensions
+        const frameResponse = await sendMessage("get", "interactiveFrame");
+        const { width, height } = frameResponse.values.dimensions || { width: 416, height: 275 };
+        // 2. Define node size (default 80x80)
+        const nodeWidth = 80;
+        const nodeHeight = 80;
+        // 3. Calculate max allowed x/y
+        const maxX = Math.max(0, width - nodeWidth);
+        const maxY = Math.max(0, height - nodeHeight);
+        // 4. Generate random position
+        const x = Math.floor(Math.random() * (maxX + 1));
+        const y = Math.floor(Math.random() * (maxY + 1));
+        // 5. Pass x/y to node creation
+        return await this.sendSageModelerMessage("create", "nodes/random", { ...args, x, y });
       };
 
       handlers.sage_update_node = async (args: any) => {
