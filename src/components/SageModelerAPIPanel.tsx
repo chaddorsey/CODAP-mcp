@@ -54,7 +54,7 @@ const SageAPIEmbeddedPanel = forwardRef<HTMLIFrameElement, { expanded: boolean; 
     <div style={{ width, height, background: "white", paddingTop: 0, margin: 0 }}>
       <iframe
           ref={localRef}
-        src="/sage-api-reference.html"
+        src="sage-api-reference.html"
         title="Sage API Reference Plugin"
         style={{ width: "100%", height: "100%", border: "none", minHeight: 325, background: "none" }}
         sandbox="allow-scripts allow-same-origin"
