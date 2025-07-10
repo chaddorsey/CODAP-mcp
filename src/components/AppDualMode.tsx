@@ -328,7 +328,7 @@ export const AppDualMode = () => {
   useEffect(() => {
     setContainerHeight(showSageApiTester ? 700 : 270);
     // CODAP interactiveFrame resize logic
-    const width = 405; // total width including padding
+    const width = 416; // total width including border/padding
     const height = showSageApiTester ? 705 : 275;
     sendMessage("update", "interactiveFrame", { dimensions: { width, height } });
   }, [showSageApiTester]);
@@ -382,7 +382,7 @@ export const AppDualMode = () => {
     <div
       className="codap-mcp-plugin minimal"
       style={{
-        width: 405, // total width including padding
+        width: 416, // total width including border/padding
         padding: "5px 5px 0 5px",
         margin: "0 auto",
         position: "relative",
