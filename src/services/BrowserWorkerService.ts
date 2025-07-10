@@ -917,8 +917,14 @@ export class BrowserWorkerService {
         const maxY = Math.max(minY, height - nodeHeight / 2);
         const x = Math.floor(Math.random() * (maxX - minX + 1)) + minX;
         const y = Math.floor(Math.random() * (maxY - minY + 1)) + minY;
-        // 6. Create the node with the selected type
-        return await this.sendSageModelerMessage("create", "nodes/random", { ...args, x, y, type: nodeType });
+        // 6. Prepare node args
+        let nodeArgs = { ...args, x, y, type: nodeType };
+        if (nodeType === "constant") {
+          nodeArgs.isAccumulator = false;
+          nodeArgs.isFlowVariable = false;
+        }
+        // 7. Use direct node creation endpoint
+        return await this.sendSageModelerMessage("create", "nodes", nodeArgs);
       };
 
       handlers.sage_update_node = async (args: any) => {
