@@ -328,9 +328,9 @@
       <button class="tab-btn selected" id="tab-nodes" onclick="showTab('nodes')">Nodes/Links</button>
       <button class="tab-btn" id="tab-experiment" onclick="showTab('experiment')">Experiment</button>
       <button class="tab-btn" id="tab-recording" onclick="showTab('recording')">Recording</button>
-      <button class="tab-btn" id="tab-importexport" onclick="showTab('importexport')">Import/Export</button>
+      <button class="tab-btn" id="tab-importexport" onclick="showTab('importexport')">API/Import/Export</button>
       <button class="tab-btn" id="tab-settings" onclick="showTab('settings')">Settings</button>
-      <button class="tab-btn" id="tab-inspector" onclick="showTab('inspector')">Inspector!</button>
+      <button class="tab-btn" id="tab-inspector" onclick="showTab('inspector')">Inspector</button>
     </div>
     <!-- Tab: Nodes/Links -->
     <div class="tab-content active" id="tab-content-nodes">
@@ -594,7 +594,28 @@
       </div>
     </div>
     <!-- Tab: Import/Export -->
-    <div class="tab-content" id="tab-content-importexport">
+    <div class="tab-content" id="tab-content-importexport" style="overflow-y: auto; max-height: 350px;">
+      <!-- API Test Subsection -->
+      <div id="api-test-section" style="display: flex; gap: 12px; margin-bottom: 16px; align-items: flex-start; max-height: 220px;">
+        <div style="flex: 1; display: flex; flex-direction: column;">
+          <label for="apiTestRequest" style="font-weight: bold; margin-bottom: 4px;">Request</label>
+          <textarea id="apiTestRequest" style="width: 100%; height: 120px; font-family: monospace; font-size: 12px; resize: vertical;">{
+  "sageApi": true,
+  "action": "get",
+  "resource": "model",
+  "values": {},
+  "requestId": "test-1"
+}</textarea>
+        </div>
+        <div style="flex: 1; display: flex; flex-direction: column;">
+          <label for="apiTestResponse" style="font-weight: bold; margin-bottom: 4px;">Response</label>
+          <textarea id="apiTestResponse" style="width: 100%; height: 120px; font-family: monospace; font-size: 12px; background: #f5f5f5; color: #333; resize: vertical;" readonly></textarea>
+        </div>
+        <div style="display: flex; flex-direction: column; justify-content: flex-end;">
+          <button id="apiTestSendBtn" style="margin-bottom: 0;">Send API Command</button>
+        </div>
+      </div>
+      <!-- Existing Model JSON section follows -->
       <div class="accordion">
         <div class="accordion-content active">
           <div class="input-group">
@@ -2699,6 +2720,32 @@
         log('❌ Error fetching model: ' + err);
       });
     }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      var apiTestSendBtn = document.getElementById('apiTestSendBtn');
+      if (apiTestSendBtn) {
+        apiTestSendBtn.onclick = function() {
+          var reqText = document.getElementById('apiTestRequest').value;
+          var parsed;
+          try {
+            parsed = JSON.parse(reqText);
+          } catch (e) {
+            document.getElementById('apiTestResponse').value = 'Invalid JSON: ' + e.message;
+            return;
+          }
+          // Send the request using postMessage
+          window.parent.postMessage(parsed, '*');
+          // Listen for the response (match requestId)
+          function handler(event) {
+            if (event.data && event.data.requestId === parsed.requestId) {
+              document.getElementById('apiTestResponse').value = JSON.stringify(event.data, null, 2);
+              window.removeEventListener('message', handler);
+            }
+          }
+          window.addEventListener('message', handler);
+        };
+      }
+    });
   </script>
   </body>
   </html>
