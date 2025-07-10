@@ -43,6 +43,15 @@ export const SageModelerAPIPanel: React.FC<{ iframeRef?: React.RefObject<HTMLIFr
   return <SageAPIEmbeddedPanel expanded={true} iframeRef={iframeRef} />;
 };
 
+const getSageApiReferenceUrl = () => {
+  let publicUrl = process.env.PUBLIC_URL || "";
+  // Remove query parameters and hash fragments
+  publicUrl = publicUrl.replace(/([?#].*)?$/, "");
+  // Remove trailing slash
+  publicUrl = publicUrl.replace(/\/$/, "");
+  return `${publicUrl ? publicUrl + "/" : ""}sage-api-reference.html`;
+};
+
 const SageAPIEmbeddedPanel = forwardRef<HTMLIFrameElement, { expanded: boolean; iframeRef?: React.RefObject<HTMLIFrameElement> }>(
   ({ expanded, iframeRef }, ref) => {
     const localRef = React.useRef<HTMLIFrameElement>(null);
@@ -54,7 +63,7 @@ const SageAPIEmbeddedPanel = forwardRef<HTMLIFrameElement, { expanded: boolean; 
     <div style={{ width, height, background: "white", paddingTop: 0, margin: 0 }}>
       <iframe
           ref={localRef}
-        src={`${process.env.PUBLIC_URL || ""}/sage-api-reference.html`}
+        src={getSageApiReferenceUrl()}
         title="Sage API Reference Plugin"
         style={{ width: "100%", height: "100%", border: "none", minHeight: 325, background: "none" }}
         sandbox="allow-scripts allow-same-origin"
