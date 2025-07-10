@@ -45,7 +45,7 @@ export const AppCODAPOnly = () => {
       try {
         await initializePlugin({
           pluginName: "CODAP + Claude AI",
-          version: "1.0.0",
+          version: "1.0.1",
           dimensions: { width: 415, height: 295 } // Increased height by 25px for modal visibility
         });
         console.log("CODAP plugin initialized");

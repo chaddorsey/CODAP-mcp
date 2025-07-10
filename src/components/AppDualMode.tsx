@@ -118,7 +118,7 @@ export const AppDualMode = () => {
       try {
         await initializePlugin({
           pluginName: "CODAP + Claude AI",
-          version: "1.0.0",
+          version: "1.0.1",
           dimensions: { width: 415, height: 295 }
         });
         console.log("CODAP plugin initialized");
