@@ -326,10 +326,10 @@ export const AppDualMode = () => {
 
   // Animate height on panel toggle
   useEffect(() => {
-    setContainerHeight(showSageApiTester ? 700 : 295);
+    setContainerHeight(showSageApiTester ? 700 : 320);
     // CODAP interactiveFrame resize logic
     const width = 416; // total width including border/padding
-    const height = showSageApiTester ? 705 : 300;
+    const height = showSageApiTester ? 705 : 325;
     sendMessage("update", "interactiveFrame", { dimensions: { width, height } });
   }, [showSageApiTester]);
 
