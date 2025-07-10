@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
-import { initializePlugin } from "@concord-consortium/codap-plugin-api";
+import { initializePlugin, sendMessage } from "@concord-consortium/codap-plugin-api";
 import { ClaudeConnectionPanel } from "./ClaudeConnectionPanel";
 import { ClaudeSetupModal } from "./ClaudeSetupModal";
 import { SageModelerAPIPanel } from "./SageModelerAPIPanel";
@@ -327,6 +327,10 @@ export const AppDualMode = () => {
   // Animate height on panel toggle
   useEffect(() => {
     setContainerHeight(showSageApiTester ? 700 : 270);
+    // CODAP interactiveFrame resize logic
+    const width = 385 + 5 * 2; // 385px content + 5px padding each side = 395px
+    const height = showSageApiTester ? 705 : 275;
+    sendMessage("update", "interactiveFrame", { dimensions: { width, height } });
   }, [showSageApiTester]);
 
   // Ensure width is always 385px on mount and mode switch
@@ -378,7 +382,7 @@ export const AppDualMode = () => {
     <div
       className="codap-mcp-plugin minimal"
       style={{
-        width: 385,
+        width: 385 + 5 * 2, // 395px
         padding: "5px 5px 0 5px",
         margin: "0 auto",
         position: "relative",
