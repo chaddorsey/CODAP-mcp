@@ -896,7 +896,20 @@ export class BrowserWorkerService {
         // 1. Get plugin window dimensions
         const frameResponse = await sendMessage("get", "interactiveFrame");
         const { width, height } = frameResponse.values.dimensions || { width: 416, height: 300 };
-        // 2. Define node size (50x50, center-origin)
+        // 2. Get current model type
+        const modelResponse = await sendMessage("get", "model");
+        const modelType = modelResponse.values?.modelType || "static";
+        // 3. Map model type to allowed node types
+        const allowedNodeTypesByModelType: Record<string, string[]> = {
+          "static": ["stock", "constant"],
+          "model diagram": ["stock", "constant"],
+          "equilibrium": ["stock", "constant", "flow"],
+          "dynamic": ["stock", "constant", "flow", "auxiliary"]
+        };
+        const allowedTypes = allowedNodeTypesByModelType[modelType] || ["stock", "constant"];
+        // 4. Randomly select a node type
+        const nodeType = allowedTypes[Math.floor(Math.random() * allowedTypes.length)];
+        // 5. Node size and position (center-origin, 50x50)
         const nodeWidth = 50;
         const nodeHeight = 50;
         const minX = nodeWidth / 2;
@@ -905,7 +918,8 @@ export class BrowserWorkerService {
         const maxY = Math.max(minY, height - nodeHeight / 2);
         const x = Math.floor(Math.random() * (maxX - minX + 1)) + minX;
         const y = Math.floor(Math.random() * (maxY - minY + 1)) + minY;
-        return await this.sendSageModelerMessage("create", "nodes/random", { ...args, x, y });
+        // 6. Create the node with the selected type
+        return await this.sendSageModelerMessage("create", "nodes/random", { ...args, x, y, type: nodeType });
       };
 
       handlers.sage_update_node = async (args: any) => {
