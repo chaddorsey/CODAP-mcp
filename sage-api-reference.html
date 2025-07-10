@@ -596,11 +596,11 @@
     <!-- Tab: Import/Export -->
     <div class="tab-content" id="tab-content-importexport" style="overflow-y: auto; max-height: 350px;">
       <!-- API Test Subsection -->
-      <div id="api-test-section" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; max-height: 240px;">
+      <div id="api-test-section" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; max-height: 180px;">
         <div style="display: flex; gap: 12px; align-items: flex-start;">
-          <div style="flex: 1; display: flex; flex-direction: column;">
+          <div style="flex: 1; display: flex; flex-direction: column; min-width: 0;">
             <label for="apiTestRequest" style="font-weight: bold; margin-bottom: 4px;">Request</label>
-            <textarea id="apiTestRequest" style="width: 100%; height: 120px; font-family: monospace; font-size: 12px; resize: vertical;">{
+            <textarea id="apiTestRequest" style="width: 100%; height: 90px; font-family: monospace; font-size: 12px; resize: vertical; min-width: 0;">{
   "sageApi": true,
   "action": "get",
   "resource": "model",
@@ -608,9 +608,9 @@
   "requestId": "test-1"
 }</textarea>
           </div>
-          <div style="flex: 1; display: flex; flex-direction: column;">
+          <div style="flex: 1; display: flex; flex-direction: column; min-width: 0;">
             <label for="apiTestResponse" style="font-weight: bold; margin-bottom: 4px;">Response</label>
-            <textarea id="apiTestResponse" style="width: 100%; height: 120px; font-family: monospace; font-size: 12px; background: #f5f5f5; color: #333; resize: vertical;" readonly></textarea>
+            <textarea id="apiTestResponse" style="width: 100%; height: 90px; font-family: monospace; font-size: 12px; background: #f5f5f5; color: #333; resize: vertical; min-width: 0;" readonly></textarea>
           </div>
         </div>
         <div style="display: flex; justify-content: flex-end;">
@@ -622,14 +622,18 @@
         <div class="accordion-content active">
           <div style="font-weight: bold; font-size: 15px; margin-bottom: 6px;">Model JSON (Paste, Edit, or Export)</div>
           <div style="display: flex; gap: 12px; align-items: flex-start;">
-            <div style="flex: 2;">
+            <div style="flex: 2; min-width: 0;">
               <textarea id="modelJsonInput" rows="5" placeholder="Paste or export model JSON here..." style="width: 100%;"></textarea>
             </div>
-            <div style="flex: 1; display: flex; flex-direction: column; gap: 6px;">
-              <button onclick="loadModelFromInput()">Load Model</button>
-              <button onclick="getModel()">Export Model</button>
-              <button onclick="importSdJson()">Import SD-JSON</button>
-              <button onclick="exportSdJson()">Export SD-JSON</button>
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <button style="flex: 1 1 45%; white-space: normal;">Load Model</button>
+                <button style="flex: 1 1 45%; white-space: normal;">Export Model</button>
+              </div>
+              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <button style="flex: 1 1 45%; white-space: normal;">Import SD-JSON</button>
+                <button style="flex: 1 1 45%; white-space: normal;">Export SD-JSON</button>
+              </div>
             </div>
           </div>
         </div>
