@@ -1110,46 +1110,26 @@ export const toolHandlers = {
   },
 
   create_graph: async (args: any) => {
-    const { dataContextName, dataContext, title, xAttribute, yAttribute, graphType = "scatterPlot", position, dimensions } = args;
+    const { dataContextName, dataContext, title, xAttribute, yAttribute, legendAttribute, enableNumberToggle, graphType = "scatterPlot", position, dimensions } = args;
     
-    // Step 1: Create empty graph component (optimal approach based on testing)
+    // Step 1: Create graph component with axes and options directly in the create call
     const graphValues: any = {
       type: "graph",
       dataContext: dataContext || dataContextName,
       graphType
     };
-    
     if (title) graphValues.name = title;
     if (position) graphValues.position = position;
     if (dimensions) graphValues.dimensions = dimensions;
+    if (xAttribute) graphValues.xAttributeName = xAttribute;
+    if (yAttribute) graphValues.yAttributeName = yAttribute;
+    if (legendAttribute) graphValues.legendAttributeName = legendAttribute;
+    if (typeof enableNumberToggle === "boolean") graphValues.enableNumberToggle = enableNumberToggle;
     
-    console.log("Server creating empty graph:", graphValues);
+    console.log("Server creating graph with axes in create call:", graphValues);
     const graphResult = await sendMessage("create", "component", graphValues);
     
-    // Step 2: If axes are specified, update the graph with axis assignments (proven optimal approach)
-    if ((xAttribute || yAttribute) && graphResult.success && graphResult.values) {
-      const componentId = graphResult.values.id;
-      if (componentId) {
-        const updateValues: any = {};
-        if (xAttribute) updateValues.xAttributeName = xAttribute;
-        if (yAttribute) updateValues.yAttributeName = yAttribute;
-        
-        console.log("Server updating graph axes:", { componentId, updateValues });
-        const updateResult = await sendMessage("update", `component[${componentId}]`, updateValues);
-        
-        // Return combined result
-        return {
-          success: graphResult.success && updateResult.success,
-          values: {
-            ...graphResult.values,
-            axesAssigned: updateResult.success,
-            xAttributeName: xAttribute,
-            yAttributeName: yAttribute
-          }
-        };
-      }
-    }
-    
+    // Step 2: Only use update if axes need to be changed after creation (not needed for initial assignment)
     return graphResult;
   },
 
